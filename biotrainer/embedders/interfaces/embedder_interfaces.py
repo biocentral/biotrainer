@@ -83,6 +83,8 @@ class EmbedderInterface(abc.ABC, BiotrainerTokenizerMixin):
         if batch_size is None:
             batch_size = self.estimate_batch_size(preprocessed_sequences=sequences)
 
+        print(f"Batch size: {batch_size}")
+
         if batch_size and batch_size > 1:
             batch = []
             length = 0

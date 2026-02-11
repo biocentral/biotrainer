@@ -147,6 +147,20 @@ class EmbeddingService:
         )
         io_process.start()
 
+        # DEBUG PRINTS
+        try:
+            print('torch:', torch.__version__)
+            print('cuda available:', torch.cuda.is_available())
+            print('device count:', torch.cuda.device_count())
+            print('visible devices:', os.environ.get('CUDA_VISIBLE_DEVICES'))
+            print('embedder device:', self._embedder._device)
+            print('current device:', torch.cuda.current_device())
+            print('device name:', torch.cuda.get_device_name(torch.cuda.current_device()))
+            print('device memory:', torch.cuda.get_device_properties(torch.cuda.current_device()).total_memory / (1024 ** 3))
+            print('device compute capability:', torch.cuda.get_device_capability(torch.cuda.current_device()))
+        except Exception as e:
+            print(e)
+
         try:
             for seq_record, embedding in tqdm(
                     self._embeddings_generator(seq_records, use_reduced_embeddings),
