@@ -12,7 +12,6 @@ class PBCConfigBank(AutoEvalConfigBank):
 
         # Common configuration options shared across most tasks
         base_config = {
-            "model_choice": "LogReg",
             "num_epochs": 50,
             "learning_rate": 1e-3,
             "batch_size": 64,
@@ -22,7 +21,6 @@ class PBCConfigBank(AutoEvalConfigBank):
             "shuffle": True,
             "patience": 10,
             "epsilon": 1e-3,
-            "scaling_method": "standard"
         }
 
         # Task-specific configurations that override or extend base config
@@ -30,25 +28,31 @@ class PBCConfigBank(AutoEvalConfigBank):
             "binding": {
                 "protocol": "residue_to_class",
                 "use_class_weights": False,
+                "model_choice": "CNN",
             },
             "conservation": {
                 "protocol": "residue_to_class",
                 "use_class_weights": False,
+                "model_choice": "CNN",
             },
             "disorder": {
                 "protocol": "residue_to_value",
+                "model_choice": "CNN",
             },
             "membrane": {
                 "protocol": "residue_to_class",
                 "use_class_weights": False,
+                "model_choice": "CNN",
             },
             "scl": {
                 "protocol": "sequence_to_class",
                 "use_class_weights": False,
+                "model_choice": "FNN",
             },
             "secondary_structure": {
                 "protocol": "residue_to_class",
                 "use_class_weights": False,
+                "model_choice": "CNN",
             },
         }
 
