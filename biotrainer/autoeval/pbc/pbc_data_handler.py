@@ -16,7 +16,7 @@ class PBCDataHandler(AutoEvalDataHandler):
 
     @staticmethod
     def get_download_urls():
-        return ["https://nextcloud.cit.tum.de/index.php/s/gLGarZgmBEDPFJE/download"]
+        return ["https://nextcloud.cit.tum.de/index.php/s/xCQYZwYfGj9ffXz/download"]
 
     @staticmethod
     def _get_all_dataset_and_split_names():

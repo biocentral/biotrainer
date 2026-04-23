@@ -5,7 +5,11 @@ PBC_DATASETS = {
         "evaluation_metric": "accuracy",
         "protocol": Protocol.residue_to_class,
     },
-    "disorder": {
+    "disorder_chezod": {
+        "evaluation_metric": "spearmans-corr-coeff",
+        "protocol": Protocol.residue_to_value,
+    },
+    "disorder_trizod": {
         "evaluation_metric": "spearmans-corr-coeff",
         "protocol": Protocol.residue_to_value,
     },
