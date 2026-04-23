@@ -31,7 +31,11 @@ class PBCConfigBank(AutoEvalConfigBank):
                 "protocol": "residue_to_class",
                 "use_class_weights": False,
             },
-            "disorder": {
+            "disorder_chezod": {
+                "protocol": "residue_to_value",
+                "loss_choice": "smooth_l1_loss",
+            },
+            "disorder_trizod": {
                 "protocol": "residue_to_value",
                 "loss_choice": "smooth_l1_loss",
             },
