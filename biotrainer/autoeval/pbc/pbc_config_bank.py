@@ -40,6 +40,11 @@ class PBCConfigBank(AutoEvalConfigBank):
                 "protocol": "residue_to_value",
                 "loss_choice": "smooth_l1_loss",
             },
+            "membrane": {
+                "model_choice": "CNN",
+                "protocol": "residue_to_class",
+                "use_class_weights": False,
+            },
             "scl": {
                 "model_choice": "FNN",
                 "protocol": "sequence_to_class",
