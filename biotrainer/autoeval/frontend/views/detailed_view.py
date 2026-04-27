@@ -85,7 +85,7 @@ def render_detailed(active: list[AutoEvalReport]):
                     with stats_cols[0]:
                         st.metric("Dimensions", embedding_stats.dims)
                     with stats_cols[1]:
-                        st.metric("Sequences Tracked", f"{embedding_stats.n_tracked:,}")
+                        st.metric("Residues Tracked", f"{embedding_stats.n_tracked:,}")
                     with stats_cols[2]:
                         st.metric("Min Value", f"{embedding_stats.min:.2f}")
                     with stats_cols[3]:
