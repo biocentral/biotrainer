@@ -1,16 +1,16 @@
 import gc
+import torch
 
 from pathlib import Path
 from typing import Dict, Optional
-
-import torch
 
 from ..pipeline import PipelineContext, PipelineStep
 from ..pipeline.pipeline_step import PipelineStepType
 from ...input_files import BiotrainerSequenceRecord
 
+from ...protocols import Protocol
 from ...utilities import get_logger
-from ...embedders import get_embedding_service, EmbeddingService
+from ...embedders import get_embedding_service, EmbeddingService, EmbeddingStatsTracker, EmbeddingStats
 
 logger = get_logger(__name__)
 
@@ -24,6 +24,10 @@ class EmbeddingStep(PipelineStep):
     def _do_embed(context: PipelineContext) -> PipelineContext:
         # Generate embeddings if necessary, otherwise use existing embeddings
         embeddings_file = context.config.get("embeddings_file", None)
+
+        # Track embedding stats
+        embedding_stats_tracker = EmbeddingStatsTracker(embedder_name=context.config["embedder_name"])
+        embedding_stats = None
 
         if not embeddings_file:
             # Search for embeddings file at default place if no custom file was provided directly
@@ -43,9 +47,11 @@ class EmbeddingStep(PipelineStep):
             )
             embeddings_file = embedding_service.compute_embeddings(
                 input_data=context.input_data,
-                protocol=context.config["protocol"], output_dir=context.config["output_dir"]
+                protocol=context.config["protocol"],
+                output_dir=context.config["output_dir"],
+                embedding_stats_tracker=embedding_stats_tracker,
             )
-
+            embedding_stats = embedding_stats_tracker.get_stats()
             # Manually clear the memory from costly embedder model
             del embedding_service._embedder
             gc.collect()
@@ -59,11 +65,18 @@ class EmbeddingStep(PipelineStep):
         id2emb = EmbeddingService.load_embeddings(embeddings_file_path=str(embeddings_file),
                                                   ids_to_load=ids_to_load)
 
+        if embedding_stats is None and context.config["protocol"] in Protocol.using_per_residue_embeddings():
+            assert embedding_stats_tracker.n_tracked == 0, "Embedding stats should be empty!"
+            embedding_stats_tracker.track_entire_dataset(id2emb.values())
+            embedding_stats = embedding_stats_tracker.get_stats()
+
         if len(ids_to_load) != len(id2emb):
             raise ValueError(f"Number of embeddings ({len(id2emb)}) != number of input data ({len(ids_to_load)})!")
 
         assert len(id2emb) > 0, f"No embeddings loaded from embeddings file {embeddings_file}!"
 
+        context.output_manager.add_derived_values(
+            {'embedding_stats': embedding_stats.model_dump() if embedding_stats is not None else None})
         context.id2emb = id2emb
         return context
 

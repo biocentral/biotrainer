@@ -10,6 +10,7 @@ from tqdm import tqdm
 from pathlib import Path
 from typing import Dict, List, Union, Optional, Generator, Tuple, Any
 
+from ..stats import EmbeddingStatsTracker
 from ..interfaces import EmbedderInterface
 
 from ...protocols import Protocol
@@ -70,7 +71,8 @@ class EmbeddingService:
                            protocol: Protocol,
                            force_output_dir: bool = False,
                            force_recomputing: bool = False,
-                           store_by_hash: bool = True) -> str:
+                           store_by_hash: bool = True,
+                           embedding_stats_tracker: EmbeddingStatsTracker = None) -> str:
         """
         Compute embeddings with the provided embedder from a sequence file or a dictionary of sequences.
 
@@ -81,7 +83,7 @@ class EmbeddingService:
             force_output_dir (bool): If True, the given output directory is directly used to store the embeddings file.
             force_recomputing (bool): If True, the embedding file is re-computed, even if it already exists.
             store_by_hash (bool): If True, sequence hashes are used as indices for the h5 result file.
-
+            embedding_stats_tracker (EmbeddingStatsTracker): Optional tracker for tracking embedding statistics.
         Returns:
             str: Path to the generated output h5 embeddings file.
         """
@@ -122,6 +124,7 @@ class EmbeddingService:
             embeddings_file_path=embeddings_file_path,
             use_reduced_embeddings=use_reduced_embeddings,
             store_by_hash=store_by_hash,
+            embedding_stats_tracker=embedding_stats_tracker,
         )
 
         end_time = time.time()
@@ -133,7 +136,8 @@ class EmbeddingService:
                                      seq_records: List[BiotrainerSequenceRecord],
                                      embeddings_file_path: Path,
                                      use_reduced_embeddings: bool,
-                                     store_by_hash: bool):
+                                     store_by_hash: bool,
+                                     embedding_stats_tracker: EmbeddingStatsTracker = None):
         """
         Use separate process for I/O and run embedding on main process/GPU.
         """
@@ -156,6 +160,9 @@ class EmbeddingService:
             ):
                 # Convert to numpy and move to CPU before putting in queue
                 embedding_np = embedding.cpu().numpy()
+
+                if embedding_stats_tracker is not None:
+                    embedding_stats_tracker.track(embedding_np)
 
                 embedding_queue.put((
                     seq_record,
