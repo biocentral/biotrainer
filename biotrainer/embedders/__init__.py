@@ -6,6 +6,7 @@ from transformers import AutoTokenizer, T5Tokenizer, T5EncoderModel, EsmTokenize
     BertForMaskedLM, AutoModel
 
 from .onnx import OnnxEmbedder
+from .stats import EmbeddingStatsTracker, EmbeddingStats
 from .interfaces import EmbedderInterface, CustomTokenizer
 from .services import EmbeddingService, PeftEmbeddingService
 from .huggingface import HuggingfaceTransformerEmbedder, ProtT5, ProstT5, ESM2
@@ -154,6 +155,8 @@ def get_predefined_embedder_names() -> List[str]:
 __all__ = [
     "EmbeddingService",
     "PeftEmbeddingService",
+    "EmbeddingStatsTracker",
+    "EmbeddingStats",
     "OneHotEncodingEmbedder",
     "RandomEmbedder",
     "AAOntologyEmbedder",
