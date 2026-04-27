@@ -16,6 +16,7 @@ from ..pbc.pbc_datasets import PBC_DATASETS
 from ..flip.flip_datasets import FLIP_DATASETS
 from ..client.autoeval_service_client import AutoEvalServiceClient
 
+from ...embedders import EmbeddingStats
 from ...bioengineer import ZeroShotMethod, RankingResult
 
 
@@ -82,6 +83,16 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
                 return None  # File does not seem to be valid
         except Exception:
             return None
+
+    def accumulated_embedding_stats(self) -> Optional[EmbeddingStats]:
+        embedding_stats = None
+        for result in self.results.values():
+            result_stats = EmbeddingStats.from_biotrainer_result(result)
+            if embedding_stats is None:
+                embedding_stats = result_stats
+            else:
+                embedding_stats.accumulate_results(result_stats)
+        return embedding_stats
 
     def summary(self):
         print(f"(Minimum sequence length: {self.min_seq_len}, Maximum sequence length: {self.max_seq_len})")
@@ -396,6 +407,12 @@ class AutoEvalReport(BaseModel):
         for framework_name, report in self.zeroshot_results.items():
             print(f"\n{framework_name} zero-shot results:")
             report.summary()
+
+    def embedding_stats(self):
+        print(f"Embedding stats in autoeval report for {self.embedder_name} on {self.training_date}.")
+        for framework_name, report in self.supervised_results.items():
+            print(f"\n{framework_name} - embedding stats:")
+            print(report.accumulated_embedding_stats())
 
     def compare(self, other_reports: list[AutoEvalReport],
                 plot: Optional[bool] = False,
