@@ -138,7 +138,8 @@ def render_detailed(active: list[AutoEvalReport]):
                     st.divider()
 
                 task = st.selectbox("Task", options=tasks)
-                df_task = frontend_utils.supervised_task_metrics_dataframe(srep, task)
+                dev_mode = st.session_state.state.get_development_mode()
+                df_task = frontend_utils.supervised_task_metrics_dataframe(srep, task, development_mode=dev_mode)
                 df_task = _scale_supervised_metric_df(df_task)
                 st.dataframe(df_task, use_container_width=True, hide_index=True)
 
@@ -242,5 +243,8 @@ def render_detailed(active: list[AutoEvalReport]):
                     st.info("No tasks available.")
                     continue
                 task = st.selectbox("Task", options=tasks)
+                dev_mode = st.session_state.state.get_development_mode()
+                # Zero-shot doesn't support development mode yet, but we pass it anyway for consistency
+                # though zeroshot_task_metrics_dataframe doesn't accept it yet.
                 df_task = frontend_utils.zeroshot_task_metrics_dataframe(zrep, task)
                 st.dataframe(df_task, use_container_width=True, hide_index=True)

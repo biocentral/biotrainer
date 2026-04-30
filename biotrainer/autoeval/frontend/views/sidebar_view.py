@@ -22,6 +22,8 @@ def sidebar(start_path: Optional[Path], downloaded: Dict[str, AutoEvalReport]) -
     """
     view_mode = _show_view_buttons()
 
+    _show_global_settings()
+
     paths = _select_paths_ui(start_path=start_path)
     candidate_files = frontend_utils.discover_report_files(paths)
 
@@ -36,6 +38,18 @@ def sidebar(start_path: Optional[Path], downloaded: Dict[str, AutoEvalReport]) -
     _show_loaded_buttons()
 
     return view_mode
+
+
+def _show_global_settings():
+    """Render global settings like development mode."""
+    st.sidebar.markdown("---")
+    st.sidebar.header("Global Settings")
+    dev_mode = st.sidebar.checkbox(
+        "Development Mode",
+        value=st.session_state.state.get_development_mode(),
+        help="Enable development mode to see validation set metrics instead of test set metrics (recommended for model development)."
+    )
+    st.session_state.state.set_development_mode(dev_mode)
 
 
 def _show_view_buttons() -> ViewMode:

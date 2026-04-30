@@ -169,7 +169,8 @@ def _copy_ranking_controls(ranking: Ranking):
 # Public entry point
 # =========================
 
-def render_leaderboard(ranking_pbc: Ranking, ranking_pgym: Ranking, active: List[AutoEvalReport]):
+def render_leaderboard(ranking_pbc: Ranking, ranking_pgym: Ranking, active: List[AutoEvalReport],
+                       development_mode: bool):
     # determine active ranking based on framework
     all_categories = sorted(list(ranking_pbc.ranking_categories.union(ranking_pgym.ranking_categories)))
     st.session_state.state.maybe_init_lb_weights(all_categories)
@@ -211,7 +212,8 @@ def render_leaderboard(ranking_pbc: Ranking, ranking_pgym: Ranking, active: List
     try:
         if fw == "PBC":
             dfs = [
-                report.supervised_results[fw].to_df(framework=fw).assign(Model=report.embedder_name)
+                report.supervised_results[fw].to_df(framework=fw, development_mode=development_mode).assign(
+                    Model=report.embedder_name)
                 for report in active
                 if fw in report.supervised_results and report.embedder_name.lower() in best_n_models
             ]
@@ -219,10 +221,11 @@ def render_leaderboard(ranking_pbc: Ranking, ranking_pgym: Ranking, active: List
             df_plot = aggregate_dfs(dfs)
         else:
             dfs = [
-                    report.zeroshot_results[fw].to_df(framework=fw).assign(Model=report.embedder_name)
-                    for report in active
-                    if fw in report.zeroshot_results and report.embedder_name.lower() in best_n_models
-                ]
+                report.zeroshot_results[fw].to_df(framework=fw, development_mode=development_mode).assign(
+                    Model=report.embedder_name)
+                for report in active
+                if fw in report.zeroshot_results and report.embedder_name.lower() in best_n_models
+            ]
             dfs = sorted(dfs, key=lambda df: best_n_models.index(df["Model"].str.lower().iloc[0]), reverse=True)
             df_plot = aggregate_dfs(dfs)
 

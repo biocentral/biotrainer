@@ -33,11 +33,12 @@ def render_compare(active: List[AutoEvalReport]):
         st.stop()
 
     chosen = [active[i] for i in idxs]
+    dev_mode = st.session_state.state.get_development_mode()
 
     # Supervised comparison
     st.markdown("#### Supervised (PBC)")
     df_sup = aggregate_dfs([
-        report.supervised_results["PBC"].to_df(framework="PBC").assign(Model=report.embedder_name)
+        report.supervised_results["PBC"].to_df(framework="PBC", development_mode=dev_mode).assign(Model=report.embedder_name)
         for report in chosen if "PBC" in report.supervised_results
     ])
     if df_sup is None or df_sup.empty:
@@ -63,7 +64,7 @@ def render_compare(active: List[AutoEvalReport]):
     # Zeroshot comparison
     st.markdown("#### Zero-Shot (PGYM)")
     df_zero = aggregate_dfs([
-        report.zeroshot_results["PGYM"].to_df(framework="PGYM").assign(Model=report.embedder_name)
+        report.zeroshot_results["PGYM"].to_df(framework="PGYM", development_mode=dev_mode).assign(Model=report.embedder_name)
         for report in chosen if "PGYM" in report.zeroshot_results
     ])
     if df_zero is None or df_zero.empty:

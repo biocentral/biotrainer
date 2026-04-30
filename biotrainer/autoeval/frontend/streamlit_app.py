@@ -98,8 +98,9 @@ def run(start_path: Optional[Path] = None):
 
     match view:
         case ViewMode.Leaderboard:
-            ranking_pbc, ranking_pgym = frontend_utils.leaderboard_dataframe(active)
-            render_leaderboard(ranking_pbc=ranking_pbc, ranking_pgym=ranking_pgym, active=active)
+            dev_mode = st.session_state.state.get_development_mode()
+            ranking_pbc, ranking_pgym = frontend_utils.leaderboard_dataframe(active, development_mode=dev_mode)
+            render_leaderboard(ranking_pbc=ranking_pbc, ranking_pgym=ranking_pgym, active=active, development_mode=dev_mode)
         case ViewMode.Detailed:
             render_detailed(active)
         case ViewMode.Compare:
