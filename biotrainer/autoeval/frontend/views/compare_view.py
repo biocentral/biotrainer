@@ -11,6 +11,7 @@ except Exception:  # pragma: no cover
 
 from ...pipelines.autoeval_plotting import (
     plot_comparison,
+    plot_delta_comparison,
     aggregate_dfs,
     fig_to_png_bytes,
     fig_to_pdf_bytes,
@@ -35,6 +36,10 @@ def render_compare(active: List[AutoEvalReport]):
     chosen = [active[i] for i in idxs]
     dev_mode = st.session_state.state.get_development_mode()
 
+    # Baseline selection
+    baseline_options = [report.embedder_name for report in chosen]
+    baseline_model = st.selectbox("Select baseline model for delta plots", options=baseline_options)
+
     # Supervised comparison
     st.markdown("#### Supervised (PBC)")
     df_sup = aggregate_dfs([
@@ -51,15 +56,30 @@ def render_compare(active: List[AutoEvalReport]):
             .reset_index()
         )
         st.dataframe(pivot, use_container_width=True)
+        
+        st.markdown("**Absolute Comparison**")
         fig, ax = plot_comparison(df_sup)
         if fig is not None:
             st.pyplot(fig, use_container_width=True)
             st.download_button("⬇️ Download PNG", data=fig_to_png_bytes(fig), file_name="supervised_comparison.png",
-                               mime="image/png")
+                               mime="image/png", key="sup_abs_png")
             st.download_button("⬇️ Download PDF", data=fig_to_pdf_bytes(fig), file_name="supervised_comparison.pdf",
-                               mime="application/pdf")
+                               mime="application/pdf", key="sup_abs_pdf")
         else:
             st.info("Install 'matplotlib' and 'seaborn' to render the comparison plot.")
+
+        st.markdown(f"**Delta Comparison (Baseline: {baseline_model})**")
+        fig_delta, ax_delta = plot_delta_comparison(df_sup, baseline_model)
+        if fig_delta is not None:
+            st.pyplot(fig_delta, use_container_width=True)
+            st.download_button("⬇️ Download PNG", data=fig_to_png_bytes(fig_delta),
+                               file_name="supervised_delta_comparison.png",
+                               mime="image/png", key="sup_delta_png")
+            st.download_button("⬇️ Download PDF", data=fig_to_pdf_bytes(fig_delta),
+                               file_name="supervised_delta_comparison.pdf",
+                               mime="application/pdf", key="sup_delta_pdf")
+        else:
+            st.info("Select a baseline model and ensure overlapping tasks to render the delta plot.")
 
     # Zeroshot comparison
     st.markdown("#### Zero-Shot (PGYM)")
@@ -75,12 +95,27 @@ def render_compare(active: List[AutoEvalReport]):
             .reset_index()
         )
         st.dataframe(pivot, use_container_width=True)
+        
+        st.markdown("**Absolute Comparison**")
         fig, ax = plot_comparison(df_zero)
         if fig is not None:
             st.pyplot(fig, use_container_width=True)
             st.download_button("⬇️ Download PNG", data=fig_to_png_bytes(fig), file_name="zeroshot_comparison.png",
-                               mime="image/png")
+                               mime="image/png", key="zero_abs_png")
             st.download_button("⬇️ Download PDF", data=fig_to_pdf_bytes(fig), file_name="zeroshot_comparison.pdf",
-                               mime="application/pdf")
+                               mime="application/pdf", key="zero_abs_pdf")
         else:
             st.info("Install 'matplotlib' and 'seaborn' to render the comparison plot.")
+
+        st.markdown(f"**Delta Comparison (Baseline: {baseline_model})**")
+        fig_delta, ax_delta = plot_delta_comparison(df_zero, baseline_model)
+        if fig_delta is not None:
+            st.pyplot(fig_delta, use_container_width=True)
+            st.download_button("⬇️ Download PNG", data=fig_to_png_bytes(fig_delta),
+                               file_name="zeroshot_delta_comparison.png",
+                               mime="image/png", key="zero_delta_png")
+            st.download_button("⬇️ Download PDF", data=fig_to_pdf_bytes(fig_delta),
+                               file_name="zeroshot_delta_comparison.pdf",
+                               mime="application/pdf", key="zero_delta_pdf")
+        else:
+            st.info("Select a baseline model and ensure overlapping tasks to render the delta plot.")
