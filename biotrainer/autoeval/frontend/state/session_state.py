@@ -19,6 +19,7 @@ class SessionState:
     _loaded_reports: Dict[str, AutoEvalReport]
     _public_reports: Dict[str, AutoEvalReport]
     _view_mode: ViewMode
+    _development_mode: bool
     # Leaderboard
     _lb_selected_framework: str
     _lb_selected_ranking_category: str
@@ -29,6 +30,7 @@ class SessionState:
         self._public_reports = {}
         self._public_reports_visibility = {}
         self._view_mode = ViewMode.Leaderboard
+        self._development_mode = False
 
         self._lb_selected_framework = str(SUPPORTED_FRAMEWORKS[0]).upper()
         self._lb_selected_ranking_category = "global"
@@ -69,6 +71,13 @@ class SessionState:
 
     def get_view_mode(self) -> ViewMode:
         return self._view_mode
+
+    def set_development_mode(self, development_mode: bool) -> SessionState:
+        self._development_mode = development_mode
+        return self
+
+    def get_development_mode(self) -> bool:
+        return self._development_mode
 
     def select_lb_framework(self, framework: str) -> SessionState:
         self._lb_selected_framework = framework

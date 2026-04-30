@@ -18,6 +18,7 @@ from ..client.autoeval_service_client import AutoEvalServiceClient
 
 from ...embedders import EmbeddingStats
 from ...bioengineer import ZeroShotMethod, RankingResult
+from ...protocols import Protocol
 
 
 def _maybe_metric_abs(metric_name: str, mean: float, lower: float, upper: float) -> Tuple[float, float, float]:
@@ -41,7 +42,7 @@ def _maybe_metric_abs(metric_name: str, mean: float, lower: float, upper: float)
 
 class FrameworkReport(ABC):
     @abstractmethod
-    def summary(self):
+    def summary(self, development_mode: bool = False):
         raise NotImplementedError
 
     @abstractmethod
@@ -53,7 +54,7 @@ class FrameworkReport(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def to_df(self, framework: Optional[str] = None) -> pd.DataFrame:
+    def to_df(self, framework: Optional[str] = None, development_mode: bool = False) -> pd.DataFrame:
         """ Convert to pandas dataframe. Optional framework parameter can be used to filter by framework."""
         raise NotImplementedError
 
@@ -94,21 +95,21 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
                 embedding_stats.accumulate_results(result_stats)
         return embedding_stats
 
-    def summary(self):
+    def summary(self, development_mode: bool = False):
         print(f"(Minimum sequence length: {self.min_seq_len}, Maximum sequence length: {self.max_seq_len})")
         task_names = self.results.keys()
         print(f"Total tasks: {len(task_names)}")
         print("Results:")
 
         for task_name in task_names:
-            metrics = self.extract_metrics(task_name)
+            metrics = self.extract_metrics(task_name, development_mode=development_mode)
             for metric in metrics:
                 print(
                     f"{metric['task_name']} ({metric['protocol']}) - {metric['test_set_name']} - "
                     f"{metric['evaluation_metric']}: {metric['mean']} ({metric['lower']} - {metric['upper']})"
                 )
 
-    def extract_metrics(self, combined_task_name: str) -> list[dict]:
+    def extract_metrics(self, combined_task_name: str, development_mode: bool = False) -> list[dict]:
         """Extract metrics for a given task."""
         framework_to_datasets = {"PBC": PBC_DATASETS, "FLIP": FLIP_DATASETS}
 
@@ -118,36 +119,65 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
             datasets = framework_to_datasets[framework_name.upper()]
             evaluation_metric = datasets[dataset_name]["evaluation_metric"]
             protocol = datasets[dataset_name]["protocol"].name
-            test_results = self.results[combined_task_name]["test_results"]
-
-            for test_set_name, test_set_dict in test_results.items():
-                bootstrapping = test_set_dict["bootstrapping"]["results"]
-                bootstrapping = {b_dict["name"]: b_dict for b_dict in bootstrapping}
-                metric_mean = round(bootstrapping[evaluation_metric]["mean"], 3)
-                metric_lower = round(bootstrapping[evaluation_metric]["lower"], 3)
-                metric_upper = round(bootstrapping[evaluation_metric]["upper"], 3)
-
-                metrics.append({
-                    "task_name": combined_task_name,
-                    "protocol": protocol,
-                    "test_set_name": test_set_name,
-                    "evaluation_metric": evaluation_metric,
-                    "mean": metric_mean,
-                    "lower": metric_lower,
-                    "upper": metric_upper
-                })
+            if development_mode:
+                metrics.extend(self._extract_metrics_val_set(combined_task_name, evaluation_metric, protocol))
+            else:
+                metrics.extend(self._extract_metrics_test_set(combined_task_name, evaluation_metric, metrics, protocol))
         except KeyError:
             print(f"Warning: Task {combined_task_name} not found.")
         return metrics
 
-    def to_df(self, framework: Optional[str] = None) -> pd.DataFrame:
+    def _extract_metrics_val_set(self, combined_task_name: str, evaluation_metric: str,
+                                  protocol: str) -> list[dict]:
+        val_results = self.results[combined_task_name]["training_results"]["hold_out"]["best_training_epoch_metrics"]["validation"]
+        metric_value = val_results[evaluation_metric]
+
+        # TODO Bootstrapping for validation set on best training result
+        metric_mean = round(metric_value, 3)
+        metric_lower = round(metric_value, 3)
+        metric_upper = round(metric_value, 3)
+
+        return [{
+                "task_name": combined_task_name,
+                "protocol": protocol,
+                "test_set_name": "validation",
+                "evaluation_metric": evaluation_metric,
+                "mean": metric_mean,
+                "lower": metric_lower,
+                "upper": metric_upper
+        }]
+
+    def _extract_metrics_test_set(self, combined_task_name: str, evaluation_metric: str, metrics: list[Any],
+                                  protocol: str):
+        test_results = self.results[combined_task_name]["test_results"]
+
+        metrics = []
+        for test_set_name, test_set_dict in test_results.items():
+            bootstrapping = test_set_dict["bootstrapping"]["results"]
+            bootstrapping = {b_dict["name"]: b_dict for b_dict in bootstrapping}
+            metric_mean = round(bootstrapping[evaluation_metric]["mean"], 3)
+            metric_lower = round(bootstrapping[evaluation_metric]["lower"], 3)
+            metric_upper = round(bootstrapping[evaluation_metric]["upper"], 3)
+
+            metrics.append({
+                "task_name": combined_task_name,
+                "protocol": protocol,
+                "test_set_name": test_set_name,
+                "evaluation_metric": evaluation_metric,
+                "mean": metric_mean,
+                "lower": metric_lower,
+                "upper": metric_upper
+            })
+        return metrics
+
+    def to_df(self, framework: Optional[str] = None, development_mode: bool = False) -> pd.DataFrame:
         rows = []
 
         for task in self.get_task_names():
             framework_name, _, _ = AutoEvalTask.split_combined_name(task)
             if framework and framework_name != framework:
                 continue
-            for m in self.extract_metrics(task):
+            for m in self.extract_metrics(task, development_mode=development_mode):
                 # Label like: Task\n(TestSet - Metric) if test set != 'test' else Task\n(Metric)
                 test_set = m["test_set_name"]
                 metric_name = m["evaluation_metric"]
@@ -230,7 +260,7 @@ class ZeroShotFrameworkReport(BaseModel, FrameworkReport):
         self.individual_results.update(individual_results)
         self.aggregated_results[task_name] = RankingResult.aggregate(list(individual_results.values()))
 
-    def summary(self):
+    def summary(self, development_mode: bool = False):
         print(f"Zero-shot method: {self.method.value}")
         print(f"Total tasks: {len(self.aggregated_results)}")
         print("Results:")
@@ -239,7 +269,7 @@ class ZeroShotFrameworkReport(BaseModel, FrameworkReport):
                   f"\t SCC:  {result.scc_score()}"
                   f"\t NDCG: {result.ndcg_score()}")
 
-    def to_df(self, framework: Optional[str] = None) -> pd.DataFrame:
+    def to_df(self, framework: Optional[str] = None, development_mode: bool = False) -> pd.DataFrame:
         rows = []
         for task in self.get_task_names():
             framework_name, _, _ = AutoEvalTask.split_combined_name(task)
@@ -399,14 +429,14 @@ class AutoEvalReport(BaseModel):
         h.update(str(len(self.zeroshot_results)).encode("utf-8"))
         return h.hexdigest()
 
-    def summary(self):
+    def summary(self, development_mode: bool = False):
         print(f"Autoeval report for {self.embedder_name} on {self.training_date}.")
         for framework_name, report in self.supervised_results.items():
             print(f"\n{framework_name} supervised results:")
-            report.summary()
+            report.summary(development_mode=development_mode)
         for framework_name, report in self.zeroshot_results.items():
             print(f"\n{framework_name} zero-shot results:")
-            report.summary()
+            report.summary(development_mode=development_mode)
 
     def embedding_stats(self):
         print(f"Embedding stats in autoeval report for {self.embedder_name} on {self.training_date}.")

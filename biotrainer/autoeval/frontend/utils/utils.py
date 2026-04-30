@@ -71,7 +71,7 @@ def load_reports_from_paths(paths: List[Path]) -> List[AutoEvalReport]:
     return unique
 
 
-def leaderboard_dataframe(loaded: List[AutoEvalReport]) -> Tuple[Ranking, Ranking]:
+def leaderboard_dataframe(loaded: List[AutoEvalReport], development_mode: bool = False) -> Tuple[Ranking, Ranking]:
     """Compute leaderboard divided by framework (PBC and PGYM)."""
     pbc_entries = []
     pgym_entries = []
@@ -85,7 +85,7 @@ def leaderboard_dataframe(loaded: List[AutoEvalReport]) -> Tuple[Ranking, Rankin
                 continue
             for task in srep.get_task_names():
                 # Extract the primary metric mean for the task (first test set/metric)
-                metrics = srep.extract_metrics(task)
+                metrics = srep.extract_metrics(task, development_mode=development_mode)
                 if len(metrics) > 0:
                     for metric_dict in metrics:
                         unique_task_name = metric_dict["task_name"] + "-" + metric_dict["test_set_name"]
@@ -210,8 +210,9 @@ def get_training_validation_curves(result_dict: Dict) -> Tuple[
     return train, val, epochs, best_epoch
 
 
-def supervised_task_metrics_dataframe(sreport: SupervisedFrameworkReport, task_name: str) -> pd.DataFrame:
-    metrics = sreport.extract_metrics(task_name)
+def supervised_task_metrics_dataframe(sreport: SupervisedFrameworkReport, task_name: str,
+                                      development_mode: bool = False) -> pd.DataFrame:
+    metrics = sreport.extract_metrics(task_name, development_mode=development_mode)
     if not metrics:
         return pd.DataFrame()
     return pd.DataFrame(metrics)
