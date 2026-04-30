@@ -17,5 +17,10 @@ class AutoEvalTask(BaseModel):
     @staticmethod
     def split_combined_name(combined_name: str) -> tuple[str, str, Optional[str]]:
         vals = combined_name.split("-")
-        framework_name, dataset_name, split_name = vals[0], vals[1], vals[2] if len(vals) > 2 else None
+        # TODO avoid special case for frustration
+        if "frustration" in combined_name.lower():
+            framework_name, dataset_name, split_name = vals[0], vals[1], vals[2]
+            dataset_name = f"{dataset_name}-{split_name}"
+        else:
+            framework_name, dataset_name, split_name = vals[0], vals[1], vals[2] if len(vals) > 2 else None
         return framework_name, dataset_name, split_name

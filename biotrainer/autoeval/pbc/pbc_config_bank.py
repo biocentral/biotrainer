@@ -40,6 +40,15 @@ class PBCConfigBank(AutoEvalConfigBank):
                 "protocol": "residue_to_value",
                 "loss_choice": "smooth_l1_loss",
             },
+            "frustration-classification": {
+                "model_choice": "CNN",
+                "protocol": "residue_to_class",
+                "use_class_weights": False,
+            },
+            "frustration-regression": {
+                "model_choice": "CNN",
+                "protocol": "residue_to_value",
+            },
             "membrane": {
                 "model_choice": "CNN",
                 "protocol": "residue_to_class",

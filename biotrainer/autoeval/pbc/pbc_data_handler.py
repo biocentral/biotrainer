@@ -27,11 +27,23 @@ class PBCDataHandler(AutoEvalDataHandler):
             dataset_and_split_names.extend(splits)
         return dataset_and_split_names
 
+    def _get_dataset_dir_name_and_split_file_name(self, dataset: str, split_name: str):
+        if "-" in dataset:
+            # Frustration - Has regression and classification splits in same directory
+            vals = dataset.split("-")
+            dataset_name = vals[0]
+            task_type = vals[1]
+            split_file_name = dataset_name + "_" + task_type
+            return dataset_name, split_file_name
+
+        split_file_name = dataset + "_" + split_name if split_name else dataset
+        return dataset, split_file_name
+
     def preprocess(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> None:
         """ Filters all dataset splits for sequences that fulfill the length requirements """
         for dataset, split_name in tqdm(self._get_all_dataset_and_split_names(), desc="Preprocessing datasets"):
-            dataset_dir = base_path / "supervised" / dataset
-            split_file_name = dataset + "_" + split_name if split_name else dataset
+            dataset_name, split_file_name = self._get_dataset_dir_name_and_split_file_name(dataset, split_name)
+            dataset_dir = base_path / "supervised" / dataset_name
             self._ensure_preprocessed_file(dataset_dir=dataset_dir,
                                            name=split_file_name,
                                            min_seq_length=min_seq_length,
@@ -44,8 +56,9 @@ class PBCDataHandler(AutoEvalDataHandler):
         tasks = []
 
         for dataset, split_name in self._get_all_dataset_and_split_names():
-            dataset_dir = base_path / "supervised" / dataset
-            split_file_name = dataset + "_" + split_name if split_name else dataset
+            dataset_dir = base_path / "supervised"
+            dataset_name, split_file_name = self._get_dataset_dir_name_and_split_file_name(dataset, split_name)
+            dataset_dir /= dataset_name
 
             input_file = self._get_input_file_path(dataset_dir=dataset_dir,
                                                    name=split_file_name,
