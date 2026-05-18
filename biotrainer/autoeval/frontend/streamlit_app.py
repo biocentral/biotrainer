@@ -12,9 +12,9 @@ except Exception as _e:
     )
 
 from .utils.types import ViewMode
-from .views.sidebar_view import sidebar
+from .views.sidebar_view import render_sidebar
 from .utils import utils as frontend_utils
-from .state.session_state import SessionState
+from .state.autoeval_session_state import AutoevalSessionState
 from .views.info_view import render_info_view
 from .views.compare_view import render_compare
 from .views.detailed_view import render_detailed
@@ -64,15 +64,18 @@ def _maybe_download_comparison_report() -> Optional[AutoEvalReport]:
     return None
 
 
-def _init_state():
+def _init_state() -> AutoevalSessionState:
     if "state" not in st.session_state:
-        st.session_state.state = SessionState()
+        st.session_state.state = AutoevalSessionState()
+        state: AutoevalSessionState = st.session_state.state
         public_reports = _download_public_reports()
         if len(public_reports) > 0:
-            st.session_state.state.add_public_reports(public_reports)
+            state.add_public_reports(public_reports)
         comparison_report = _maybe_download_comparison_report()
         if comparison_report is not None:
-            st.session_state.state.add_loaded_report(comparison_report.get_uid(), comparison_report)
+            state.add_loaded_report(comparison_report.get_uid(), comparison_report)
+    return st.session_state.state
+
 
 def run(start_path: Optional[Path] = None):
     st.set_page_config(page_title="Autoeval Dashboard",
@@ -83,29 +86,30 @@ def run(start_path: Optional[Path] = None):
     st.title("Biotrainer Autoeval Dashboard")
     st.caption("Visualize and compare Autoeval reports (PBC, PGYM).")
 
-    _init_state()
+    state = _init_state()
 
     # Render sidebar
-    downloaded: Dict[str, AutoEvalReport] = st.session_state.state.get_downloaded_public_reports()
+    downloaded: Dict[str, AutoEvalReport] = state.get_downloaded_public_reports()
 
-    view = sidebar(start_path, downloaded=downloaded)
+    view = render_sidebar(state=state, start_path=start_path, downloaded=downloaded)
 
     # Compose loaded list for rendering in views from session state
-    loaded: List[AutoEvalReport] = list(st.session_state.state.get_loaded_reports().values())
+    loaded: List[AutoEvalReport] = list(state.get_loaded_reports().values())
     downloaded_visible: List[AutoEvalReport] = [report for uid, report in downloaded.items()
-                                                if st.session_state.state.get_public_report_visibility(uid)]
+                                                if state.get_public_report_visibility(uid)]
     active = [*loaded, *downloaded_visible]
 
     match view:
         case ViewMode.Leaderboard:
-            dev_mode = st.session_state.state.get_development_mode()
+            dev_mode = state.get_development_mode()
             ranking_pbc, ranking_pgym = frontend_utils.leaderboard_dataframe(active, development_mode=dev_mode)
-            render_leaderboard(ranking_pbc=ranking_pbc, ranking_pgym=ranking_pgym, active=active, development_mode=dev_mode)
+            render_leaderboard(state=state, ranking_pbc=ranking_pbc, ranking_pgym=ranking_pgym, active=active,
+                               development_mode=dev_mode)
         case ViewMode.Detailed:
-            render_detailed(active)
+            render_detailed(state=state, active=active)
         case ViewMode.Compare:
-            render_compare(active)
+            render_compare(state=state, active=active)
         case ViewMode.Evaluate:
-            render_evaluate_view()
+            render_evaluate_view(state=state)
         case ViewMode.Info:
-            render_info_view()
+            render_info_view(state=state)

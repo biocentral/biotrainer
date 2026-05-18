@@ -9,7 +9,10 @@ try:
 except Exception:  # pragma: no cover - runtime import guard
     raise
 
-def render_evaluate_view():
+from ..state import AutoevalSessionState
+
+
+def render_evaluate_view(state: AutoevalSessionState):
     st.subheader("Evaluate")
     
     st.write("Learn how to run autoeval.")

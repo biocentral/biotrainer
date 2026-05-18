@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from typing import List, Tuple
-
 import pandas as pd
+
+from typing import List, Tuple
 
 try:
     import streamlit as st
 except Exception:  # pragma: no cover - runtime import guard
     raise
 
-from ...pipelines.autoeval_report import AutoEvalReport, SupervisedFrameworkReport, ZeroShotFrameworkReport
+from ..state import AutoevalSessionState
 from ..utils import utils as frontend_utils
 
+from ...pipelines.autoeval_report import AutoEvalReport, SupervisedFrameworkReport, ZeroShotFrameworkReport
 
 _BIN_METRICS_01 = {"accuracy", "acc", "f1", "f1_score", "auc", "auroc", "mcc"}
 
@@ -36,8 +37,9 @@ def _metric_domain(metric_name: str) -> Tuple[float, float] | None:
     return None
 
 
-def render_detailed(active: list[AutoEvalReport]):
+def render_detailed(state: AutoevalSessionState, active: list[AutoEvalReport]):
     st.subheader("Detailed Report View")
+
     if not active:
         st.info("Load reports to inspect details.")
         return
@@ -138,7 +140,7 @@ def render_detailed(active: list[AutoEvalReport]):
                     st.divider()
 
                 task = st.selectbox("Task", options=tasks)
-                dev_mode = st.session_state.state.get_development_mode()
+                dev_mode = state.get_development_mode()
                 df_task = frontend_utils.supervised_task_metrics_dataframe(srep, task, development_mode=dev_mode)
                 df_task = _scale_supervised_metric_df(df_task)
                 st.dataframe(df_task, use_container_width=True, hide_index=True)
@@ -243,7 +245,7 @@ def render_detailed(active: list[AutoEvalReport]):
                     st.info("No tasks available.")
                     continue
                 task = st.selectbox("Task", options=tasks)
-                dev_mode = st.session_state.state.get_development_mode()
+                dev_mode = state.get_development_mode()
                 # Zero-shot doesn't support development mode yet, but we pass it anyway for consistency
                 # though zeroshot_task_metrics_dataframe doesn't accept it yet.
                 df_task = frontend_utils.zeroshot_task_metrics_dataframe(zrep, task)

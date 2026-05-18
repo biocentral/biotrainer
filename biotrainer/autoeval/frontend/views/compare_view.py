@@ -9,6 +9,8 @@ try:
 except Exception:  # pragma: no cover
     raise
 
+from ..state import AutoevalSessionState
+
 from ...pipelines.autoeval_plotting import (
     plot_comparison,
     plot_delta_comparison,
@@ -18,7 +20,7 @@ from ...pipelines.autoeval_plotting import (
 )
 
 
-def render_compare(active: List[AutoEvalReport]):
+def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
     st.subheader("Compare Multiple Reports")
     if len(active) < 2:
         st.info("Load at least two reports to compare.")
@@ -34,7 +36,7 @@ def render_compare(active: List[AutoEvalReport]):
         st.stop()
 
     chosen = [active[i] for i in idxs]
-    dev_mode = st.session_state.state.get_development_mode()
+    dev_mode = state.get_development_mode()
 
     # Baseline selection
     baseline_options = [report.embedder_name for report in chosen]
