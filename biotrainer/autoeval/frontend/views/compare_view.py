@@ -26,6 +26,7 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
         st.info("Load at least two reports to compare.")
         return
 
+    # Report Selection
     labels = [f"{report.embedder_name} - ({report.training_date})" for report in active]
     options = list(range(len(active)))
     idxs = st.multiselect("Select reports", default=options, options=options,
@@ -36,6 +37,7 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
         st.stop()
 
     chosen = [active[i] for i in idxs]
+
     dev_mode = state.get_development_mode()
 
     # Baseline selection
@@ -45,20 +47,34 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
     # Supervised comparison
     st.markdown("#### Supervised (PBC)")
     df_sup = aggregate_dfs([
-        report.supervised_results["PBC"].to_df(framework="PBC", development_mode=dev_mode).assign(Model=report.embedder_name)
+        report.supervised_results["PBC"].to_df(framework="PBC", development_mode=dev_mode).assign(
+            Model=report.embedder_name)
         for report in chosen if "PBC" in report.supervised_results
     ])
     if df_sup is None or df_sup.empty:
         st.caption("No overlapping supervised tasks to compare.")
     else:
-        # Wide table similar to previous pivot
+        # Task selection
+        task_set = list(set(df_sup["Task"].unique()))
+        task_options = list(range(len(task_set)))
+        task_idxs = st.multiselect("Select tasks", key=f"multiselect_sup_{len(task_options)}",
+                                   default=task_options, options=task_options,
+                                   format_func=lambda i: task_set[i])
+
+        if len(task_idxs) == 0:
+            st.info("Select at least two tasks to compare.")
+            st.stop()
+        chosen_tasks = [task_set[i] for i in task_idxs]
+        df_sup = df_sup[df_sup["Task"].isin(chosen_tasks)]
+
+        # Wide table
         pivot = (
             df_sup.pivot_table(index=["Task", "Test Set", "Metric"], columns="Model", values="Mean", aggfunc="first",
                                sort=False)
             .reset_index()
         )
         st.dataframe(pivot, use_container_width=True)
-        
+
         st.markdown("**Absolute Comparison**")
         fig, ax = plot_comparison(df_sup)
         if fig is not None:
@@ -86,18 +102,32 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
     # Zeroshot comparison
     st.markdown("#### Zero-Shot (PGYM)")
     df_zero = aggregate_dfs([
-        report.zeroshot_results["PGYM"].to_df(framework="PGYM", development_mode=dev_mode).assign(Model=report.embedder_name)
+        report.zeroshot_results["PGYM"].to_df(framework="PGYM", development_mode=dev_mode).assign(
+            Model=report.embedder_name)
         for report in chosen if "PGYM" in report.zeroshot_results
     ])
     if df_zero is None or df_zero.empty:
         st.caption("No overlapping zero-shot tasks to compare.")
     else:
+        # Task selection
+        task_set_zs = list(set(df_zero["Task"].unique()))
+        task_options_zs = list(range(len(task_set_zs)))
+        task_idxs_zs = st.multiselect("Select tasks", key=f"multiselect_zs_{len(task_options_zs)}",
+                                      default=task_options_zs, options=task_options_zs,
+                                      format_func=lambda i: task_set_zs[i])
+
+        if len(task_idxs_zs) == 0:
+            st.info("Select at least two tasks to compare.")
+            st.stop()
+        chosen_tasks_zs = [task_set_zs[i] for i in task_idxs_zs]
+        df_zero = df_zero[df_zero["Task"].isin(chosen_tasks_zs)]
+
         pivot = (
             df_zero.pivot_table(index=["Task", "Metric"], columns="Model", values="Mean", aggfunc="first", sort=False)
             .reset_index()
         )
         st.dataframe(pivot, use_container_width=True)
-        
+
         st.markdown("**Absolute Comparison**")
         fig, ax = plot_comparison(df_zero)
         if fig is not None:
