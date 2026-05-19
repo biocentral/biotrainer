@@ -12,6 +12,20 @@ def aggregate_dfs(dfs: List[pd.DataFrame]) -> Optional[pd.DataFrame]:
     except ValueError:
         return None
 
+def _get_palette(n_models: int):
+    try:
+        import seaborn as sns
+        colorblind_palette = sns.color_palette("colorblind", n_colors=min(n_models, 10))
+        if n_models > 10:
+            husl_palette = sns.color_palette("husl", n_colors=max(1, n_models - 10))
+            palette = colorblind_palette + husl_palette
+        else:
+            palette = colorblind_palette
+        return palette
+    except Exception:
+        return None
+
+
 
 def plot_comparison(df: pd.DataFrame):
     """Create a matplotlib/seaborn grouped bar plot with CIs and bottom labels.
@@ -33,9 +47,20 @@ def plot_comparison(df: pd.DataFrame):
 
     fig_width = 16
     fig_height = max(6, len(x_labels) * 0.6)
-    fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=600)
+
+    # Create figure with 2 subplots: one for legend (bottom) and one for the plot (top)
+    fig = plt.figure(figsize=(fig_width, fig_height + 1), dpi=600)
+    gs = fig.add_gridspec(2, 1, height_ratios=[1, 0.1], hspace=2.0)
+
+    # Main plot subplot (top)
+    ax = fig.add_subplot(gs[0])
+
+    # Legend subplot (bottom)
+    legend_ax = fig.add_subplot(gs[1])
+    legend_ax.axis('off')
+
     sns.set_style("whitegrid")
-    palette = sns.color_palette("colorblind", n_colors=len(models))
+    palette = _get_palette(len(models))
 
     # Ensure order
     plot_df = df.copy()
@@ -55,15 +80,16 @@ def plot_comparison(df: pd.DataFrame):
     )
 
     # Customize plot
-    plt.title('Performance Comparison Across Tasks')
-    plt.xlabel('Task', fontsize=16)
-    plt.ylabel('Score', fontsize=16)
+    ax.set_title('Performance Comparison Across Tasks')
+    ax.set_xlabel('Task', fontsize=16)
+    ax.set_ylabel('Score', fontsize=16)
 
-    # Rotate x-axis labels for better readability 
-    plt.xticks(rotation=45, ha='right', fontsize=14)
+    # Rotate x-axis labels for better readability
+    ax.tick_params(axis='x', rotation=45, labelsize=14)
+    ax.set_xticklabels(ax.get_xticklabels(), ha='right')
 
     # Set yticks fontsize
-    plt.yticks(fontsize=16)
+    ax.tick_params(axis='y', labelsize=16)
 
     # Add manual CI whiskers to match autoeval style and numbers at bottom
     n_models = len(models)
@@ -88,8 +114,13 @@ def plot_comparison(df: pd.DataFrame):
             except Exception:
                 pass
 
-    # Adjust legend position
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    # Move legend to the top subplot
+    legend_handles, legend_labels = ax.get_legend_handles_labels()
+    legend_ax.legend(legend_handles, legend_labels, loc='center', fancybox=True, shadow=True, ncol=4, fontsize=12)
+
+    # Remove legend from main plot
+    if ax.get_legend():
+        ax.get_legend().remove()
 
     # Adjust layout to prevent label cutoff
     fig.tight_layout()
@@ -185,9 +216,20 @@ def plot_delta_comparison(df: pd.DataFrame, baseline_model: str):
 
     fig_width = 16
     fig_height = max(6, len(x_labels) * 0.6)
-    fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=600)
+
+    # Create figure with 2 subplots: one for legend (bottom) and one for the plot (top)
+    fig = plt.figure(figsize=(fig_width, fig_height + 1), dpi=600)
+    gs = fig.add_gridspec(2, 1, height_ratios=[1, 0.1], hspace=2.0)
+
+    # Main plot subplot (top)
+    ax = fig.add_subplot(gs[0])
+
+    # Legend subplot (bottom)
+    legend_ax = fig.add_subplot(gs[1])
+    legend_ax.axis('off')
+
     sns.set_style("whitegrid")
-    palette = sns.color_palette("colorblind", n_colors=len(models))
+    palette = _get_palette(len(models))
 
     # Ensure order
     delta_df["TaskLabel"] = pd.Categorical(delta_df["TaskLabel"], categories=x_labels, ordered=True)
@@ -203,12 +245,17 @@ def plot_delta_comparison(df: pd.DataFrame, baseline_model: str):
         ax=ax
     )
 
-    plt.axhline(0, color='black', linewidth=1.5)
-    plt.title(f'Performance Delta relative to {baseline_model}', fontsize=18)
-    plt.xlabel('Task', fontsize=16)
-    plt.ylabel('Delta (pp)', fontsize=16)
-    plt.xticks(rotation=45, ha='right', fontsize=14)
-    plt.yticks(fontsize=16)
+    ax.axhline(0, color='black', linewidth=1.5)
+    ax.set_title(f'Performance Delta relative to {baseline_model}', fontsize=18)
+    ax.set_xlabel('Task', fontsize=16)
+    ax.set_ylabel('Delta (pp)', fontsize=16)
+
+    # Rotate x-axis labels for better readability
+    ax.tick_params(axis='x', rotation=45, labelsize=14)
+    ax.set_xticklabels(ax.get_xticklabels(), ha='right')
+
+    # Set yticks fontsize
+    ax.tick_params(axis='y', labelsize=16)
 
     n_models = len(models)
     for i, model in enumerate(models):
@@ -242,7 +289,15 @@ def plot_delta_comparison(df: pd.DataFrame, baseline_model: str):
     new_ylim = (min(current_ylim[0], -20), max(current_ylim[1], 20))
     ax.set_ylim(new_ylim)
 
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    # Move legend to the bottom subplot
+    legend_handles, legend_labels = ax.get_legend_handles_labels()
+    legend_ax.legend(legend_handles, legend_labels, loc='center', fancybox=True, shadow=True, ncol=4, fontsize=12)
+
+    # Remove legend from main plot
+    if ax.get_legend():
+        ax.get_legend().remove()
+
+    # Adjust layout to prevent label cutoff
     fig.tight_layout()
 
     return fig, ax
