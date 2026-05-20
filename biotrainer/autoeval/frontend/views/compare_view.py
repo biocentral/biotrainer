@@ -56,17 +56,18 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
         st.caption("No overlapping supervised tasks to compare.")
     else:
         # Task selection
-        task_set = list(set(df_sup["Task"].unique()))
-        task_options = list(range(len(task_set)))
-        task_idxs = st.multiselect("Select tasks", key=f"multiselect_sup_{len(task_options)}",
-                                   default=task_options, options=task_options,
-                                   format_func=lambda i: task_set[i])
+        task_set = list(set(df_sup["TaskLabel"].unique()))
+        task_set = sorted(task_set)
+        chosen_tasks = st.multiselect("Select tasks", key=f"multiselect_sup_{len(task_set)}",
+                                      default=task_set, options=task_set,
+                                      format_func=lambda
+                                          task: f"{df_sup[df_sup['TaskLabel'] == task]['Test Set'].iloc[0]}-"
+                                                f"{df_sup[df_sup['TaskLabel'] == task]['Task'].iloc[0].replace('PBC-', '')}")
 
-        if len(task_idxs) == 0:
+        if len(chosen_tasks) == 0:
             st.info("Select at least two tasks to compare.")
             st.stop()
-        chosen_tasks = [task_set[i] for i in task_idxs]
-        df_sup = df_sup[df_sup["Task"].isin(chosen_tasks)]
+        df_sup = df_sup[df_sup["TaskLabel"].isin(chosen_tasks)]
 
         # Wide table
         pivot = (
@@ -112,15 +113,12 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
     else:
         # Task selection
         task_set_zs = list(set(df_zero["Task"].unique()))
-        task_options_zs = list(range(len(task_set_zs)))
-        task_idxs_zs = st.multiselect("Select tasks", key=f"multiselect_zs_{len(task_options_zs)}",
-                                      default=task_options_zs, options=task_options_zs,
-                                      format_func=lambda i: task_set_zs[i])
+        chosen_tasks_zs = st.multiselect("Select tasks", key=f"multiselect_zs_{len(task_set_zs)}",
+                                         default=task_set_zs, options=task_set_zs)
 
-        if len(task_idxs_zs) == 0:
+        if len(chosen_tasks_zs) == 0:
             st.info("Select at least two tasks to compare.")
             st.stop()
-        chosen_tasks_zs = [task_set_zs[i] for i in task_idxs_zs]
         df_zero = df_zero[df_zero["Task"].isin(chosen_tasks_zs)]
 
         pivot = (
