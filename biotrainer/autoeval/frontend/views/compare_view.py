@@ -27,21 +27,22 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
         return
 
     # Report Selection
-    labels = [f"{report.embedder_name} - ({report.training_date})" for report in active]
-    options = list(range(len(active)))
-    idxs = st.multiselect("Select reports", default=options, options=options,
-                          format_func=lambda i: labels[i])
+    default_chosen = state.get_compare_selected_reports()
+    default_chosen = default_chosen if len(default_chosen) > 0 else active
+    default_chosen = sorted(default_chosen, key=lambda report: report.embedder_name)
+    chosen_reports = st.multiselect("Select reports", default=default_chosen, options=active,
+                                    format_func=lambda report: report.embedder_name,
+                                    on_change=lambda: state.set_compare_selected_reports(
+                                        st.session_state.get("multiselect_compare_reports", [])),
+                                    key="multiselect_compare_reports")
 
-    if len(idxs) == 1:
+    if len(chosen_reports) == 1:
         st.info("Select at least two reports to compare.")
         st.stop()
-
-    chosen = [active[i] for i in idxs]
-
     dev_mode = state.get_development_mode()
 
     # Baseline selection
-    baseline_options = [report.embedder_name for report in chosen]
+    baseline_options = [report.embedder_name for report in chosen_reports]
     baseline_model = st.selectbox("Select baseline model for delta plots", options=baseline_options)
 
     # Supervised comparison
@@ -49,7 +50,7 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
     df_sup = aggregate_dfs([
         report.supervised_results["PBC"].to_df(framework="PBC", development_mode=dev_mode).assign(
             Model=report.embedder_name)
-        for report in chosen if "PBC" in report.supervised_results
+        for report in chosen_reports if "PBC" in report.supervised_results
     ])
     if df_sup is None or df_sup.empty:
         st.caption("No overlapping supervised tasks to compare.")
@@ -104,7 +105,7 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
     df_zero = aggregate_dfs([
         report.zeroshot_results["PGYM"].to_df(framework="PGYM", development_mode=dev_mode).assign(
             Model=report.embedder_name)
-        for report in chosen if "PGYM" in report.zeroshot_results
+        for report in chosen_reports if "PGYM" in report.zeroshot_results
     ])
     if df_zero is None or df_zero.empty:
         st.caption("No overlapping zero-shot tasks to compare.")

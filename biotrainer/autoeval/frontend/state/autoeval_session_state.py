@@ -27,11 +27,14 @@ class AutoevalSessionState:
         self._public_reports_visibility: Dict[str, bool] = {}
         self._view_mode: ViewMode = ViewMode.Leaderboard
         self._development_mode: bool = False
-        
+
         # Leaderboard
         self._lb_selected_framework: str = str(SUPPORTED_FRAMEWORKS[0]).upper()
         self._lb_selected_ranking_category: str = "global"
         self._lb_weights: Dict = {}
+
+        # Compare View
+        self._compare_selected_reports: List[AutoEvalReport] = []
 
     @staticmethod
     def _process_paths(paths: List[Path]):
@@ -147,3 +150,10 @@ class AutoevalSessionState:
 
     def get_lb_weights(self) -> Dict:
         return dict(self._lb_weights)
+
+    def get_compare_selected_reports(self) -> List[AutoEvalReport]:
+        return list(self._compare_selected_reports)
+
+    def set_compare_selected_reports(self, reports: List[AutoEvalReport]) -> None:
+        self._compare_selected_reports = reports
+
