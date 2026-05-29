@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import torch
-
 from enum import Enum
 from typing import List
 
@@ -52,13 +50,6 @@ class Protocol(Enum):
     @staticmethod
     def from_string(string: str) -> Protocol:
         return {p.name: p for p in Protocol.all()}[string]
-
-    def get_dummy_input(self, embedding_dimension: int):
-        batch_size = 1
-        default_sequence_length = 50
-        if self in Protocol.using_per_residue_embeddings():
-            return torch.rand((batch_size, default_sequence_length, embedding_dimension), dtype=torch.float32)
-        return torch.rand((batch_size, embedding_dimension), dtype=torch.float32)
 
     def __str__(self):
         return self.name
