@@ -1,15 +1,11 @@
-import biotrainer.datasets
-import biotrainer.losses
-import biotrainer.models
-import biotrainer.optimizers
-import biotrainer.solvers
-import biotrainer.trainers
-import biotrainer.utilities
-import biotrainer.inference
+import biotrainer.training
+import biotrainer.embedders
+import biotrainer.autoeval
+import biotrainer.bioengineer
 
 
-__version__ = utilities.__version__
+__version__ = training.utilities.__version__
 
 __all__ = [
-    "datasets", "losses", "models", "optimizers", "solvers", "trainers", "utilities", "inference", "__version__"
+    "training", "embedders", "autoeval", "bioengineer", "__version__"
 ]
