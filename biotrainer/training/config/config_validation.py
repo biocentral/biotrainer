@@ -1,10 +1,10 @@
 from typing import Dict, Any
+from biotrainer_core.data_classes import Protocol
 
 from .config_utils import is_url, is_list_option
 from .config_option import ConfigOption, ConfigKey
 from .config_exception import ConfigurationException
 
-from ..protocols import Protocol
 from ...embedders import get_predefined_embedder_names
 
 

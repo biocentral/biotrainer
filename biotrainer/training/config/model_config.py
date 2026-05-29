@@ -1,8 +1,8 @@
 from typing import Tuple, List
+from biotrainer_core.data_classes import Protocol
 
 from .config_option import ConfigOption, ConfigConstraints, ConfigKey
 
-from ..protocols import Protocol
 from ..losses import get_available_losses_dict
 from ..models import get_available_models_dict
 from ..optimizers import get_available_optimizers_dict

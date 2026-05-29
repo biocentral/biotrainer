@@ -14,7 +14,7 @@ from .bioengineer_baselines import BioEngineerBaseline, ConstantEngineerBaseline
 from .bioengineer_data_classes import VariantScore, ZeroShotMethod, Variant, RankingResult, ZeroShotContactSingleProtein, ZeroShotContactDatasetResult
 from .bioengineer_metrics import evaluate_contact_map
 
-from ..utilities import get_device, is_device_cuda
+from ..shared import get_device, is_device_cuda
 from ..inference import Inferencer
 from ..input_files import read_FASTA
 from ..solvers.metrics_calculator import SequenceRegressionMetricsCalculator
@@ -260,7 +260,7 @@ class BioEngineer:
                           contacts_dir_path: Union[str, Path],
                           method: ZeroShotMethod) -> Tuple[List[ZeroShotContactSingleProtein], ZeroShotContactDatasetResult]:
         """
-        Given a dataset, computes and evaluates contact maps for all proteins in the dataset, using the categorical jacobian based zero-shot method. 
+        Given a dataset, computes and evaluates contact maps for all proteins in the dataset, using the categorical jacobian based zero-shot method.
         This function loads the dataset, including the ground truth contact maps, and evaluates the predicted contact map per protein.
         The results (precision scores for topk predicted contacts) are aggregated over the dataset.
 
@@ -297,7 +297,7 @@ class BioEngineer:
         if len(seq_records) == 0:
             raise ValueError(f"Fasta file {fasta_file_path} is empty!")
 
-        per_protein_results: List[ZeroShotContactSingleProtein] = [] 
+        per_protein_results: List[ZeroShotContactSingleProtein] = []
         for record in seq_records:
             seq_id = record.seq_id
             sequence = record.seq

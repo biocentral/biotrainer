@@ -1,8 +1,7 @@
 from typing import List, Tuple
+from biotrainer_core.data_classes import Protocol
 
 from .config_option import ConfigOption, ConfigConstraints, ConfigKey
-
-from ..protocols import Protocol
 
 
 def finetuning_config(protocol: Protocol) -> Tuple[ConfigKey, List[ConfigOption]]:

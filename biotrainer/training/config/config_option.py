@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from enum import Enum
+from dataclasses import dataclass, field
+from biotrainer_core.data_classes import Protocol
 from typing import Optional, Type, Any, List, Tuple, Callable, Dict
-
-from ..protocols import Protocol
 
 
 @dataclass

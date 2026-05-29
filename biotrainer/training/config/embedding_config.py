@@ -1,8 +1,8 @@
 from typing import List, Tuple
+from biotrainer_core.data_classes import Protocol
 
 from .config_option import ConfigOption, ConfigConstraints, ConfigKey
 
-from ..protocols import Protocol
 from ..utilities import FeatureScaler
 from ...embedders import get_predefined_embedder_names
 

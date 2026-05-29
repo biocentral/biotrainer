@@ -1,9 +1,8 @@
 from pathlib import Path
 from datasets import load_dataset
-from biotrainer_core.data_classes import Protocol
 from typing import Any, Dict, List, Optional, Tuple
 
-from ..utilities import get_logger
+from ...shared import get_logger
 
 logger = get_logger(__name__)
 

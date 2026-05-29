@@ -3,6 +3,7 @@ import h5py
 import torch
 
 from pathlib import Path
+from biotrainer_core.data_classes import Protocol
 from typing import Optional, Callable, Dict, Tuple, List, Any, Union, Iterable, Generator
 
 from .autoeval_setup import setup_pipeline
@@ -12,13 +13,12 @@ from ..autoeval_frameworks import AvailableFramework
 from .autoeval_report import AutoEvalReport, SupervisedFrameworkReport
 from ..core import AutoEvalFramework, AutoEvalConfigBank, AutoEvalTask
 
-from ...trainers import Pipeline
-from ...protocols import Protocol
-from ...utilities import get_device
-from ...output_files import BiotrainerOutputObserver
-from ...input_files import read_FASTA, BiotrainerSequenceRecord
+from ...shared import get_device
+from ...training.trainers import Pipeline
+from ...training.output_files import BiotrainerOutputObserver
+from ...training.input_files import read_FASTA, BiotrainerSequenceRecord
 from ...embedders import EmbeddingService, get_embedding_service
-from ...utilities.executer import parse_config_file_and_execute_run
+from ...training.utilities.executer import parse_config_file_and_execute_run
 
 
 def get_unique_framework_sequences(framework: Union[str, AvailableFramework, AutoEvalFramework],
@@ -190,10 +190,10 @@ def _setup_embedding_functions(embedder_name,
                                precomputed_per_sequence_embeddings: Optional[Path] = None,
                                custom_tokenizer_config: Optional[dict] = None,
                                custom_embedding_function_per_residue: Optional[
-                                   Callable[[Iterable[str]], Generator[Tuple[str, torch.tensor], None, None]]] = None,
+                                   Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
                                custom_embedding_function_per_sequence: Optional[
                                    Callable[
-                                       [Iterable[str]], Generator[Tuple[str, torch.tensor], None, None]]] = None,
+                                       [Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
                                device=None, ):
     # Custom Pipeline -> Embedding calculation handled inside of pipeline
     if custom_pipeline:
@@ -268,7 +268,7 @@ def _setup_embedding_functions(embedder_name,
 
 
 def _wrap_custom_embedding_function(
-        custom_embedding_function: Callable[[Iterable[str]], Generator[Tuple[str, torch.tensor], None, None]],
+        custom_embedding_function: Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]],
         embeddings_file_path: Path,
         sequences: Iterable[str],
 ):
@@ -301,9 +301,9 @@ def autoeval_supervised_pipeline(embedder_name: str,
                                  precomputed_per_residue_embeddings: Optional[Path] = None,
                                  precomputed_per_sequence_embeddings: Optional[Path] = None,
                                  custom_embedding_function_per_residue: Optional[
-                                     Callable[[Iterable[str]], Generator[Tuple[str, torch.tensor], None, None]]] = None,
+                                     Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
                                  custom_embedding_function_per_sequence: Optional[
-                                     Callable[[Iterable[str]], Generator[Tuple[str, torch.tensor], None, None]]] = None,
+                                     Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
                                  custom_storage_path: Optional[Union[Path, str]] = None,
                                  custom_output_observers: List[BiotrainerOutputObserver] = None,
                                  device=None,

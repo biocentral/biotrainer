@@ -88,7 +88,7 @@ def filter_FASTA(input_path: Union[str, Path], output_path: Union[str, Path],
     and stores the result at output_path.
 
     :param input_path: The path to a fasta file
-    :param output_path: The path were the filtered fasta file will be written
+    :param output_path: The path where the filtered fasta file will be written
     :param filter_function: Callable that takes a BiotrainerSequenceRecord and returns a bool (True == keep)
     :return: (Number of kept sequences, Number of all sequences)
     """

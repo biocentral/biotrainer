@@ -5,11 +5,9 @@ import numpy as np
 import torch
 
 from enum import Enum
-from typing import Optional, List, Dict
+from typing import Optional, List
+from biotrainer_core.data_classes import MetricEstimate
 from pydantic import BaseModel, Field, field_validator, computed_field, SerializeAsAny
-
-from ..utilities import MetricEstimate
-from ..solvers.solver_utils import get_mean_and_confidence_bounds
 
 
 class ZeroShotMethod(Enum):
@@ -219,8 +217,10 @@ class VariantScore(BaseModel):
 
 
 class RankingResult(BaseModel):
-    scc: SerializeAsAny[MetricEstimate] = Field(description="Spearmans correlation coefficient (overall ranking quality)")
-    ndcg: SerializeAsAny[MetricEstimate] = Field(description="Normalized discounted cumulative gain (top-k ranking quality)")
+    scc: SerializeAsAny[MetricEstimate] = Field(
+        description="Spearmans correlation coefficient (overall ranking quality)")
+    ndcg: SerializeAsAny[MetricEstimate] = Field(
+        description="Normalized discounted cumulative gain (top-k ranking quality)")
 
     @classmethod
     def aggregate(cls, results: List[RankingResult]) -> RankingResult:
@@ -274,10 +274,10 @@ class RankingResult(BaseModel):
 # ============================================================================
 
 # required for bootstrapping and potentially also for caching and resuming from mid-dataset!
-class ZeroShotContactSingleProtein(BaseModel):  
+class ZeroShotContactSingleProtein(BaseModel):
     protein_name: str = Field(description="Name of the protein")
     precision_scores: Dict[str, float] = Field(description="Precision scores for the protein's predicted contacts") #e.g. {"short_P@L2": 0.83, "short_P@L5": 0.78, "long_P@L2": 0.81, "long_P@L5": 0.76}
-    
+
 
 class ZeroShotContactDatasetResult(BaseModel):
     dataset_name: str = Field(description="Name of the dataset")

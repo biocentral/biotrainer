@@ -12,7 +12,7 @@ from typing import List, Optional, Union
 
 from .autoeval_task import AutoEvalTask
 
-from ...input_files import filter_FASTA
+from ...training.input_files import filter_FASTA
 
 
 class AutoEvalDataHandler(ABC):

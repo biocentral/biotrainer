@@ -1,8 +1,8 @@
 from typing import Tuple, List
+from biotrainer_core.data_classes import Protocol
 
 from .config_option import ConfigOption, ConfigConstraints, ConfigKey
 
-from ..protocols import Protocol
 
 def input_config(protocol: Protocol) -> Tuple[ConfigKey, List[ConfigOption]]:
     input_category = "input_files"

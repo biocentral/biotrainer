@@ -6,7 +6,7 @@ from .autoeval_report import ZeroShotCachedResults, ZeroShotFrameworkReport, Aut
 from .autoeval_progress import AutoEvalProgress
 from ..core import AutoEvalFramework, AutoEvalTask
 
-from ...utilities import get_device
+from ...shared import get_device
 from ...bioengineer import BioEngineer, ZeroShotMethod
 
 

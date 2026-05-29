@@ -1,8 +1,7 @@
 from typing import Dict, Any, Tuple, List
+from biotrainer_core.data_classes import Protocol
 
 from .config_option import ConfigOption, ConfigConstraints, ConfigKey
-
-from ..protocols import Protocol
 
 
 def get_default_cross_validation_config() -> Dict[str, Any]:

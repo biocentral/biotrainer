@@ -5,6 +5,7 @@ from pathlib import Path
 from itertools import chain
 from ruamel.yaml import YAMLError
 from typing import Union, List, Dict, Any, Tuple
+from biotrainer_core.data_classes import Protocol
 
 from .config_option import ConfigOption, ConfigKey
 from .deprecated_config import deprecated_config_keys
@@ -20,7 +21,6 @@ from .cross_validation_config import cross_validation_config, get_default_cross_
 from .config_validation import validate_config_rules, validate_config_options
 from .config_utils import download_file_from_config, is_url, make_path_absolute_if_necessary
 
-from ..protocols import Protocol
 from ..input_files import process_hf_dataset_to_fasta
 
 

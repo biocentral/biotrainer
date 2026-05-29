@@ -9,9 +9,9 @@ from .pipelines import (AutoEvalReport, setup_output_dir, validate_input, autoev
                         autoeval_zeroshot_pipeline, autoeval_zeroshot_contact_pipeline, AutoEvalProgress)
 from .autoeval_frameworks import AvailableFramework
 
-from ..trainers import Pipeline
-from ..output_files import BiotrainerOutputObserver
+from ..training.trainers import Pipeline
 from ..bioengineer import ZeroShotMethod, BioEngineer
+from ..training.output_files import BiotrainerOutputObserver
 
 
 def autoeval_pipeline(embedder_name: str,
@@ -27,9 +27,9 @@ def autoeval_pipeline(embedder_name: str,
                       precomputed_per_residue_embeddings: Optional[Path] = None,
                       precomputed_per_sequence_embeddings: Optional[Path] = None,
                       custom_embedding_function_per_residue: Optional[
-                          Callable[[Iterable[str]], Generator[Tuple[str, torch.tensor], None, None]]] = None,
+                          Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
                       custom_embedding_function_per_sequence: Optional[
-                          Callable[[Iterable[str]], Generator[Tuple[str, torch.tensor], None, None]]] = None,
+                          Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
                       custom_storage_path: Optional[Union[Path, str]] = None,
                       custom_output_observers: List[BiotrainerOutputObserver] = None,
                       custom_bioengineer: Optional[BioEngineer] = None,

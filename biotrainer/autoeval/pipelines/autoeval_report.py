@@ -8,7 +8,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Union, Optional, List, Tuple
-
+from biotrainer_core.data_classes import EmbeddingStats, Protocol
 from .autoeval_plotting import plot_comparison, aggregate_dfs
 
 from ..core import AutoEvalTask
@@ -16,9 +16,7 @@ from ..pbc.pbc_datasets import PBC_DATASETS
 from ..flip.flip_datasets import FLIP_DATASETS
 from ..client.autoeval_service_client import AutoEvalServiceClient
 
-from ...embedders import EmbeddingStats
 from ...bioengineer import ZeroShotMethod, RankingResult, ZeroShotContactSingleProtein, ZeroShotContactDatasetResult
-from ...protocols import Protocol
 
 
 def _maybe_metric_abs(metric_name: str, mean: float, lower: float, upper: float) -> Tuple[float, float, float]:

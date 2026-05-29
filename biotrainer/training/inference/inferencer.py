@@ -8,6 +8,7 @@ import numpy as np
 
 from pathlib import Path
 from torch.utils.data import DataLoader
+from biotrainer_core.functions.seeding import seed_all
 from typing import Union, Optional, Dict, Iterable, Tuple, Any, List
 from biotrainer_core.utils.constants import MASK_AND_LABELS_PAD_VALUE
 from biotrainer_core.data_classes import Protocol, BootstrappedMetric, BiotrainerPrediction, BiotrainerResiduePrediction
@@ -18,7 +19,7 @@ from ..optimizers import get_optimizer
 from ..output_files import InferenceOutputManager
 from ..datasets import get_dataset, get_embeddings_collate_function
 from ..solvers import get_solver, get_mean_and_confidence_bounds, MetricsCalculator
-from ..utilities import seed_all, EmbeddingDatasetSample, revert_mappings
+from ..utilities import EmbeddingDatasetSample, revert_mappings
 
 from ...embedders import EmbeddingService
 

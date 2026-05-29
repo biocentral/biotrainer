@@ -1,4 +1,4 @@
-from ...protocols import Protocol
+from biotrainer_core.data_classes import Protocol
 
 # Unused dataset splits are commented out
 

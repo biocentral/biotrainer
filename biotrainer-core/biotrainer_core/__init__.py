@@ -1,4 +1,5 @@
-from .data_classes.biotrainer_model_result import PredictionModel
-from .data_classes.metric_estimate import MetricEstimate
+import utils
+import functions
+import data_classes
 
-__all__ = ["PredictionModel", "MetricEstimate"]
+__all__ = ["utils", "functions", "data_classes"]

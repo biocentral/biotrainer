@@ -3,12 +3,14 @@ import datetime
 
 from pathlib import Path
 from biotrainer_core.data_classes import Protocol
+from biotrainer_core.functions.seeding import seed_all
+from biotrainer_core.functions.hashing import calculate_model_hash
 
 from ..hp_manager import HyperParameterManager
 from ..pipeline import PipelineStep, PipelineContext
 from ..pipeline.pipeline_step import PipelineStepType
 
-from ...utilities import seed_all, get_logger, __version__, setup_logging, get_device, calculate_model_hash
+from ....shared import get_logger, __version__, setup_logging, get_device
 
 logger = get_logger(__name__)
 

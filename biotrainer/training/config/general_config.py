@@ -2,11 +2,11 @@ import torch
 
 from pathlib import Path
 from typing import Union, List, Tuple
+from biotrainer_core.data_classes import Protocol
 
 from .config_option import ConfigOption, ConfigConstraints, ConfigKey
 
-from ..protocols import Protocol
-from ..utilities import get_device
+from ...shared import get_device
 
 
 def general_config(protocol: Protocol) -> Tuple[ConfigKey, List[ConfigOption]]:
