@@ -7,9 +7,8 @@ import biotrainer.training.trainers
 import biotrainer.training.utilities
 import biotrainer.training.inference
 
-
-__version__ = utilities.__version__
+from .biotrainer_api import BiotrainerModel
 
 __all__ = [
-    "datasets", "losses", "models", "optimizers", "solvers", "trainers", "utilities", "inference", "__version__"
+    "datasets", "losses", "models", "optimizers", "solvers", "trainers", "utilities", "inference", "BiotrainerModel"
 ]

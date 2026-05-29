@@ -9,11 +9,11 @@ Original Authors:
 import abc
 import torch
 
-from typing import List, Generator, Optional, Iterable, Any, Union, Callable
+from typing import List, Generator, Optional, Iterable, Any, Union
 
 from .tokenization_mixin import BiotrainerTokenizerMixin
 
-from ...utilities import get_logger, get_device_memory
+from ...shared import get_logger, get_device_memory
 
 logger = get_logger(__name__)
 

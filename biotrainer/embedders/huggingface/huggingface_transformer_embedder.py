@@ -7,7 +7,7 @@ from typing import List, Generator, Any, Union, Optional
 from ..interfaces import EmbedderWithFallback
 
 
-from ...utilities import get_logger
+from ...shared import get_logger
 
 logger = get_logger(__name__)
 

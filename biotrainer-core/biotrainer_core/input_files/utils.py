@@ -1,7 +1,7 @@
 from typing import List, Dict, Tuple
 from biotrainer_core.utils.constants import INTERACTION_INDICATOR
 
-from .biotrainer_seq_record import BiotrainerSequenceRecord
+from .sequence_training_data import BiotrainerSequenceRecord
 
 
 def merge_protein_interactions(seq_records: List[BiotrainerSequenceRecord]) -> Dict[str, Dict[str, str]]:

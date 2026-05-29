@@ -1,13 +1,12 @@
 import torch
 
+from biotrainer_core.utils.constants import STANDARD_AAS
 from typing import List, Tuple, Optional, Dict, Iterable, Callable
 
 from .preprocessing_strategies import (
     preprocess_sequences_with_whitespaces,
     preprocess_sequences_without_whitespaces,
 )
-
-from ...utilities import STANDARD_AAS
 
 
 class BiotrainerTokenizerMixin:

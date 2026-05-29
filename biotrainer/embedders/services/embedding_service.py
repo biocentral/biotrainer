@@ -8,14 +8,14 @@ import multiprocessing as mp
 
 from tqdm import tqdm
 from pathlib import Path
+from biotrainer_core.input_files import read_FASTA
+from biotrainer_core.data_classes import SequenceData, Protocol
 from typing import Dict, List, Union, Optional, Generator, Tuple, Any
 
 from ..stats import EmbeddingStatsTracker
 from ..interfaces import EmbedderInterface
 
-from ...protocols import Protocol
-from ...utilities import get_logger, is_running_in_notebook
-from ...input_files import read_FASTA, BiotrainerSequenceRecord
+from ...shared import get_logger, is_running_in_notebook
 
 logger = get_logger(__name__)
 
@@ -65,8 +65,7 @@ class EmbeddingService:
         return self
 
     def compute_embeddings(self,
-                           input_data: Union[str, Path, List[str],
-                           List[BiotrainerSequenceRecord], Dict[str, BiotrainerSequenceRecord]],
+                           input_data: Union[str, Path, List[str], List[SequenceData], Dict[str, SequenceData]],
                            output_dir: Path,
                            protocol: Protocol,
                            force_output_dir: bool = False,
@@ -77,7 +76,7 @@ class EmbeddingService:
         Compute embeddings with the provided embedder from a sequence file or a dictionary of sequences.
 
         Parameters:
-            input_data (Union[str, Dict[str, str]]): Path to the sequence file or a dictionary of protein sequences.
+            input_data: Path to the sequence file or an iterable of protein sequences.
             output_dir (Path): Output directory to store the computed embeddings.
             protocol (Protocol): Protocol for the embeddings. Determines if the embeddings should be reduced to per-protein.
             force_output_dir (bool): If True, the given output directory is directly used to store the embeddings file.
@@ -133,7 +132,7 @@ class EmbeddingService:
         return str(embeddings_file_path)
 
     def _compute_embeddings_parallel(self,
-                                     seq_records: List[BiotrainerSequenceRecord],
+                                     seq_records: List[SequenceData],
                                      embeddings_file_path: Path,
                                      use_reduced_embeddings: bool,
                                      store_by_hash: bool,
@@ -189,9 +188,8 @@ class EmbeddingService:
         embeddings_file_handle[h5_index].attrs["original_id"] = seq_record.seq_id
 
     def generate_embeddings(self,
-                            input_data: Union[str, Path, List[str], List[BiotrainerSequenceRecord], Dict[
-                                str, BiotrainerSequenceRecord]],
-                            reduce: bool) -> Generator[Tuple[BiotrainerSequenceRecord, torch.Tensor], None, None]:
+                            input_data: Union[str, Path, List[str], List[SequenceData], Dict[str, SequenceData]],
+                            reduce: bool) -> Generator[SequenceData, None, None]:
         """
         Generator function that yields embeddings as they are computed.
 
@@ -215,17 +213,17 @@ class EmbeddingService:
         yield from self._embeddings_generator(seq_records, reduce)
 
     @staticmethod
-    def _process_input_data(input_data) -> List[BiotrainerSequenceRecord]:
+    def _process_input_data(input_data) -> List[SequenceData]:
         """
         Process various input formats into a list of BiotrainerSequenceRecord
         """
         if isinstance(input_data, (str, Path)):
             return [seq_record for seq_record in read_FASTA(input_data)]
         elif isinstance(input_data, list):
-            if isinstance(input_data[0], BiotrainerSequenceRecord):
+            if isinstance(input_data[0], SequenceData):
                 return input_data
             elif isinstance(input_data[0], str):
-                return [BiotrainerSequenceRecord(seq_id=f"Seq{idx}", seq=seq)
+                return [SequenceData(seq_id=f"Seq{idx}", seq=seq)
                         for idx, seq in enumerate(input_data)]
             else:
                 raise ValueError(f"Non-supported type for input_data: {type(input_data[0])}")
@@ -235,9 +233,9 @@ class EmbeddingService:
             raise ValueError(f"Non-supported type for input_data: {type(input_data)}")
 
     def _embeddings_generator(self,
-                              seq_records: List[BiotrainerSequenceRecord],
+                              seq_records: List[SequenceData],
                               use_reduced_embeddings: bool) \
-            -> Generator[Tuple[BiotrainerSequenceRecord, torch.tensor], None, None]:
+            -> Generator[SequenceData, None, None]:
         """
         Core embedding computation logic that can be used by both save and generate methods
 
@@ -259,7 +257,7 @@ class EmbeddingService:
                 # TODO Batching might improve speed here
                 embedding = self._embedder.reduce_per_protein(embedding)
 
-            yield seq_record, embedding
+            yield seq_record.copy_with_embedding(embedding=embedding)
 
     @staticmethod
     def get_embeddings_file_path(output_dir: Path,

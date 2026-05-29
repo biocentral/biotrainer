@@ -3,10 +3,10 @@ import re
 from pathlib import Path
 from typing import Union, List, Callable
 
-from .biotrainer_seq_record import BiotrainerSequenceRecord
+from ..data_classes import SequenceData
 
 
-def read_FASTA(path: Union[str, Path]) -> List[BiotrainerSequenceRecord]:
+def read_FASTA(path: Union[str, Path]) -> List[SequenceData]:
     """
     Pure Python FASTA file parser. Parses attributes on the go.
 
@@ -30,7 +30,7 @@ def read_FASTA(path: Union[str, Path]) -> List[BiotrainerSequenceRecord]:
                 if line.startswith('>'):
                     # Save the previous sequence if it exists
                     if current_id:
-                        records.append(BiotrainerSequenceRecord(
+                        records.append(SequenceData(
                             seq_id=current_id,
                             attributes=current_attributes,
                             seq=current_seq
@@ -48,7 +48,7 @@ def read_FASTA(path: Union[str, Path]) -> List[BiotrainerSequenceRecord]:
 
             # Ensure last sequence is added
             if current_id:
-                records.append(BiotrainerSequenceRecord(
+                records.append(SequenceData(
                     seq_id=current_id,
                     attributes=current_attributes,
                     seq=current_seq
@@ -64,7 +64,7 @@ def read_FASTA(path: Union[str, Path]) -> List[BiotrainerSequenceRecord]:
         raise ValueError(f"Could not parse '{path}'. Are you sure this is a valid fasta file?") from e
 
 
-def write_FASTA(path: Union[str, Path], seq_records: List[BiotrainerSequenceRecord]) -> int:
+def write_FASTA(path: Union[str, Path], seq_records: List[SequenceData]) -> int:
     """
     Save a list of BiotrainerSequenceRecord objects to a FASTA file.
 
@@ -75,14 +75,14 @@ def write_FASTA(path: Union[str, Path], seq_records: List[BiotrainerSequenceReco
     with open(path, 'w') as fasta_file:
         n_written = 0
         for seq_record in seq_records:
-            attributes_str = " ".join([f"{key.upper()}={value}" for key, value in seq_record.attributes.items()])
-            fasta_file.write(f">{seq_record.seq_id} {attributes_str}\n{seq_record.seq}\n")
+            fasta_str = seq_record.to_fasta()
+            fasta_file.write(f"{fasta_str}\n")
             n_written += 1
     return n_written
 
 
 def filter_FASTA(input_path: Union[str, Path], output_path: Union[str, Path],
-                 filter_function: Callable[[BiotrainerSequenceRecord], bool]) -> (int, int):
+                 filter_function: Callable[[SequenceData], bool]) -> tuple[int, int]:
     """
     Reads a fasta file from input_path, applies the filter function to all seq_records
     and stores the result at output_path.

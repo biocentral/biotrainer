@@ -24,10 +24,12 @@ class FineTuningModel(BiotrainerModel):
         return params
 
     def named_parameters(
-        self, prefix: str = "", recurse: bool = True, remove_duplicate: bool = True
+            self, prefix: str = "", recurse: bool = True, remove_duplicate: bool = True
     ) -> Iterator[tuple[str, Parameter]]:
         assert self.embedding_service._embedder._model, f"Trying to get parameters of non-existing embedder model!"
-        params = list(self.embedding_service._embedder._model.named_parameters(prefix, recurse, remove_duplicate)) + list(self.downstream_model.named_parameters(prefix, recurse, remove_duplicate))
+        params = list(
+            self.embedding_service._embedder._model.named_parameters(prefix, recurse, remove_duplicate)) + list(
+            self.downstream_model.named_parameters(prefix, recurse, remove_duplicate))
         return params
 
     def get_downstream_model(self):
@@ -53,12 +55,11 @@ class FineTuningModel(BiotrainerModel):
         # Compute embeddings with gradients
         targets = kwargs.pop('targets', [])
 
-        embeddings = self.embedding_service.generate_embeddings(input_data=sequences,
-                                                                reduce=self.reduced_embeddings)
+        embeddings_records = self.embedding_service.generate_embeddings(input_data=sequences,
+                                                                        reduce=self.reduced_embeddings)
 
-        downstream_batch = [(seq_record.seq_id, embedding, targets[idx]) for idx, (seq_record, embedding)
-                            in
-                            enumerate(embeddings)]
+        downstream_batch = [(embd_data.seq_id, embd_data.embedding, targets[idx]) for idx, embd_data in
+                            enumerate(embeddings_records)]
         _, downstream_embeddings, targets, lengths = self.collate_fn(downstream_batch)
         downstream_input = torch.stack([embedding.to(self.device) for embedding in downstream_embeddings])
         padded_targets = torch.stack([target.to(self.device) for target in targets])

@@ -7,7 +7,7 @@ from .huggingface_transformer_embedder import HuggingfaceTransformerEmbedder
 
 from ..interfaces import BioOptEmbedder, preprocess_sequences_with_whitespaces
 
-from ...utilities import get_logger
+from ...shared import get_logger
 
 logger = get_logger(__name__)
 
