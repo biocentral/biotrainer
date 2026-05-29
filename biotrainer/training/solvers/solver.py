@@ -12,13 +12,15 @@ from biotrainer_core.data_classes import Protocol
 from contextlib import nullcontext as _nullcontext
 from safetensors.torch import load_file, save_file
 from typing import Callable, Optional, Union, Dict, List, Any
+from biotrainer_core.data_classes import EpochMetrics, BiotrainerPrediction, BiotrainerResiduePrediction
 
 from .metrics_calculator import MetricsCalculator
 from .solver_utils import get_mean_and_confidence_bounds
 
 from ..models import BiotrainerModel
 from ..output_files import OutputManager
-from ..utilities import get_logger, EpochMetrics, BiotrainerSequencePrediction, BiotrainerResiduePrediction
+
+from ...shared import get_logger
 
 logger = get_logger(__name__)
 
@@ -195,7 +197,7 @@ class Solver(ABC):
     def inference_monte_carlo_dropout(self, dataloader: DataLoader,
                                       n_forward_passes: int = 30,
                                       confidence_level: float = 0.05) -> List[
-        Union[BiotrainerSequencePrediction, BiotrainerResiduePrediction]]:
+        Union[BiotrainerPrediction, BiotrainerResiduePrediction]]:
         """
         Calculate inference results from existing models for given embeddings. Implementation here is for
         per-sequence protocols. For per-residue, see the residue_solvers script.
@@ -226,7 +228,7 @@ class Solver(ABC):
                 bald_scores = self._calculate_bald_score(dropout_raw_values)
 
             for idx, prediction in enumerate(prediction_by_mean):
-                predictions.append(BiotrainerSequencePrediction(seq_id=seq_ids[idx],
+                predictions.append(BiotrainerPrediction(seq_id=seq_ids[idx],
                                                                 prediction=prediction.item(),
                                                                 mcd_predictions=[dropout_iteration["prediction"][idx]
                                                                                  for

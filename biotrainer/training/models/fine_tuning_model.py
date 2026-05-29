@@ -5,7 +5,7 @@ from biotrainer_core.data_classes import Protocol
 
 from .biotrainer_model import BiotrainerModel
 
-from ...embedders import PeftEmbeddingService
+from ...embedding import PeftEmbeddingService
 
 
 class FineTuningModel(BiotrainerModel):

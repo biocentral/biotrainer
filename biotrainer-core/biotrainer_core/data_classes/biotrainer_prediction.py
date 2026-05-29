@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional, Union
 
-from ..protocols import Protocol
+from ..data_classes import Protocol
 from ..utils import constants as biotrainer_constants
 
 

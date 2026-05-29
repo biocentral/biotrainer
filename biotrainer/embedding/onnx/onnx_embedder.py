@@ -9,7 +9,7 @@ from typing import Union, List, Any, Generator
 
 from ..interfaces import CustomTokenizer, EmbedderWithFallback
 
-from ...utilities import is_device_cuda, is_device_mps, get_device_memory, get_logger
+from ...shared import is_device_cuda, is_device_mps, get_device_memory, get_logger
 
 logger = get_logger(__name__)
 
@@ -137,7 +137,7 @@ class OnnxEmbedder(EmbedderWithFallback):
         [embedding] = self._embed_batch([sequence])
         return embedding
 
-    def _embed_batch_implementation(self, batch: List[str], model: Any) -> Generator[torch.tensor, None, None]:
+    def _embed_batch_implementation(self, batch: List[str], model: Any) -> Generator[torch.Tensor, None, None]:
         # Tokenize the batch
         encoded = self._tokenizer.batch_encode_plus(
             batch,

@@ -3,7 +3,7 @@ from ..pipeline.pipeline_step import PipelineStepType
 
 from ..target_manager import TargetManager
 
-from ...utilities import get_logger
+from ....shared import get_logger
 
 logger = get_logger(__name__)
 

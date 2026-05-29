@@ -1,9 +1,10 @@
 import torch
 import numpy as np
 
+from biotrainer_core.utils.constants import AMINO_ACIDS
+
 from ..interfaces import BaselineEmbedder
 
-from ...utilities import AMINO_ACIDS
 
 class AAOntologyEmbedder(BaselineEmbedder):
     """

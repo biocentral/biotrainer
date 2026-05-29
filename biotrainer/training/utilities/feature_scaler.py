@@ -3,12 +3,10 @@ import pickle
 
 from pathlib import Path
 from typing import Dict, Optional, Any
+from biotrainer_core.data_classes import Protocol
+from biotrainer_core.utils.constants import MASK_AND_LABELS_PAD_VALUE
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-
-from .constants import MASK_AND_LABELS_PAD_VALUE
-
-from ..protocols import Protocol
 
 
 class FeatureScaler:
@@ -54,7 +52,6 @@ class FeatureScaler:
             unmasked_embeddings = emb[mask]  # shape: (num_unmasked, embedding_dim)
             all_residue_embeddings.append(unmasked_embeddings)
 
-
         # Concatenate all residue embeddings: (total_residues, embedding_dim)
         concatenated_embeddings = torch.cat(all_residue_embeddings, dim=0).numpy()
 
@@ -83,12 +80,12 @@ class FeatureScaler:
 
         return self
 
-    def _transform_per_sequence(self, x: Dict[str, torch.tensor]):
+    def _transform_per_sequence(self, x: Dict[str, torch.Tensor]):
         embeddings = torch.stack(list(x.values())).numpy()
         scaled_embeddings = self.scaler.transform(embeddings)
         return {seq_id: torch.tensor(scaled_emb) for seq_id, scaled_emb in zip(x.keys(), scaled_embeddings)}
 
-    def _transform_per_residue(self, x: Dict[str, torch.tensor]):
+    def _transform_per_residue(self, x: Dict[str, torch.Tensor]):
         scaled_dict = {}
 
         for seq_id, emb in x.items():
@@ -107,12 +104,12 @@ class FeatureScaler:
 
         return scaled_dict
 
-    def transform(self, x: Dict[str, torch.tensor]) -> Dict[str, torch.tensor]:
+    def transform(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         assert self.scaler is not None, f"Feature scaler called without fitting!"
 
         if self.protocol in Protocol.using_per_sequence_embeddings():
             return self._transform_per_sequence(x)
-        else: # per-residue embeddings
+        else:  # per-residue embeddings
             return self._transform_per_residue(x)
 
     def save(self, save_path: Path):

@@ -6,10 +6,9 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Union
 from torchmetrics import Accuracy, Precision, Recall, F1Score, SpearmanCorrCoef, MatthewsCorrCoef, Metric, \
     MeanSquaredError
+from biotrainer_core.utils.constants import MASK_AND_LABELS_PAD_VALUE
 
 from .ndcg import NDCG
-
-from ..utilities import MASK_AND_LABELS_PAD_VALUE
 
 
 class MetricsCalculator(ABC):
@@ -166,8 +165,10 @@ class ResidueClassificationMetricsCalculator(ClassificationMetricsCalculator):
         else:
             return super().compute_metrics(predicted=predicted, labels=labels)
 
+
 class ResiduesClassificationMetricsCalculator(SequenceClassificationMetricsCalculator):
     pass
+
 
 class SequenceRegressionMetricsCalculator(RegressionMetricsCalculator):
     def __init__(self, device, n_classes: int):
@@ -181,6 +182,7 @@ class SequenceRegressionMetricsCalculator(RegressionMetricsCalculator):
 
         ndcg = self._compute_metric(self.ndcg, predicted, labels).item()
         return {**base_metrics, "ndcg": ndcg}
+
 
 class ResidueRegressionMetricsCalculator(RegressionMetricsCalculator):
     def compute_metrics(

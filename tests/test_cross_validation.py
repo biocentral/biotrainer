@@ -3,8 +3,8 @@ import tempfile
 
 from ruamel import yaml
 from pathlib import Path
-from biotrainer.config import ConfigurationException
-from biotrainer.utilities.cli import train
+from biotrainer.training import BiotrainerModel
+from biotrainer.training.config import ConfigurationException
 
 
 def test_cross_validation(cv_config: dict):
@@ -28,7 +28,7 @@ def test_cross_validation(cv_config: dict):
             tmp_config_file.write(yaml.dump(base_config))
 
         try:
-            result = train(config=str(Path(tmp_config_path).absolute()))
+            result = BiotrainerModel().train(config=str(Path(tmp_config_path).absolute()))
             assert os.path.exists(f"{tmp_dir_name}/out.yml"), "No output file generated, run failed!"
         except ConfigurationException:
             assert False, "A ConfigurationException was thrown although it shouldn't have."

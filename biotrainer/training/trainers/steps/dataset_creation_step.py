@@ -9,7 +9,9 @@ from ..pipeline.pipeline_step import PipelineStepType
 
 from ..target_manager import TargetManager
 
-from ...utilities import get_logger, EmbeddingDatasetSample
+from ...utilities import EmbeddingDatasetSample
+
+from ....shared import get_logger
 
 logger = get_logger(__name__)
 
@@ -26,9 +28,9 @@ class DatasetCreationStep(PipelineStep):
         # Get x_to_class specific logs and weights
         class_weights = None
         if protocol in Protocol.classification_protocols():
-            context.output_manager.add_derived_values(
-                {'class_int2str': target_manager.class_int2str,
-                 'class_str2int': target_manager.class_str2int}
+            context.output_manager.update_derived_values(
+                class_int2str=target_manager.class_int2str,
+                class_str2int=target_manager.class_str2int
             )
             context.class_str2int = target_manager.class_str2int
 
@@ -37,7 +39,7 @@ class DatasetCreationStep(PipelineStep):
             if class_weights is not None:
                 computed_class_weights = {class_index: class_value.item() for
                                           class_index, class_value in enumerate(class_weights)}
-                context.output_manager.add_derived_values({'computed_class_weights': computed_class_weights})
+                context.output_manager.update_derived_values(computed_class_weights=computed_class_weights)
 
         return class_weights
 
@@ -58,7 +60,7 @@ class DatasetCreationStep(PipelineStep):
             baseline_test_datasets = {test_name: [
                 EmbeddingDatasetSample(seq_id=data_point.seq_id, embedding=context.id2emb[data_point.seq_id],
                                        target=data_point.target) for data_point in test_data] for test_name, test_data
-                                      in test_datasets.items()}
+                in test_datasets.items()}
             random_masking = context.config.get("finetuning_config", {}).get("random_masking", False)
             if random_masking:
                 logger.info("Random masking is enabled. All targets will be overwritten with masked sequence targets.")
@@ -74,11 +76,11 @@ class DatasetCreationStep(PipelineStep):
         logger.info(f"Number of features (i.e. embedding dimension): {context.n_features}")
         logger.info(f"Number of outputs (i.e. classes, equals 1 for regression): {context.n_classes}")
 
-        context.output_manager.add_derived_values({
-            'n_features': context.n_features,
-            'n_testing_ids': sum(len(test_dataset) for test_dataset in test_datasets.values()),
-            'n_classes': context.n_classes,
-        })
+        context.output_manager.update_derived_values(
+            n_features=context.n_features,
+            n_testing_ids=sum(len(test_dataset) for test_dataset in test_datasets.values()),
+            n_classes=context.n_classes,
+        )
 
         # Store datasets
         context.train_dataset = train_dataset

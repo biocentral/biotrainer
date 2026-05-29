@@ -4,11 +4,10 @@ import numpy as np
 import torch._dynamo
 
 from typing import Dict, Union, List
+from biotrainer_core.data_classes import Protocol, BootstrappedMetric
 
-from biotrainer.protocols import Protocol
-from biotrainer.inference import Inferencer
-from biotrainer.utilities import BootstrappedMetric
-from biotrainer.embedders import OneHotEncodingEmbedder
+from biotrainer.training.inference import Inferencer
+from biotrainer.embedding import OneHotEncodingEmbedder
 
 
 class InferencerTests(unittest.TestCase):

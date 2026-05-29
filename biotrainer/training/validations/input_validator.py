@@ -2,10 +2,9 @@ import re
 
 from pathlib import Path
 from typing import Union, List
-from biotrainer_core.data_classes import Protocol
-
-from ..utilities import RESIDUE_TO_VALUE_TARGET_DELIMITER
-from ..input_files import BiotrainerSequenceRecord, read_FASTA
+from biotrainer_core.input_files import read_FASTA
+from biotrainer_core.data_classes import Protocol, SequenceData
+from biotrainer_core.utils.constants import RESIDUE_TO_VALUE_TARGET_DELIMITER
 
 
 class InputValidator:
@@ -14,14 +13,14 @@ class InputValidator:
     def __init__(self, protocol: Protocol):
         self.protocol = protocol
 
-    def validate(self, input_data: Union[str, Path, List[BiotrainerSequenceRecord]]) -> List[BiotrainerSequenceRecord]:
+    def validate(self, input_data: Union[str, Path, List[SequenceData]]) -> List[SequenceData]:
         if isinstance(input_data, str) or isinstance(input_data, Path):
             input_data = read_FASTA(input_data)
 
         if len(input_data) == 0:
             raise ValueError("The input to validate is empty!")
 
-        if not isinstance(input_data[0], BiotrainerSequenceRecord):
+        if not isinstance(input_data[0], SequenceData):
             raise ValueError(f"Expected BiotrainerSequenceRecord, got {type(input_data[0])}!")
 
         for error in (self._validate_unique_ids(input_data),
@@ -35,7 +34,7 @@ class InputValidator:
         return input_data
 
     @staticmethod
-    def _validate_unique_ids(input_data: List[BiotrainerSequenceRecord]) -> str:
+    def _validate_unique_ids(input_data: List[SequenceData]) -> str:
         len_data = len(input_data)
         ids = {seq_record.get_id_for_id2emb() for seq_record in input_data}
         len_unique = len(ids)
@@ -46,9 +45,9 @@ class InputValidator:
         return ""
 
     @staticmethod
-    def _validate_unique_sequences(input_data: List[BiotrainerSequenceRecord]) -> str:
+    def _validate_unique_sequences(input_data: List[SequenceData]) -> str:
         filtered_input_data = [seq_record for seq_record in input_data
-                                if seq_record.seq not in InputValidator.EXCLUDED_SEQS]
+                               if seq_record.seq not in InputValidator.EXCLUDED_SEQS]
         len_data = len(filtered_input_data)
         unique_sequence_data = {seq_record.seq: seq_record for seq_record in filtered_input_data}
         len_unique = len(unique_sequence_data)
@@ -60,7 +59,7 @@ class InputValidator:
         return ""
 
     @staticmethod
-    def _validate_sequences(input_data: List[BiotrainerSequenceRecord]) -> str:
+    def _validate_sequences(input_data: List[SequenceData]) -> str:
         # Regular expression pattern that matches any character that is not a letter
         invalid_char_pattern = re.compile(r'[^a-zA-Z]')
 
@@ -74,7 +73,7 @@ class InputValidator:
 
         return ""
 
-    def _validate_targets(self, input_data: List[BiotrainerSequenceRecord]) -> str:
+    def _validate_targets(self, input_data: List[SequenceData]) -> str:
         # Expect float or int for regression
         for seq_record in input_data:
             target = seq_record.get_target()
@@ -105,7 +104,7 @@ class InputValidator:
         return ""
 
     @staticmethod
-    def _validate_embeddings(input_data: List[BiotrainerSequenceRecord]) -> str:
+    def _validate_embeddings(input_data: List[SequenceData]) -> str:
         """ If any embeddings are already present, all records must have embeddings """
         any_embeddings = any([record.embedding is not None for record in input_data])
         if any_embeddings:

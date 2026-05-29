@@ -3,10 +3,9 @@ import torch.nn as nn
 
 from biotrainer_core.data_classes import Protocol
 from typing import Optional, Union, Dict, Any, Set
+from biotrainer_core.utils.constants import MASK_AND_LABELS_PAD_VALUE
 
 from .masked_mse_loss import MaskedRegressionLoss
-
-from ..utilities import MASK_AND_LABELS_PAD_VALUE
 
 __LOSSES = {
     Protocol.residue_to_class: {

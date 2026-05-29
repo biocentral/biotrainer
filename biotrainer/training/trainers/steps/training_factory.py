@@ -7,11 +7,12 @@ from torch.utils.data import DataLoader
 from ..pipeline import PipelineContext
 
 from ...losses import get_loss
-from ...utilities import get_logger
 from ...optimizers import get_optimizer
 from ...solvers import get_solver, Solver
 from ...models import get_model, FineTuningModel
 from ...datasets import get_dataset, get_embeddings_collate_function, BiotrainerDataset
+
+from ....shared import get_logger
 
 logger = get_logger(__name__)
 

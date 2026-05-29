@@ -3,7 +3,9 @@ from pathlib import Path
 from ..pipeline import PipelineStep, PipelineContext
 from ..pipeline.pipeline_step import PipelineStepType
 
-from ...utilities import FeatureScaler, get_logger
+from ...utilities import FeatureScaler
+
+from ....shared import get_logger
 
 logger = get_logger(__name__)
 

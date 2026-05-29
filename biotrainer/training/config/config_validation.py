@@ -5,7 +5,7 @@ from .config_utils import is_url, is_list_option
 from .config_option import ConfigOption, ConfigKey
 from .config_exception import ConfigurationException
 
-from ...embedders import get_predefined_embedder_names
+from ...embedding import get_predefined_embedder_names
 
 
 def validate_config_options(protocol: Protocol,

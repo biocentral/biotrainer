@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Union, Dict, Any, Optional, List
 from biotrainer_core.data_classes import BiotrainerModelResult, Protocol
 
-from ..embedders import EmbeddingAPI
+from ..embedding import EmbeddingAPI
 from ..training import BiotrainerModel
 from ..autoeval import autoeval_pipeline
 

@@ -4,7 +4,7 @@ import datetime
 from ..pipeline import PipelineContext, PipelineStep
 from ..pipeline.pipeline_step import PipelineStepType
 
-from ...utilities import get_logger
+from ....shared import get_logger
 
 logger = get_logger(__name__)
 
@@ -34,8 +34,8 @@ class PostProcessStep(PipelineStep):
         pipeline_elapsed_time = pipeline_end_time - context.pipeline_start_time
         logger.info(f"Pipeline end time: {pipeline_end_time_abs}")
         logger.info(f"Total elapsed time for pipeline: {pipeline_elapsed_time} [s]")
-        context.output_manager.add_derived_values({'pipeline_end_time': pipeline_end_time_abs})
-        context.output_manager.add_derived_values({'pipeline_elapsed_time': pipeline_elapsed_time})
+        context.output_manager.update_derived_values(pipeline_end_time=pipeline_end_time_abs)
+        context.output_manager.update_derived_values(pipeline_elapsed_time=pipeline_elapsed_time)
 
         logger.info(f"Extensive output information can be found at {context.config['output_dir']}/out.yml")
 

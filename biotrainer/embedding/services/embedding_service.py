@@ -26,10 +26,9 @@ def _io_worker_process(queue: mp.Queue, file_path: Path, store_by_hash: bool):
 
     with h5py.File(file_path, "a") as embeddings_file:
         # Iterate over items from the queue until the sentinel None is received
-        for item in iter(queue.get, None):
-            seq_record, embedding_np = item
+        for emb_record in iter(queue.get, None):
             EmbeddingService.store_embedding(
-                embeddings_file, seq_record, embedding_np, store_by_hash
+                embeddings_file, emb_record, store_by_hash
             )
 
 
@@ -163,10 +162,9 @@ class EmbeddingService:
                 if embedding_stats_tracker is not None:
                     embedding_stats_tracker.track(embedding_np)
 
-                embedding_queue.put((
-                    seq_record,
-                    embedding_np,
-                ))
+                emb_record = seq_record.copy_with_embedding(embedding=embedding_np)
+
+                embedding_queue.put(emb_record)
 
             # Signal worker to stop after embeddings are computed
             embedding_queue.put(None)
@@ -175,17 +173,20 @@ class EmbeddingService:
             io_process.join()
 
     @staticmethod
-    def store_embedding(embeddings_file_handle, seq_record, embedding, store_by_hash: bool = True):
-        h5_index = seq_record.get_hash() if store_by_hash else seq_record.seq_id
+    def store_embedding(embeddings_file_handle,
+                        emb_record: SequenceData,
+                        store_by_hash: bool = True):
+        h5_index = emb_record.get_hash() if store_by_hash else emb_record.seq_id
 
         # Handle both torch tensors and numpy arrays
+        embedding = emb_record.embedding
         if isinstance(embedding, torch.Tensor):
             embedding_data = embedding.cpu().numpy()
         else:
             embedding_data = embedding
 
         embeddings_file_handle.create_dataset(h5_index, data=embedding_data, compression="gzip", chunks=True)
-        embeddings_file_handle[h5_index].attrs["original_id"] = seq_record.seq_id
+        embeddings_file_handle[h5_index].attrs["original_id"] = emb_record.seq_id
 
     def generate_embeddings(self,
                             input_data: Union[str, Path, List[str], List[SequenceData], Dict[str, SequenceData]],
@@ -210,7 +211,9 @@ class EmbeddingService:
                                   reverse=True))
 
         # Generate embeddings
-        yield from self._embeddings_generator(seq_records, reduce)
+        for seq_record, embedding in self._embeddings_generator(seq_records, reduce):
+            emb_record = seq_record.copy_with_embedding(embedding=embedding)
+            yield emb_record
 
     @staticmethod
     def _process_input_data(input_data) -> List[SequenceData]:
@@ -235,7 +238,7 @@ class EmbeddingService:
     def _embeddings_generator(self,
                               seq_records: List[SequenceData],
                               use_reduced_embeddings: bool) \
-            -> Generator[SequenceData, None, None]:
+            -> Generator[Tuple[SequenceData, torch.Tensor], None, None]:
         """
         Core embedding computation logic that can be used by both save and generate methods
 
@@ -257,7 +260,7 @@ class EmbeddingService:
                 # TODO Batching might improve speed here
                 embedding = self._embedder.reduce_per_protein(embedding)
 
-            yield seq_record.copy_with_embedding(embedding=embedding)
+            yield seq_record, embedding
 
     @staticmethod
     def get_embeddings_file_path(output_dir: Path,

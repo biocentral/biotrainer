@@ -5,10 +5,8 @@ import unittest
 import tempfile
 
 from pathlib import Path
-
-from biotrainer.input_files import BiotrainerSequenceRecord
-from biotrainer.protocols import Protocol
-from biotrainer.embedders import OneHotEncodingEmbedder, EmbeddingService
+from biotrainer_core.data_classes import Protocol, SequenceData
+from biotrainer.embedding import OneHotEncodingEmbedder, EmbeddingService
 
 
 class TestEmbeddingService(unittest.TestCase):
@@ -109,8 +107,8 @@ class TestEmbeddingService(unittest.TestCase):
         self._run_embedding_test("mixed_sequences", self.num_reads, Protocol.residue_to_class)
 
     def test_not_allowed_seq_ids(self):
-        seq_records = [BiotrainerSequenceRecord(seq_id="not/Allowed", seq="MMAAAG"),
-                       BiotrainerSequenceRecord(seq_id="ALLOWED", seq="MMAAGX")
+        seq_records = [SequenceData(seq_id="not/Allowed", seq="MMAAAG"),
+                       SequenceData(seq_id="ALLOWED", seq="MMAAGX")
                        ]
         with tempfile.TemporaryDirectory() as tmp_dir:
             with self.assertRaises(ValueError):

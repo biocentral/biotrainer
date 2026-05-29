@@ -5,8 +5,9 @@ import itertools
 
 from typing import Dict, Any, Generator, Union
 
-from ..utilities import get_logger
 from ..config import ConfigurationException
+
+from ...shared import get_logger
 
 logger = get_logger(__name__)
 

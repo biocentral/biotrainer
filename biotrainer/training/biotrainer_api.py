@@ -12,7 +12,7 @@ from .trainers.pipeline import Pipeline
 from .output_files import BiotrainerOutputObserver, InferenceOutputManager
 from .utilities.executer import parse_config_file_and_execute_run
 
-from ..embedders import get_embedding_service
+from ..embedding import get_embedding_service
 
 
 class BiotrainerModel:
@@ -26,9 +26,7 @@ class BiotrainerModel:
         if isinstance(training_result, BiotrainerModelResult):
             return cls(training_result=training_result)
         elif isinstance(training_result, (Path, str)):
-            with open(training_result, "r") as f:
-                tr_res = f.read()
-            return cls(training_result=BiotrainerModelResult.model_validate_json(tr_res))
+            return cls(training_result=BiotrainerModelResult.from_file(training_result))
         else:
             raise TypeError(f"Invalid type for training_result: {type(training_result)}")
 

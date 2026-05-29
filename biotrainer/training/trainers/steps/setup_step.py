@@ -57,10 +57,10 @@ class SetupStep(PipelineStep):
 
         # Log version
         logger.info(f"** Running biotrainer (v{__version__}) training routine **")
-        context.output_manager.add_derived_values({'biotrainer_version': str(__version__)})
+        context.output_manager.update_derived_values(biotrainer_version=str(__version__))
         # Log start time
         logger.info(f"Pipeline start time: {pipeline_start_time_abs}")
-        context.output_manager.add_derived_values({'pipeline_start_time': pipeline_start_time_abs})
+        context.output_manager.update_derived_values(pipeline_start_time=pipeline_start_time_abs)
 
         if "pretrained_model" in context.config.keys():
             logger.info(f"Using pre_trained model: {context.config['pretrained_model']}")
@@ -77,7 +77,7 @@ class SetupStep(PipelineStep):
                                           )
         context.model_hash = model_hash
         logger.info(f"Training {context.config['model_choice']} model with hash: {model_hash}")
-        context.output_manager.add_derived_values({"model_hash": model_hash})
+        context.output_manager.update_derived_values(model_hash=model_hash)
         # Seed
         seed = context.config["seed"]
         seed_all(seed)

@@ -13,7 +13,7 @@ from .light_attention import LightAttention
 from .biotrainer_model import BiotrainerModel
 from .fine_tuning_model import FineTuningModel
 
-from ..utilities import get_logger
+from ...shared import get_logger
 
 logger = get_logger(__name__)
 

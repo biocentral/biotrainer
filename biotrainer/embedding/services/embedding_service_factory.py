@@ -9,7 +9,7 @@ from .embedding_service import EmbeddingService
 from .peft_embedding_service import PeftEmbeddingService
 
 from ..onnx import OnnxEmbedder
-from ..predefined_embedders import BASELINE_EMBEDDERS
+from ..baseline_embedders import BASELINE_EMBEDDERS
 from ..interfaces import EmbedderInterface, CustomTokenizer
 from ..huggingface import OPTIMIZED_EMBEDDERS, HuggingfaceTransformerEmbedder
 

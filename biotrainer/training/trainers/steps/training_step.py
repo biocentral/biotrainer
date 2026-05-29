@@ -3,6 +3,8 @@ import datetime
 
 from torch.utils.data import DataLoader
 from typing import List, Dict, Optional, Any
+from biotrainer_core.data_classes import EpochMetrics
+from biotrainer_core.utils.constants import METRICS_WITHOUT_REVERSED_SORTING
 
 from .training_factory import TrainingFactory
 
@@ -12,7 +14,9 @@ from ..pipeline.pipeline_step import PipelineStepType
 
 from ...solvers import Solver
 from ...models import count_parameters
-from ...utilities import get_logger, Split, SplitResult, EpochMetrics, METRICS_WITHOUT_REVERSED_SORTING
+from ...utilities import Split, SplitResult
+
+from ....shared import get_logger
 
 logger = get_logger(__name__)
 
@@ -99,18 +103,16 @@ class TrainingStep(PipelineStep):
         val_dataset = TrainingFactory.create_dataset(context, current_split.val, mode="val", finetuning=finetuning)
 
         split_hyper_params = context.hp_manager.get_only_params_to_optimize(hyper_params)
-        context.output_manager.add_split_specific_values(split_name=current_split_name,
-                                                         split_specific_values={'n_training_ids': len(train_dataset),
-                                                                                'n_validation_ids': len(val_dataset),
-                                                                                'split_hyper_params': split_hyper_params})
+        context.output_manager.update_training_result(current_split_name,
+                                                         n_training_ids=len(train_dataset),
+                                                         n_validation_ids=len(val_dataset),
+                                                         split_hyper_params=split_hyper_params)
         if context.config.get("save_split_ids"):
-            context.output_manager.add_split_specific_values(split_name=current_split_name,
-                                                             split_specific_values={
-                                                                 'training_ids': [sample.seq_id for sample in
-                                                                                  current_split.train],
-                                                                 'validation_ids': [sample.seq_id for sample in
-                                                                                    current_split.val],
-                                                             })
+            context.output_manager.update_training_result(current_split_name,
+                                                             training_ids=[sample.seq_id for sample in
+                                                                           current_split.train],
+                                                             validation_ids=[sample.seq_id for sample in
+                                                                             current_split.val])
 
         # DATALOADERS
         train_loader = TrainingFactory.create_dataloader(context=context, dataset=train_dataset,
@@ -124,10 +126,8 @@ class TrainingStep(PipelineStep):
 
         # Count and log number of free params
         n_free_parameters = count_parameters(model)
-        context.output_manager.add_split_specific_values(split_name=current_split_name,
-                                                         split_specific_values={
-                                                             'n_free_parameters': n_free_parameters,
-                                                         })
+        context.output_manager.update_training_result(current_split_name,
+                                                         n_free_parameters=n_free_parameters)
 
         # SOLVER
         solver = TrainingFactory.create_solver(context=context,
@@ -156,10 +156,8 @@ class TrainingStep(PipelineStep):
                                                            val_loader=val_loader)
 
         # Save metrics from best training epoch
-        context.output_manager.add_split_specific_values(split_name=current_split_name,
-                                                         split_specific_values={
-                                                             'best_training_epoch_metrics': best_epoch_metrics.to_dict()
-                                                         })
+        context.output_manager.update_training_result(current_split_name,
+                                                         best_epoch_metrics=best_epoch_metrics)
 
         return best_epoch_metrics, solver
 
@@ -176,11 +174,10 @@ class TrainingStep(PipelineStep):
         logger.info(f'Total training time for split {split_name}: {end_time - start_time} [s]')
 
         # Save training time for prosperity
-        context.output_manager.add_split_specific_values(split_name=split_name,
-                                                         split_specific_values={'start_time': start_time_abs,
-                                                                                'end_time': end_time_abs,
-                                                                                'elapsed_time': end_time - start_time}
-                                                         )
+        context.output_manager.update_training_result(split_name,
+                                                         start_time=start_time_abs,
+                                                         end_time=end_time_abs,
+                                                         elapsed_time=end_time - start_time)
 
         return epoch_iterations[solver.get_best_epoch()]
 
@@ -206,7 +203,7 @@ class TrainingStep(PipelineStep):
         if len(split_results) > 1:  # Not for hold_out cross validation
             logger.info(f"Using best model from split {best_split_result.name} "
                         f"(criterion: {choose_by_metric}) for test set evaluation")
-            context.output_manager.add_derived_values({'best_split': best_split_result.name})
+            context.output_manager.update_derived_values(best_split=best_split_result.name)
         return best_split_result
 
     @staticmethod
@@ -227,7 +224,7 @@ class TrainingStep(PipelineStep):
                 average_dict[key] = sum(
                     [split_result.best_epoch_metrics.validation[key] for split_result in split_results]) / n
             logger.info(f"Average split results: {average_dict}")
-            context.output_manager.add_derived_values({'average_outer_split_results': average_dict})
+            context.output_manager.update_derived_values(average_outer_split_results=average_dict)
 
     def process(self, context: PipelineContext) -> PipelineContext:
         del context.id2emb  # No longer required and should not be used later in the routine
@@ -256,7 +253,7 @@ class TrainingStep(PipelineStep):
         end_time_training = time.perf_counter()
         training_elapsed_time = end_time_training - start_time_training
 
-        context.output_manager.add_derived_values({'training_elapsed_time': training_elapsed_time})
+        context.output_manager.update_derived_values(training_elapsed_time=training_elapsed_time)
         logger.info(f"Total elapsed time for training: {training_elapsed_time} [s]")
         self._log_average_result_of_splits(context, split_results)
         best_split = self._get_best_model_of_splits(context=context, cross_validation_config=cross_validation_config,

@@ -1,13 +1,15 @@
 import math
-from pathlib import Path
-from typing import Callable, Dict, Optional, Union, List, Any
-
 import torch
+
+from pathlib import Path
 from torch.utils.data import DataLoader
+from typing import Callable, Dict, Optional, Union, List, Any
+from biotrainer_core.data_classes import EpochMetrics, BiotrainerPrediction, BiotrainerResiduePrediction
 
 from .solver import Solver
 from ..models.gp import GPModelAdapter
-from ..utilities import get_logger, EpochMetrics, BiotrainerSequencePrediction, BiotrainerResiduePrediction
+
+from ...shared import get_logger
 
 logger = get_logger(__name__)
 
@@ -208,10 +210,10 @@ class GPSolver(Solver):
             # TODO Negative accuracy as proxy for validation loss in classification tasks (lower = better)
             metrics['loss'] = metrics['mse'] if 'mse' in metrics else -1 * metrics.get('accuracy', 0)
             return {
-            'metrics': metrics,
-            'mapped_predictions': mapped_predictions,
-            'mapped_probabilities': mapped_probabilities
-        }
+                'metrics': metrics,
+                'mapped_predictions': mapped_predictions,
+                'mapped_probabilities': mapped_probabilities
+            }
 
     def model_has_dropout(self):
         return True  # TODO Hack for uncertainty estimation
@@ -219,7 +221,7 @@ class GPSolver(Solver):
     def inference_monte_carlo_dropout(self, dataloader: DataLoader,
                                       n_forward_passes: int = 30,
                                       confidence_level: float = 0.05) -> List[
-        Union[BiotrainerSequencePrediction, BiotrainerResiduePrediction]]:
+        Union[BiotrainerPrediction, BiotrainerResiduePrediction]]:
         """
         Calculate inference results with uncertainty estimates from GP predictive distributions.
 
@@ -275,7 +277,7 @@ class GPSolver(Solver):
                     _, prediction_by_mean = torch.max(gp_mean, dim=1)
 
                     for idx, prediction in enumerate(prediction_by_mean):
-                        predictions.append(BiotrainerSequencePrediction(
+                        predictions.append(BiotrainerPrediction(
                             seq_id=seq_ids[idx],
                             prediction=prediction.item(),
                             mcd_predictions=[s["prediction"][idx] for s in gp_samples],
@@ -311,7 +313,7 @@ class GPSolver(Solver):
                         gp_samples_list.append(sample)
 
                     for idx in range(X.shape[0]):
-                        predictions.append(BiotrainerSequencePrediction(
+                        predictions.append(BiotrainerPrediction(
                             seq_id=seq_ids[idx],
                             prediction=pred_mean[idx].item(),
                             mcd_predictions=[s[idx].item() for s in gp_samples_list],

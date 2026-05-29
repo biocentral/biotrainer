@@ -7,8 +7,8 @@ from biotrainer_core.data_classes import Protocol
 from ..pipeline import PipelineContext, PipelineStep
 from ..pipeline.pipeline_step import PipelineStepType
 
-from ...utilities import get_logger
-from ....embedders import EmbeddingService
+from ....shared import get_logger
+from ....embedding import EmbeddingService
 
 logger = get_logger(__name__)
 

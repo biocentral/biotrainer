@@ -21,7 +21,7 @@ from ..datasets import get_dataset, get_embeddings_collate_function
 from ..solvers import get_solver, get_mean_and_confidence_bounds, MetricsCalculator
 from ..utilities import EmbeddingDatasetSample, revert_mappings
 
-from ...embedders import EmbeddingService
+from ...embedding import EmbeddingService
 
 
 class Inferencer:

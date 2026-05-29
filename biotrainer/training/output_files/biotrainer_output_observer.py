@@ -1,18 +1,14 @@
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, Tuple
+from biotrainer_core.data_classes import EpochMetrics, BiotrainerModelResult
 
-from ..utilities import EpochMetrics
 
-
-@dataclass
-class OutputData:
-    config: Optional[Dict[str, Any]] = None
-    derived_values: Optional[Dict[str, Any]] = None
-    split_specific_values: Optional[Dict[str, Any]] = None
-    training_iteration: Optional[Tuple[str, EpochMetrics]] = None
-    test_results: Optional[Dict[str, Any]] = None
-    predictions: Optional[Dict[str, Any]] = None
+class OutputData(BaseModel):
+    current_model_result: BiotrainerModelResult = Field(description="Current model result")
+    training_iteration: Optional[Tuple[str, EpochMetrics]] = Field(default=None,
+                                                                   description="Current training iteration for fast "
+                                                                               "updates of observers like tensorboard")
 
 
 class BiotrainerOutputObserver(ABC):

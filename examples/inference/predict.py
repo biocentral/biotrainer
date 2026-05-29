@@ -1,5 +1,5 @@
 from biotrainer.inference import Inferencer
-from biotrainer.embedders import OneHotEncodingEmbedder
+from biotrainer.embedding import OneHotEncodingEmbedder
 
 
 def inference():

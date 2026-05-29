@@ -2,7 +2,7 @@ import unittest
 
 from pathlib import Path
 from copy import deepcopy
-from biotrainer.config import Configurator, ConfigurationException
+from biotrainer.training.config import Configurator, ConfigurationException
 
 configurations = {
     "minimal": {

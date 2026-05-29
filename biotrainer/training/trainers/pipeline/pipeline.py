@@ -3,7 +3,7 @@ from typing import Dict, List
 from .pipeline_context import PipelineContext
 from .pipeline_step import PipelineStep, PipelineStepType
 
-from ...utilities import get_logger
+from ....shared import get_logger
 
 logger = get_logger(__name__)
 

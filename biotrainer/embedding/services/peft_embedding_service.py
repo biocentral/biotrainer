@@ -4,7 +4,7 @@ from typing import Dict, Any
 from ..interfaces import EmbedderInterface
 from .embedding_service import EmbeddingService
 
-from ...utilities import get_logger
+from ...shared import get_logger
 
 logger = get_logger(__name__)
 

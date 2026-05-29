@@ -1,17 +1,18 @@
 from pathlib import Path
 from typing import Union, Dict, Any, Optional, List
-
-from .logging import clear_logging
+from biotrainer_core.data_classes import BiotrainerModelResult
 
 from ..config import Configurator
 from ..trainers import Trainer, Pipeline
 from ..output_files import OutputManager, output_observer_factory, BiotrainerOutputObserver
 
+from ...shared.logging import clear_logging
+
 
 def parse_config_file_and_execute_run(config: Union[str, Path, Dict[str, Any]],
                                       custom_pipeline: Optional[Pipeline] = None,
                                       custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
-                                      write_to_file: Optional[bool] = True) -> Dict[str, Any]:
+                                      write_to_file: Optional[bool] = True) -> BiotrainerModelResult:
     # Verify config via configurator
     configurator = None
     if isinstance(config, str):
@@ -35,7 +36,7 @@ def parse_config_file_and_execute_run(config: Union[str, Path, Dict[str, Any]],
 
     trainer: Trainer
     if custom_pipeline:
-        output_manager.add_derived_values(derived_values={"custom_pipeline": True})
+        output_manager.update_derived_values(custom_pipeline=True)
 
     # Run biotrainer pipeline
     trainer = Trainer(config=config,
@@ -47,9 +48,9 @@ def parse_config_file_and_execute_run(config: Union[str, Path, Dict[str, Any]],
 
     # Save output_variables in out.yml
     if write_to_file:
-        output_result = output_manager.write_to_file(output_dir=output_dir)
-    else:
-        output_result = output_manager.to_dict()
+        output_manager.write_to_file(output_dir=output_dir)
+
+    output_result = output_manager.model_result
 
     clear_logging()
 

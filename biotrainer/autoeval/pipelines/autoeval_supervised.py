@@ -3,7 +3,8 @@ import h5py
 import torch
 
 from pathlib import Path
-from biotrainer_core.data_classes import Protocol
+from biotrainer_core.input_files import read_FASTA
+from biotrainer_core.data_classes import Protocol, SequenceData
 from typing import Optional, Callable, Dict, Tuple, List, Any, Union, Iterable, Generator
 
 from .autoeval_setup import setup_pipeline
@@ -16,8 +17,7 @@ from ..core import AutoEvalFramework, AutoEvalConfigBank, AutoEvalTask
 from ...shared import get_device
 from ...training.trainers import Pipeline
 from ...training.output_files import BiotrainerOutputObserver
-from ...training.input_files import read_FASTA, BiotrainerSequenceRecord
-from ...embedders import EmbeddingService, get_embedding_service
+from ...embedding import EmbeddingService, get_embedding_service
 from ...training.utilities.executer import parse_config_file_and_execute_run
 
 
@@ -27,8 +27,8 @@ def get_unique_framework_sequences(framework: Union[str, AvailableFramework, Aut
                                    custom_storage_path: Optional[str] = None,
                                    force_download: Optional[bool] = False
                                    ) -> Tuple[
-    List[Tuple[AutoEvalTask, Dict[str, Any]]], Dict[str, BiotrainerSequenceRecord],
-    Dict[str, BiotrainerSequenceRecord]]:
+    List[Tuple[AutoEvalTask, Dict[str, Any]]], Dict[str, SequenceData],
+    Dict[str, SequenceData]]:
     framework_obj = framework
     if not isinstance(framework_obj, AutoEvalFramework):
         framework_obj = validate_input(framework,
@@ -59,8 +59,8 @@ def get_unique_framework_sequences(framework: Union[str, AvailableFramework, Aut
     return task_config_tuples, unique_per_residue, unique_per_sequence
 
 
-def _get_unique_sequences_for_all_tasks(tasks: Dict[str, Protocol]) -> Tuple[Dict[str,
-BiotrainerSequenceRecord], Dict[str, BiotrainerSequenceRecord]]:
+def _get_unique_sequences_for_all_tasks(tasks: Dict[str, Protocol]) -> Tuple[
+    Dict[str, SequenceData], Dict[str, SequenceData]]:
     unique_per_residue = {}
     unique_per_sequence = {}
     for task_input, protocol in tasks.items():
@@ -97,7 +97,7 @@ def _run_pipeline(embedder_name: str,
                   custom_storage_path: Optional[str] = None,
                   custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
                   force_download: Optional[bool] = False,
-                  device = None,
+                  device=None,
                   ) -> Generator[AutoEvalProgress, None, None]:
     task_config_tuples, unique_per_residue, unique_per_sequence = get_unique_framework_sequences(framework=framework,
                                                                                                  min_seq_length=min_seq_length,
@@ -278,10 +278,9 @@ def _wrap_custom_embedding_function(
             if len(embedding.shape) > 1 and embedding.shape[0] != len(sequence):
                 raise Exception(f"Per-residue embedding shape does not match sequence length - "
                                 f"Embedding Shape: {embedding.shape}, Sequence Length: {len(sequence)}!")
-            seq_record = BiotrainerSequenceRecord(seq_id=f"Seq{idx}", seq=sequence)
+            emb_record = SequenceData(seq_id=f"Seq{idx}", seq=sequence, embedding=embedding)
             EmbeddingService.store_embedding(embeddings_file_handle=embeddings_file,
-                                             seq_record=seq_record,
-                                             embedding=embedding,
+                                             emb_record=emb_record,
                                              store_by_hash=True)
             idx += 1
 

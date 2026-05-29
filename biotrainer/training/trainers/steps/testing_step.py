@@ -1,14 +1,16 @@
 from typing import List
-from biotrainer_core.data_classes import Protocol
+from biotrainer_core.data_classes import Protocol, BiotrainerPrediction
 
 from .training_factory import TrainingFactory
 
 from ..pipeline import PipelineContext, PipelineStep
 from ..pipeline.pipeline_step import PipelineStepType
 
+from ...utilities import revert_mappings
 from ...solvers import get_metrics_calculator
-from ...utilities import get_logger, revert_mappings, BiotrainerSequencePrediction
 from ...validations import SanityChecker, Bootstrapper
+
+from ....shared import get_logger
 
 logger = get_logger(__name__)
 
@@ -28,12 +30,12 @@ class TestingStep(PipelineStep):
             test_results['test_set_predictions'] = revert_mappings(protocol=context.config["protocol"],
                                                                    test_predictions=test_results['mapped_predictions'],
                                                                    class_int2str=context.target_manager.class_int2str)
-            context.output_manager.add_test_set_result(test_set_id=test_set_id,
-                                                       test_set_results={k: v for k, v in test_results.items()
-                                                                         if k != "mapped_probabilities"})
+            context.output_manager.add_test_result(test_set_id=test_set_id,
+                                                   **{k: v for k, v in test_results.items()
+                                                      if k != "mapped_probabilities"})
         else:
-            context.output_manager.add_test_set_result(test_set_id=test_set_id,
-                                                       test_set_results={'metrics': test_results['metrics']})
+            context.output_manager.add_test_result(test_set_id=test_set_id,
+                                                   metrics=test_results['metrics'])
 
         logger.info(f"Test set {test_set_id} metrics: {test_results['metrics']}")
         return test_results
@@ -47,8 +49,8 @@ class TestingStep(PipelineStep):
 
         # Monte Carlo Dropout Prediction Output only enabled for per-sequence protocols at the moment
         if protocol in Protocol.per_sequence_protocols() and solver.model_has_dropout():
-            mcd_results: List[BiotrainerSequencePrediction] = solver.inference_monte_carlo_dropout(pred_loader,
-                                                                                                   n_forward_passes=30)
+            mcd_results: List[BiotrainerPrediction] = solver.inference_monte_carlo_dropout(pred_loader,
+                                                                                           n_forward_passes=30)
             mcd_results = [result.revert_mappings(protocol=protocol, class_int2str=class_int2str) for result in
                            mcd_results]
             predictions = {
@@ -62,7 +64,7 @@ class TestingStep(PipelineStep):
                                           class_int2str=context.target_manager.class_int2str)
         # Remap hashes to actual ids
         predictions = {context.hash2id.get(seq_hash, seq_hash): pred for seq_hash, pred in predictions.items()}
-        context.output_manager.add_prediction_result(prediction_results=predictions)
+        context.output_manager.add_predictions(predictions=predictions)
 
         logger.info(f"Calculated predictions for {len(context.prediction_dataset)} samples!")
         return predictions
@@ -78,8 +80,8 @@ class TestingStep(PipelineStep):
                                                     metrics_calculator=metrics_calculator,
                                                     mapped_predictions=test_results["mapped_predictions"],
                                                     test_loader=test_loader)
-        context.output_manager.add_test_set_result(test_set_id=test_set_id,
-                                                   test_set_results={"bootstrapping": bootstrapping_dict})
+        context.output_manager.add_test_result(test_set_id=test_set_id,
+                                               bootstrapped_metrics=bootstrapping_dict)
         logger.info(f'Bootstrapping results for test set ({test_set_id}): {bootstrapping_dict}')
 
     def process(self, context: PipelineContext) -> PipelineContext:
@@ -139,11 +141,11 @@ class TestingStep(PipelineStep):
                                                mode="warn")
                 baseline_results, warnings = sanity_checker.check_test_results(test_set_id=test_set_id)
                 if baseline_results is not None and len(baseline_results) > 0:
-                    context.output_manager.add_test_set_result(test_set_id=test_set_id,
-                                                               test_set_results={"test_baselines": baseline_results})
+                    context.output_manager.add_test_result(test_set_id=test_set_id,
+                                                           baselines=baseline_results)
                 if len(warnings) > 0:
-                    context.output_manager.add_test_set_result(test_set_id=test_set_id,
-                                                               test_set_results={"sanity_check_warnings": warnings})
+                    context.output_manager.add_test_result(test_set_id=test_set_id,
+                                                           sanity_check_warnings=warnings)
 
         # PREDICTION
         prediction_dataset = context.prediction_dataset

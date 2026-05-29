@@ -5,7 +5,9 @@ from typing import Any, Dict, List, Optional
 from biotrainer_core.data_classes import Protocol
 from sklearn.model_selection import KFold, StratifiedKFold, RepeatedStratifiedKFold, RepeatedKFold, LeavePOut
 
-from ..utilities import Split, get_logger
+from ..utilities import Split
+
+from ...shared import get_logger
 
 logger = get_logger(__name__)
 

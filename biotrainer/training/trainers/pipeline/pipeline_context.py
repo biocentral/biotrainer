@@ -1,10 +1,12 @@
 from pathlib import Path
 from typing import Dict, Any, Union, List, Optional
+from biotrainer_core.data_classes import SequenceData
 
 from ..target_manager import TargetManager
+
 from ...output_files import OutputManager
-from ...input_files import BiotrainerSequenceRecord
-from ....embedders import PeftEmbeddingService
+
+from ....embedding import PeftEmbeddingService
 
 
 class PipelineContext:
@@ -22,7 +24,7 @@ class PipelineContext:
         self.model_hash = None
         self.hp_manager = None
         # Input Data
-        self.input_data: Optional[Union[Path, List[BiotrainerSequenceRecord]]] = None
+        self.input_data: Optional[Union[Path, List[SequenceData]]] = None
         self.hash2id = None  # Dict to Map from sequence hash to sequence id
         # Embedding + Projection
         self.id2emb = None

@@ -1,11 +1,10 @@
 import biotrainer.training
-import biotrainer.embedders
+import biotrainer.embedding
 import biotrainer.autoeval
 import biotrainer.bioengineer
 
-
-__version__ = training.utilities.__version__
+from biotrainer.shared import __version__
 
 __all__ = [
-    "training", "embedders", "autoeval", "bioengineer", "__version__"
+    "training", "embedding", "autoeval", "bioengineer", "__version__"
 ]

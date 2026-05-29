@@ -1,6 +1,6 @@
 from typing import Dict
+from biotrainer_core.data_classes import Protocol
 
-from ..protocols import Protocol
 
 def revert_mappings(protocol: Protocol, test_predictions: Dict, class_int2str: Dict[int, str]) -> Dict[str, str]:
     # If residue-to-class problem, map the integers back to the class labels (single letters)

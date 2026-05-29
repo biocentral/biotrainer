@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from .bioengineer_utils import compute_windowed_logits, get_optimal_window, MAX_CONTEXT_LENGTH, prepare_cat_jac_mutations, convert_cat_jac_to_contact_map
 from .bioengineer_data_classes import VariantScore, Variant, SingleMutationScore, ZeroShotMethod
 
-from ..embedders.interfaces import BiotrainerTokenizerMixin
+from ..embedding.interfaces import BiotrainerTokenizerMixin
 
 
 class BioEngineerModelWrapper(ABC, BiotrainerTokenizerMixin):

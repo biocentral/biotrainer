@@ -154,8 +154,7 @@ class SequenceData(BaseModel):
 
     def copy_with_embedding(self, embedding) -> SequenceData:
         """ Set the embedding for this sequence record and return sequence record """
-        return SequenceData(seq_id=self.seq_id, seq=self.seq,
-                            attributes=self.attributes, embedding=embedding)
+        return self.model_copy(update={"embedding": embedding}, deep=True)
 
     def copy_without_label(self) -> SequenceData:
         """Remove label and set to 'pred' (for active learning simulations)."""

@@ -5,8 +5,8 @@ from ruamel import yaml
 from pathlib import Path
 from typing import Any, Dict
 
-from biotrainer.utilities.cli import train
-from biotrainer.config import ConfigurationException
+from biotrainer.training import BiotrainerModel
+from biotrainer.training.config import ConfigurationException
 
 protocol_to_input = {
     'residue_to_class': {'input_file': "test_input_files/r2c/input.fasta",
@@ -60,7 +60,7 @@ def test_protocol_config(protocol: str, model: str, embedder_name: str, should_f
                               embedder_name=embedder_name,
                               tmp_config_dir=tmp_dir_name)
         try:
-            result = train(config=config)
+            result = BiotrainerModel().train(config=config)
             assert "test_results" in result, "Result does not contain test set metrics!"
             assert os.path.exists(f"{tmp_dir_name}/out.yml"), "No output file generated, run failed!"
         except ConfigurationException:

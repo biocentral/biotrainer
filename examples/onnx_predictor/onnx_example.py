@@ -1,4 +1,4 @@
-from biotrainer.embedders import OneHotEncodingEmbedder
+from biotrainer.embedding import OneHotEncodingEmbedder
 from biotrainer.inference import Inferencer
 
 from biotrainer.protocols import Protocol

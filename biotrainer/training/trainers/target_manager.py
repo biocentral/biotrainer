@@ -3,18 +3,19 @@ import itertools
 
 from pathlib import Path
 from collections import Counter
-from biotrainer_core.data_classes import Protocol
+from biotrainer_core.data_classes import Protocol, SequenceData
+from biotrainer_core.input_files import read_FASTA, get_split_lists, merge_protein_interactions
+from biotrainer_core.utils.constants import MASK_AND_LABELS_PAD_VALUE, INTERACTION_INDICATOR
 from typing import Dict, Any, Tuple, Optional, List, Union
 
-from ..input_files import BiotrainerSequenceRecord, merge_protein_interactions, get_split_lists, read_FASTA
-from ..utilities import MASK_AND_LABELS_PAD_VALUE, INTERACTION_INDICATOR, EmbeddingDatasetSample, get_logger, \
-    SequenceDatasetSample
+from ..utilities import EmbeddingDatasetSample, SequenceDatasetSample
 
+from ...shared import get_logger
 logger = get_logger(__name__)
 
 
 class TargetManager:
-    _input_records: Dict[str, BiotrainerSequenceRecord]  # Hash To Record (for Fine-Tuning)
+    _input_records: Dict[str, SequenceData]  # Hash To Record (for Fine-Tuning)
     _input_ids: Dict[str, List[str]] = dict()  # Hash To List of IDs
     _id2target: Dict[str, Any] = dict()  # Hash To Target
     _id2sets: Dict[str, str] = dict()  # Hash to Set
@@ -38,7 +39,7 @@ class TargetManager:
         "concat": lambda embedding_left, embedding_right: torch.concat([embedding_left, embedding_right])
     }
 
-    def __init__(self, protocol: Protocol, input_data: Union[str, Path, List[BiotrainerSequenceRecord]],
+    def __init__(self, protocol: Protocol, input_data: Union[str, Path, List[SequenceData]],
                  ignore_file_inconsistencies: Optional[bool] = False,
                  cross_validation_method: str = "",
                  interaction: Optional[str] = None):
@@ -74,10 +75,10 @@ class TargetManager:
         # Parse FASTA protein sequences if not done yet
         if isinstance(self._input_data, str) or isinstance(self._input_data, Path):
             # TODO Adapt to csv, change order of pipeline steps
-            input_records: List[BiotrainerSequenceRecord] = read_FASTA(self._input_data)
+            input_records: List[SequenceData] = read_FASTA(self._input_data)
         else:
-            input_records: List[BiotrainerSequenceRecord] = self._input_data
-        assert isinstance(input_records[0], BiotrainerSequenceRecord)
+            input_records: List[SequenceData] = self._input_data
+        assert isinstance(input_records[0], SequenceData)
 
         # Store records for fine-tuning sequence datasets
         self._input_records = {seq_record.get_hash(): seq_record for seq_record in input_records}
@@ -90,7 +91,7 @@ class TargetManager:
             self._input_ids[seq_hash].append(seq_record.seq_id)
 
         # id2X => sequence hash to X
-        self._id2target, id2masks, self._id2sets = BiotrainerSequenceRecord.get_dicts(input_records)
+        self._id2target, id2masks, self._id2sets = SequenceData.get_dicts(input_records)
         assert len(self._id2target.keys()) == len(id2masks.keys()) \
                == len(self._id2sets.keys()), f"Length mismatch after reading input file!"
 
@@ -187,7 +188,7 @@ class TargetManager:
                     else target_with_mask.float()
                 self._id2target[seq_hash] = target_with_mask
 
-    def _validate_targets(self, id2emb: Dict[str, torch.tensor]):
+    def _validate_targets(self, id2emb: Dict[str, torch.Tensor]):
         """
         1. Check if number of embeddings and corresponding labels match for every protocol:
             # embeddings == # labels --> SUCCESS

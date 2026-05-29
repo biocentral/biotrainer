@@ -5,6 +5,7 @@ from scipy.stats import pearsonr
 from torch.utils.data import DataLoader
 from typing import Dict, List, Any, Optional
 from biotrainer_core.data_classes import Protocol
+from biotrainer_core.utils.constants import MASK_AND_LABELS_PAD_VALUE, INTERACTION_INDICATOR
 
 from .bootstrapper import Bootstrapper
 
@@ -12,7 +13,8 @@ from ..losses import get_loss
 from ..models import get_model
 from ..optimizers import get_optimizer
 from ..solvers import MetricsCalculator, get_solver
-from ..utilities import INTERACTION_INDICATOR, get_logger, MASK_AND_LABELS_PAD_VALUE
+
+from ...shared import get_logger
 
 logger = get_logger(__name__)
 

@@ -8,20 +8,23 @@ class TensorboardWriter(BiotrainerOutputObserver):
     def __init__(self, log_dir: Path):
         super().__init__()
         self.writer = SummaryWriter(log_dir=str(log_dir))
+        self._wrote_config = False
 
     def update(self, data: OutputData) -> None:
-        if data.config:
+        config = data.current_model_result.config
+        if self._wrote_config is False and len(config) > 0:
             self.writer.add_hparams({
-                'model': data.config["model_choice"],
-                'num_epochs': data.config["num_epochs"],
-                'use_class_weights': data.config["use_class_weights"],
-                'learning_rate': data.config["learning_rate"],
-                'batch_size': data.config["batch_size"],
-                'embedder_name': data.config["embedder_name"],
-                'seed': data.config["seed"],
-                'loss': data.config["loss_choice"],
-                'optimizer': data.config["optimizer_choice"],
+                'model': config["model_choice"],
+                'num_epochs': config["num_epochs"],
+                'use_class_weights': config["use_class_weights"],
+                'learning_rate': config["learning_rate"],
+                'batch_size': config["batch_size"],
+                'embedder_name': config["embedder_name"],
+                'seed': config["seed"],
+                'loss': config["loss_choice"],
+                'optimizer': config["optimizer_choice"],
             }, {})
+            self._wrote_config = True
         if data.training_iteration:
             split = data.training_iteration[0]  # TODO Add split to tensorboard
             epoch_metrics = data.training_iteration[1]

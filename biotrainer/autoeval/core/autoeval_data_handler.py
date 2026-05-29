@@ -9,10 +9,9 @@ from pathlib import Path
 from appdirs import user_cache_dir
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union
+from biotrainer_core.input_files import filter_FASTA
 
 from .autoeval_task import AutoEvalTask
-
-from ...training.input_files import filter_FASTA
 
 
 class AutoEvalDataHandler(ABC):
@@ -147,7 +146,8 @@ class AutoEvalDataHandler(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> List[AutoEvalTask]:
+    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> List[
+        AutoEvalTask]:
         """
         Get tasks to execute in the autoeval pipeline via biotrainer.
 

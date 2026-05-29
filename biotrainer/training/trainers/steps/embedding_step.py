@@ -3,14 +3,13 @@ import torch
 
 from pathlib import Path
 from typing import Dict, Optional
-from biotrainer_core.data_classes import Protocol
+from biotrainer_core.data_classes import Protocol, SequenceData
 
 from ..pipeline import PipelineContext, PipelineStep
 from ..pipeline.pipeline_step import PipelineStepType
-from ...input_files import BiotrainerSequenceRecord
 
-from ...utilities import get_logger
-from ....embedders import get_embedding_service, EmbeddingService, EmbeddingStatsTracker, EmbeddingStats
+from ....embedding import get_embedding_service, EmbeddingService, EmbeddingStatsTracker, EmbeddingStats
+from ....shared import get_logger
 
 logger = get_logger(__name__)
 
@@ -58,7 +57,7 @@ class EmbeddingStep(PipelineStep):
         else:
             logger.info(f'Embeddings file was found at {embeddings_file}. Embeddings have not been computed.')
 
-        context.output_manager.add_derived_values({'embeddings_file': str(embeddings_file)})
+        context.output_manager.update_derived_values(embeddings_file=str(embeddings_file))
 
         # Mapping from id to embeddings
         ids_to_load = [seq_record.get_hash() for seq_record in context.input_data]
@@ -75,17 +74,17 @@ class EmbeddingStep(PipelineStep):
 
         assert len(id2emb) > 0, f"No embeddings loaded from embeddings file {embeddings_file}!"
 
-        context.output_manager.add_derived_values(
-            {'embedding_stats': embedding_stats.model_dump() if embedding_stats is not None else None})
+        context.output_manager.update_derived_values(
+            embedding_stats=embedding_stats if embedding_stats is not None else None)
         context.id2emb = id2emb
         return context
 
     @staticmethod
-    def _extract_embeddings(context: PipelineContext) -> Optional[Dict[str, torch.tensor]]:
+    def _extract_embeddings(context: PipelineContext) -> Optional[Dict[str, torch.Tensor]]:
         input_data = context.input_data
         if isinstance(input_data, list):
             first_value = input_data[0]
-            if isinstance(first_value, BiotrainerSequenceRecord):
+            if isinstance(first_value, SequenceData):
                 first_embedding = first_value.embedding
                 if first_embedding is not None:
                     id2emb = {seq_record.get_id_for_id2emb(): seq_record.embedding for seq_record in input_data}

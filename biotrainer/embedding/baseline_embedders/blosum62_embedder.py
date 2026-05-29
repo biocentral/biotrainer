@@ -2,9 +2,9 @@ import torch
 import numpy as np
 import blosum as bl
 
-from ..interfaces import BaselineEmbedder
+from biotrainer_core.utils.constants import AMINO_ACIDS
 
-from ...utilities import AMINO_ACIDS
+from ..interfaces import BaselineEmbedder
 
 
 class Blosum62Embedder(BaselineEmbedder):

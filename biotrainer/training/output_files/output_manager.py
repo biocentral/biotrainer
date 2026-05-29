@@ -5,35 +5,35 @@ from ruamel import yaml
 from pathlib import Path
 from copy import deepcopy
 from typing import Dict, Any, List, Optional
-from biotrainer_core.data_classes import Protocol, EpochMetrics
+from biotrainer_core.data_classes import Protocol, EpochMetrics, BiotrainerModelResult, TrainingResult, DerivedValues, \
+    TestResult, BiotrainerPrediction
 
 from .biotrainer_output_observer import BiotrainerOutputObserver, OutputData
 
-from ..utilities import EpochMetrics, get_device, get_logger, __version__, FeatureScaler
+from ..utilities import FeatureScaler
+
+from ...shared import get_logger, get_device, __version__
 
 logger = get_logger(__name__)
 
 
 class OutputManager:
-    """Manages training outputs, results, and logging in a structured way."""
+    """Manages training outputs with type-safe model and observer notifications."""
 
     def __init__(self, observers: List[BiotrainerOutputObserver]):
-        self._observers: List[BiotrainerOutputObserver] = observers
-
-        self._input_config = {}
-        self._derived_values = {}
-        self._split_specific_values = {}  # TODO Refactor into _training_results
-        self._training_results: Dict[str, List[EpochMetrics]] = {}  # split_name -> Epoch Metrics
-        self._test_results = {}
-        self._predictions: Dict[str, Any] = {}  # seq_id -> prediction
+        self._observers = observers
+        self._model_result = BiotrainerModelResult(
+            derived_values=DerivedValues(),
+        )
 
     def _notify_observers(self, data: OutputData) -> None:
         for observer in self._observers:
             try:
                 observer.update(data)
             except Exception as e:
-                logger.error(f"Error in observer during output event: {str(e)}")
+                logger.error(f"Error in observer: {str(e)}")
 
+    # ============= Config =============
     @staticmethod
     def _convert_config_value(key: str, value: Any) -> Any:
         if key == "input_data":
@@ -47,78 +47,124 @@ class OutputManager:
         return value
 
     def add_config(self, config: Dict[str, Any]) -> None:
-        self._input_config = {str(k): self._convert_config_value(k, v) for k, v in
-                              config.items()}
+        converted_config = {
+            str(k): self._convert_config_value(k, v)
+            for k, v in config.items()
+        }
+        self._model_result.config = converted_config
+        self._notify_observers(OutputData(current_model_result=self._model_result))
 
-        self._notify_observers(data=OutputData(config=self._input_config))
+    # ============= Derived Values =============
+    def update_derived_values(self, **kwargs) -> None:
+        """Update derived values with type checking.
 
-    def add_derived_values(self, derived_values: Dict[str, Any]):
-        self._derived_values.update(derived_values)
+        Example:
+            output_manager.update_derived_values(
+                class_int2str=target_manager.class_int2str, class_str2int=target_manager.class_str2int)
+        """
+        for key, value in kwargs.items():
+            if hasattr(self._model_result.derived_values, key):
+                setattr(self._model_result.derived_values, key, value)
+            else:
+                assert False, f"Unknown derived value field: {key}"
 
-        self._notify_observers(data=OutputData(derived_values=self._derived_values))
+        self._notify_observers(
+            OutputData(current_model_result=self._model_result)  # TODO
+        )
 
-    def add_split_specific_values(self, split_name: str, split_specific_values: Dict[str, Any]):
-        if split_name not in self._split_specific_values:
-            self._split_specific_values[split_name] = {}
-        self._split_specific_values[split_name].update(split_specific_values)
+    # ============= Training Results =============
+    def add_training_iteration(self, split_name: str, epoch_metrics: EpochMetrics) -> None:
+        if split_name not in self._model_result.training_results:
+            self._model_result.training_results[split_name] = TrainingResult()
 
-        self._notify_observers(data=OutputData(split_specific_values=self._split_specific_values))
+        result = self._model_result.training_results[split_name]
+        result.training_losses.append(epoch_metrics.training["loss"])
+        result.validation_losses.append(epoch_metrics.validation["loss"])
 
-    def add_training_iteration(self, split_name: str, epoch_metrics: EpochMetrics):
-        if split_name not in self._training_results:
-            self._training_results[split_name] = []
-        self._training_results[split_name].append(epoch_metrics)
+        # Update best epoch if needed
+        # TODO?
+        if (result.best_epoch_metrics is None or
+                epoch_metrics.validation["loss"] < result.best_epoch_metrics.validation["loss"]):
+            result.best_epoch_metrics = epoch_metrics
 
-        self._notify_observers(data=OutputData(training_iteration=(split_name, epoch_metrics)))
+        self._notify_observers(
+            OutputData(current_model_result=self._model_result, training_iteration=(split_name, epoch_metrics))
+        )
 
-    def add_test_set_result(self, test_set_id: str, test_set_results: Dict[str, Any]):
-        if test_set_id not in self._test_results:
-            self._test_results[test_set_id] = {}
-        self._test_results[test_set_id].update(test_set_results)
+    def update_training_result(self, split_name: str, **kwargs) -> None:
+        """Update training result fields for a split.
 
-        self._notify_observers(data=OutputData(test_results=self._test_results))
-
-    def add_prediction_result(self, prediction_results: Dict[str, Any]):
-        assert len(self._predictions) == 0, f"Tried to add predictions more than one time!"
-        self._predictions.update(prediction_results)
-
-        self._notify_observers(data=OutputData(predictions=self._predictions))
-
-    @staticmethod
-    def _sort_dict(d: dict):
-        return dict(sorted(d.items(), key=lambda t: t[0]))
-
-    def _format_splits_with_results(self) -> Dict[str, Any]:
-        result = deepcopy(self._split_specific_values)
-        for split_name, epoch_metrics in self._training_results.items():
-            result[split_name].update({
-                "training_loss": {},
-                "validation_loss": {}
-            })
-            for epoch_metric in epoch_metrics:
-                epoch_str = str(epoch_metric.epoch)
-                result[split_name]["training_loss"][epoch_str] = epoch_metric.training["loss"]
-                result[split_name]["validation_loss"][epoch_str] = epoch_metric.validation["loss"]
-        return result
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {"config": self._sort_dict(self._input_config),
-                "database_type": "PPI" if self._input_config.get("interaction") is not None else "Protein",
-                "derived_values": self._sort_dict(self._derived_values),
-                "training_results": self._sort_dict(self._format_splits_with_results()),
-                "test_results": self._sort_dict(self._test_results),
-                "predictions": self._sort_dict(self._predictions),
-                }
-
-    def write_to_file(self, output_dir: Path) -> Dict[str, Any]:
-        output_result = self.to_dict()
-        dumper = yaml.RoundTripDumper
-        with open(output_dir / "out.yml", "w") as f:
-            f.write(
-                yaml.dump(output_result, Dumper=dumper, default_flow_style=False)
+        Example:
+            output_manager.update_training_result(
+                "split_0",
+                n_training_ids=100,
+                split_hyper_params={"lr": 0.001}
             )
+        """
+        if split_name not in self._model_result.training_results:
+            self._model_result.training_results[split_name] = TrainingResult()
 
-        return output_result
+        result = self._model_result.training_results[split_name]
+        for key, value in kwargs.items():
+            if hasattr(result, key):
+                setattr(result, key, value)
+            else:
+                assert False, f"Unknown training result field: {key}"
+
+        self._notify_observers(
+            OutputData(current_model_result=self._model_result)
+        )
+
+    # ============= Test Results =============
+    def add_test_result(self, test_set_id: str, **kwargs) -> None:
+        """Add or update test results.
+
+        Example:
+            output_manager.add_test_result(
+                "test_set_1",
+                metrics={"accuracy": 0.95},
+                bootstrapped_metrics=[...]
+            )
+        """
+        if test_set_id not in self._model_result.test_results:
+            self._model_result.test_results[test_set_id] = TestResult()
+
+        result = self._model_result.test_results[test_set_id]
+        for key, value in kwargs.items():
+            if hasattr(result, key):
+                setattr(result, key, value)
+            else:
+                assert False, f"Unknown test result field: {key}"
+
+        self._notify_observers(
+            OutputData(current_model_result=self._model_result)
+        )
+
+    # ============= Predictions =============
+    def add_predictions(self, predictions: List[BiotrainerPrediction]) -> None:
+        if self._model_result.predictions:
+            assert False, "Predictions already set!"
+
+        self._model_result.predictions = predictions
+        self._notify_observers(OutputData(current_model_result=self._model_result))
+
+    # ============= Access & Serialization =============
+    @property
+    def model_result(self) -> BiotrainerModelResult:
+        """Read-only access to the underlying model result."""
+        return self._model_result
+
+    def write_to_file(self, output_dir: Path) -> None:
+        """Write results to YAML file."""
+        output_dict = self._model_result.model_dump(exclude_none=True)
+
+        with open(output_dir / "out.yml", "w") as f:
+            yaml.dump(
+                output_dict,
+                f,
+                Dumper=yaml.RoundTripDumper,
+                default_flow_style=False
+            )
 
 
 class InferenceOutputManager(OutputManager):

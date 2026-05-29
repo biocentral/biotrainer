@@ -1,9 +1,9 @@
 import torch
 import numpy as np
 
-from ..interfaces import BaselineEmbedder
+from biotrainer_core.utils.constants import AMINO_ACIDS
 
-from ...utilities import AMINO_ACIDS
+from ..interfaces import BaselineEmbedder
 
 # Create a mapping of amino acids to their index
 AA_TO_INDEX = {aa: i for i, aa in enumerate(AMINO_ACIDS)}

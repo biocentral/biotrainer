@@ -14,9 +14,8 @@ from .bioengineer_baselines import BioEngineerBaseline, ConstantEngineerBaseline
 from .bioengineer_data_classes import VariantScore, ZeroShotMethod, Variant, RankingResult, ZeroShotContactSingleProtein, ZeroShotContactDatasetResult
 from .bioengineer_metrics import evaluate_contact_map
 
-from ..shared import get_device, is_device_cuda
+from ..shared import get_device
 from ..inference import Inferencer
-from ..input_files import read_FASTA
 from ..solvers.metrics_calculator import SequenceRegressionMetricsCalculator
 
 

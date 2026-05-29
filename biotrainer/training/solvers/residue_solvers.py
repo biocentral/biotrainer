@@ -3,11 +3,10 @@ import torch
 from torch.utils.data import DataLoader
 from contextlib import nullcontext as _nullcontext
 from typing import Dict, Union, Optional, Callable, List
+from biotrainer_core.data_classes import BiotrainerResiduePrediction
 
 from .solver import Solver
 from .solver_utils import get_mean_and_confidence_bounds
-
-from ..utilities import BiotrainerResiduePrediction
 
 
 class ResidueSolver(Solver):

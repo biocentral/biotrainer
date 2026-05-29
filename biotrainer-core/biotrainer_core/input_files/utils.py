@@ -1,10 +1,10 @@
 from typing import List, Dict, Tuple
-from biotrainer_core.utils.constants import INTERACTION_INDICATOR
 
-from .sequence_training_data import BiotrainerSequenceRecord
+from ..data_classes import SequenceData
+from ..utils.constants import INTERACTION_INDICATOR
 
 
-def merge_protein_interactions(seq_records: List[BiotrainerSequenceRecord]) -> Dict[str, Dict[str, str]]:
+def merge_protein_interactions(seq_records: List[SequenceData]) -> Dict[str, Dict[str, str]]:
     """
     :param seq_records: a list of BiotrainerSequenceRecord
     :return: A dictionary of ids and their attributes
