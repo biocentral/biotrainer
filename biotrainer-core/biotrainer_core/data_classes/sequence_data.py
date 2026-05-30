@@ -28,9 +28,9 @@ class SequenceData(BaseModel):
     seq: str = Field(description="Sequence")
 
     # User-friendly named parameters (mapped into attributes)
-    label: Optional[str] = Field(default=None, exclude=True, description="Shortcut for TARGET attribute")
-    set: Optional[str] = Field(default=None, exclude=True, description="Shortcut for SET attribute")
-    mask: Optional[str] = Field(default=None, exclude=True, description="Shortcut for MASK attribute")
+    label: Optional[str] = Field(default=None, description="Shortcut for TARGET attribute")
+    set: Optional[str] = Field(default=None, description="Shortcut for SET attribute")
+    mask: Optional[str] = Field(default=None, description="Shortcut for MASK attribute")
 
     # Generic attributes dict (stores everything)
     attributes: Optional[Dict[str, Any]] = Field(default=None, description="Attributes such as TARGET, SET or MASK")

@@ -1,6 +1,6 @@
 from .protocol import Protocol
+from .sequence_data import SequenceData
 from .embedding_stats import EmbeddingStats
-from .sequence_training_data import SequenceData
 from .biotrainer_model_result import BiotrainerModelResult, DerivedValues, TrainingResult, TestResult, \
     BiotrainerModelUpdate
 from .biotrainer_prediction import BiotrainerPrediction, BiotrainerResiduePrediction
