@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Union
 
 from .tensorboard_writer import TensorboardWriter
 from .biotrainer_output_observer import BiotrainerOutputObserver
-from .output_manager import OutputManager, InferenceOutputManager, OutputData
+from .output_manager import OutputManager, InferenceOutputManager
 
 
 def output_observer_factory(output_dir: Union[Path, str], config: Dict[str, Any]) -> List[BiotrainerOutputObserver]:
@@ -17,5 +17,5 @@ def output_observer_factory(output_dir: Union[Path, str], config: Dict[str, Any]
     return result
 
 
-__all__ = ["OutputManager", "OutputData", "InferenceOutputManager", "BiotrainerOutputObserver",
+__all__ = ["OutputManager", "InferenceOutputManager", "BiotrainerOutputObserver",
            "output_observer_factory"]

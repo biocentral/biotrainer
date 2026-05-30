@@ -1,7 +1,8 @@
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
+from biotrainer_core.data_classes import BiotrainerModelUpdate
 
-from .biotrainer_output_observer import BiotrainerOutputObserver, OutputData
+from .biotrainer_output_observer import BiotrainerOutputObserver
 
 class TensorboardWriter(BiotrainerOutputObserver):
 
@@ -10,7 +11,7 @@ class TensorboardWriter(BiotrainerOutputObserver):
         self.writer = SummaryWriter(log_dir=str(log_dir))
         self._wrote_config = False
 
-    def update(self, data: OutputData) -> None:
+    def update(self, data: BiotrainerModelUpdate) -> None:
         config = data.current_model_result.config
         if self._wrote_config is False and len(config) > 0:
             self.writer.add_hparams({

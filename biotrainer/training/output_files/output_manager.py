@@ -6,9 +6,9 @@ from pathlib import Path
 from copy import deepcopy
 from typing import Dict, Any, List, Optional
 from biotrainer_core.data_classes import Protocol, EpochMetrics, BiotrainerModelResult, TrainingResult, DerivedValues, \
-    TestResult, BiotrainerPrediction
+    TestResult, BiotrainerPrediction, BiotrainerModelUpdate
 
-from .biotrainer_output_observer import BiotrainerOutputObserver, OutputData
+from .biotrainer_output_observer import BiotrainerOutputObserver
 
 from ..utilities import FeatureScaler
 
@@ -26,7 +26,7 @@ class OutputManager:
             derived_values=DerivedValues(),
         )
 
-    def _notify_observers(self, data: OutputData) -> None:
+    def _notify_observers(self, data: BiotrainerModelUpdate) -> None:
         for observer in self._observers:
             try:
                 observer.update(data)
@@ -52,7 +52,7 @@ class OutputManager:
             for k, v in config.items()
         }
         self._model_result.config = converted_config
-        self._notify_observers(OutputData(current_model_result=self._model_result))
+        self._notify_observers(BiotrainerModelUpdate(current_model_result=self._model_result))
 
     # ============= Derived Values =============
     def update_derived_values(self, **kwargs) -> None:
@@ -69,7 +69,7 @@ class OutputManager:
                 assert False, f"Unknown derived value field: {key}"
 
         self._notify_observers(
-            OutputData(current_model_result=self._model_result)  # TODO
+            BiotrainerModelUpdate(current_model_result=self._model_result)  # TODO
         )
 
     # ============= Training Results =============
@@ -88,7 +88,8 @@ class OutputManager:
             result.best_epoch_metrics = epoch_metrics
 
         self._notify_observers(
-            OutputData(current_model_result=self._model_result, training_iteration=(split_name, epoch_metrics))
+            BiotrainerModelUpdate(current_model_result=self._model_result,
+                                  training_iteration=(split_name, epoch_metrics))
         )
 
     def update_training_result(self, split_name: str, **kwargs) -> None:
@@ -112,7 +113,7 @@ class OutputManager:
                 assert False, f"Unknown training result field: {key}"
 
         self._notify_observers(
-            OutputData(current_model_result=self._model_result)
+            BiotrainerModelUpdate(current_model_result=self._model_result)
         )
 
     # ============= Test Results =============
@@ -137,7 +138,7 @@ class OutputManager:
                 assert False, f"Unknown test result field: {key}"
 
         self._notify_observers(
-            OutputData(current_model_result=self._model_result)
+            BiotrainerModelUpdate(current_model_result=self._model_result)
         )
 
     # ============= Predictions =============
@@ -146,7 +147,7 @@ class OutputManager:
             assert False, "Predictions already set!"
 
         self._model_result.predictions = predictions
-        self._notify_observers(OutputData(current_model_result=self._model_result))
+        self._notify_observers(BiotrainerModelUpdate(current_model_result=self._model_result))
 
     # ============= Access & Serialization =============
     @property

@@ -1,7 +1,7 @@
 from ruamel import yaml
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import Any, Dict, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union, Tuple
 
 from .embedding_stats import EmbeddingStats
 from .biotrainer_prediction import BiotrainerPrediction
@@ -79,3 +79,10 @@ class BiotrainerModelResult(BaseModel):
             return cls.model_validate_json(training_output)
         else:
             raise ValueError(f"Unsupported file type: {file_path.suffix}")
+
+
+class BiotrainerModelUpdate(BaseModel):
+    current_model_result: BiotrainerModelResult = Field(description="Current model result")
+    training_iteration: Optional[Tuple[str, EpochMetrics]] = Field(default=None,
+                                                                   description="Current training iteration for fast "
+                                                                               "updates of observers like tensorboard")
