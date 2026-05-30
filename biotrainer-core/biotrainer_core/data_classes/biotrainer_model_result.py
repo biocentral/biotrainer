@@ -29,10 +29,6 @@ class DerivedValues(BaseModel):
     training_elapsed_time: Optional[float] = Field(default=None, description="Elapsed time in seconds for training")
 
 
-class SplitSpecificValues(BaseModel):
-    """ Values specific to a split. """
-
-
 class TrainingResult(BaseModel):
     """ Training results for each cross-validation split. """
     n_training_ids: Optional[int] = Field(default=None, description="Number of sequences in the training set")

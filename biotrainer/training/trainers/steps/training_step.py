@@ -203,7 +203,8 @@ class TrainingStep(PipelineStep):
         if len(split_results) > 1:  # Not for hold_out cross validation
             logger.info(f"Using best model from split {best_split_result.name} "
                         f"(criterion: {choose_by_metric}) for test set evaluation")
-            context.output_manager.update_derived_values(best_split=best_split_result.name)
+            # TODO Re-enable CV logging to output file
+            # context.output_manager.update_derived_values(best_split=best_split_result.name)
         return best_split_result
 
     @staticmethod
@@ -218,13 +219,20 @@ class TrainingStep(PipelineStep):
     def _log_average_result_of_splits(context: PipelineContext, split_results: List[SplitResult]):
         n = len(split_results)
         if n > 1:  # Not for hold_out cross validation
-            average_dict = {}
+            average_dict_training = {}
+            average_dict_validation = {}
             result_metric_keys = split_results[0].best_epoch_metrics.validation.keys()
             for key in result_metric_keys:
-                average_dict[key] = sum(
+                average_dict_training[key] = sum(
+                    [split_result.best_epoch_metrics.training[key] for split_result in split_results]) / n
+                average_dict_validation[key] = sum(
                     [split_result.best_epoch_metrics.validation[key] for split_result in split_results]) / n
-            logger.info(f"Average split results: {average_dict}")
-            context.output_manager.update_derived_values(average_outer_split_results=average_dict)
+            average_epoch = sum([split_result.best_epoch_metrics.epoch for split_result in split_results]) / n
+            average_epoch_metrics = EpochMetrics(epoch=int(average_epoch),
+                                                 training=average_dict_training,
+                                                 validation=average_dict_validation)
+            logger.info(f"Average split results (validation): {average_dict_validation}")
+            context.output_manager.update_training_result("average", best_epoch_metrics=average_epoch_metrics)
 
     def process(self, context: PipelineContext) -> PipelineContext:
         del context.id2emb  # No longer required and should not be used later in the routine

@@ -151,7 +151,7 @@ class EmbeddingService:
 
         try:
             for seq_record, embedding in tqdm(
-                    self._embeddings_generator(seq_records, use_reduced_embeddings),
+                    self._embeddings_generator(seq_records, use_reduced_embeddings, embedding_stats_tracker),
                     total=len(seq_records),
                     desc="Computing Embeddings",
                     disable=is_running_in_notebook()
@@ -159,16 +159,14 @@ class EmbeddingService:
                 # Convert to numpy and move to CPU before putting in queue
                 embedding_np = embedding.cpu().numpy()
 
-                if embedding_stats_tracker is not None:
-                    embedding_stats_tracker.track(embedding_np)
-
                 emb_record = seq_record.copy_with_embedding(embedding=embedding_np)
 
                 embedding_queue.put(emb_record)
-
             # Signal worker to stop after embeddings are computed
             embedding_queue.put(None)
-
+        except Exception as e:
+            embedding_queue.put(None) # Stop on Exception
+            raise e
         finally:
             io_process.join()
 
@@ -199,7 +197,7 @@ class EmbeddingService:
             reduce: If True, embeddings will be reduced to per-sequence embeddings.
 
         Yields:
-            Tuple[BiotrainerSequenceRecord, torch.tensor]: Tuple of (BiotrainerSequenceRecord, embedding)
+            SequenceData: SequenceData object with the computed embedding (as torch.tensor).
         """
 
         # Process input data
@@ -237,7 +235,8 @@ class EmbeddingService:
 
     def _embeddings_generator(self,
                               seq_records: List[SequenceData],
-                              use_reduced_embeddings: bool) \
+                              use_reduced_embeddings: bool,
+                              embedding_stats_tracker: Optional[EmbeddingStatsTracker] = None) \
             -> Generator[Tuple[SequenceData, torch.Tensor], None, None]:
         """
         Core embedding computation logic that can be used by both save and generate methods
@@ -255,6 +254,9 @@ class EmbeddingService:
         for seq_record, embedding in zip(seq_records, embedding_iter):
             if embedding is None:
                 raise Exception("Encountered None value during embedding calculation!")
+
+            if embedding_stats_tracker is not None:
+                embedding_stats_tracker.track(embedding)
 
             if use_reduced_embeddings:
                 # TODO Batching might improve speed here

@@ -4,7 +4,7 @@ import numpy as np
 import torch._dynamo
 
 from typing import Dict, Union, List
-from biotrainer_core.data_classes import Protocol, BootstrappedMetric
+from biotrainer_core.data_classes import Protocol, BootstrappedMetric, BiotrainerResiduePrediction
 
 from biotrainer.training.inference import Inferencer
 from biotrainer.embedding import OneHotEncodingEmbedder
@@ -248,7 +248,6 @@ class InferencerTests(unittest.TestCase):
         )
 
         # Basic structure tests - group residue predictions by seq_id
-        from biotrainer.utilities import BiotrainerResiduePrediction
         r2c_by_seq = {}
         for pred in r2c_list:
             if isinstance(pred, BiotrainerResiduePrediction):
