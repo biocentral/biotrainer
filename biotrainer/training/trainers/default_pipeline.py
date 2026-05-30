@@ -1,8 +1,13 @@
-from typing import Optional, Any, Dict
+from junban import Pipeline
+from typing import Any, Dict
 
-from .pipeline import Pipeline, PipelineStep
+from .pipeline_context import BiotrainerPipelineContext
 from .steps import SetupStep, ScalingStep, EmbeddingStep, FineTuningEmbeddingStep, ProjectionStep, DataLoadingStep, \
     TrainingStep, TestingStep, PostProcessStep, InputValidationStep, DatasetCreationStep
+
+from ...shared import get_logger
+
+logger = get_logger(__name__)
 
 
 class DefaultPipeline:
@@ -13,58 +18,35 @@ class DefaultPipeline:
             self.pipeline = self._default_pipeline()
 
     @staticmethod
-    def _default_pipeline():
-        return (Pipeline()
-                .add_step(SetupStep())
-                .add_step(InputValidationStep())
-                .add_step(EmbeddingStep())
-                .add_step(DataLoadingStep())
-                .add_step(ScalingStep())
-                .add_step(ProjectionStep())
-                .add_step(DatasetCreationStep())
-                .add_step(TrainingStep())
-                .add_step(TestingStep())
-                .add_step(PostProcessStep())
-                )
+    def _default_pipeline() -> Pipeline[BiotrainerPipelineContext]:
+        return Pipeline(name="TRAINING PIPELINE",
+                        steps=[
+                            SetupStep(),
+                            InputValidationStep(),
+                            EmbeddingStep(),
+                            DataLoadingStep(),
+                            ScalingStep(),
+                            ProjectionStep(),
+                            DatasetCreationStep(),
+                            TrainingStep(),
+                            TestingStep(),
+                            PostProcessStep(),
+                        ],
+                        logger=logger,
+                        )
 
     @staticmethod
-    def _default_finetuning_pipeline():
-        return (Pipeline()
-                .add_step(SetupStep())
-                .add_step(InputValidationStep())
-                .add_step(FineTuningEmbeddingStep())
-                .add_step(DataLoadingStep())
-                .add_step(DatasetCreationStep())
-                .add_step(TrainingStep())
-                .add_step(TestingStep())
-                .add_step(PostProcessStep())
-                )
-
-    def with_custom_steps(self,
-                          custom_setup_step: Optional[PipelineStep] = None,
-                          custom_input_validation_step: Optional[PipelineStep] = None,
-                          custom_embedding_step: Optional[PipelineStep] = None,
-                          custom_data_loading_step: Optional[PipelineStep] = None,
-                          custom_projection_step: Optional[PipelineStep] = None,
-                          custom_dataset_creation_step: Optional[PipelineStep] = None,
-                          custom_training_step: Optional[PipelineStep] = None,
-                          custom_testing_step: Optional[PipelineStep] = None,
-                          custom_postprocess_step: Optional[PipelineStep] = None):
-
-        custom_steps = [
-            custom_setup_step,
-            custom_input_validation_step,
-            custom_embedding_step,
-            custom_data_loading_step,
-            custom_projection_step,
-            custom_dataset_creation_step,
-            custom_training_step,
-            custom_testing_step,
-            custom_postprocess_step
-        ]
-
-        for custom_step in custom_steps:
-            if custom_step is not None:
-                self.pipeline.replace_step(custom_step)
-
-        return self
+    def _default_finetuning_pipeline() -> Pipeline[BiotrainerPipelineContext]:
+        return Pipeline(name="FINETUNING PIPELINE",
+                        steps=[
+                            SetupStep(),
+                            InputValidationStep(),
+                            FineTuningEmbeddingStep(),
+                            DataLoadingStep(),
+                            DatasetCreationStep(),
+                            TrainingStep(),
+                            TestingStep(),
+                            PostProcessStep()
+                        ],
+                        logger=logger,
+                        )

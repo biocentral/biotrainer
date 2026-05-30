@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Dict, Any
 from biotrainer_core.data_classes import Protocol
 
-from ..pipeline import PipelineContext, PipelineStep
-from ..pipeline.pipeline_step import PipelineStepType
+from junban import PipelineStep
+
+from ..pipeline_context import BiotrainerPipelineContext
 
 from ....shared import get_logger
 from ....embedding import EmbeddingService
@@ -13,13 +14,25 @@ from ....embedding import EmbeddingService
 logger = get_logger(__name__)
 
 
-class ProjectionStep(PipelineStep):
+class ProjectionStep(PipelineStep[BiotrainerPipelineContext]):
 
-    def get_step_type(self) -> PipelineStepType:
-        return PipelineStepType.PROJECTION
+    def _check_entry_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        id2emb = context.id2emb
+        assert id2emb is not None and len(id2emb) > 0, f"id2emb cannot be None or empty at the projection step!"
+        assert context.target_manager is not None, f"target_manager cannot be None at the projection step!"
+        return True
+
+    def _check_exit_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        return True
+
+    def get_start_message(self) -> str:
+        return "Running projection..."
+
+    def get_end_message(self) -> str:
+        return "Projection complete!"
 
     @staticmethod
-    def _is_dimension_reduction_possible(context: PipelineContext, dimension_reduction_method, n_reduced_components,
+    def _is_dimension_reduction_possible(context: BiotrainerPipelineContext, dimension_reduction_method, n_reduced_components,
                                          id2emb: Dict[str, Any]) -> bool:
         protocol: Protocol = context.config["protocol"]
 
@@ -46,11 +59,9 @@ class ProjectionStep(PipelineStep):
                                 the embeddings are not per-sequence embeddings")
             return False
 
-    def process(self, context: PipelineContext) -> PipelineContext:
+    def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         id2emb = context.id2emb
         target_manager = context.target_manager
-        assert id2emb is not None and len(id2emb) > 0, f"id2emb cannot be None or empty at the projection step!"
-        assert target_manager is not None, f"target_manager cannot be None at the projection step!"
         old_n_embeddings = len(id2emb)
 
         dimension_reduction_method = context.config.get("dimension_reduction_method")

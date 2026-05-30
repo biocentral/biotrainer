@@ -3,14 +3,15 @@ import shutil
 import tempfile
 
 from pathlib import Path
+from junban import Pipeline
 from typing import Union, Dict, Any, Optional, List
 from biotrainer_core.input_files import read_FASTA
 from biotrainer_core.data_classes import BiotrainerModelResult, SequenceData
 
 from .inference import Inferencer
-from .trainers.pipeline import Pipeline
-from .output_files import BiotrainerOutputObserver, InferenceOutputManager
+from .trainers.pipeline_context import BiotrainerPipelineContext
 from .utilities.executer import parse_config_file_and_execute_run
+from .output_files import BiotrainerOutputObserver, InferenceOutputManager
 
 from ..embedding import get_embedding_service
 
@@ -31,7 +32,7 @@ class BiotrainerModel:
             raise TypeError(f"Invalid type for training_result: {type(training_result)}")
 
     def train(self, config: Union[str, Path, Dict[str, Any]],
-              custom_pipeline: Optional[Pipeline] = None,
+              custom_pipeline: Optional[Pipeline[BiotrainerPipelineContext]] = None,
               custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None) -> BiotrainerModelResult:
         if self.training_result is not None:
             print(f"Warning: Training result already available! Overwriting with new training result..")

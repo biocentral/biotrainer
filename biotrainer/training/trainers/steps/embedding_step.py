@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Dict, Optional
 from biotrainer_core.data_classes import Protocol, SequenceData
 
-from ..pipeline import PipelineContext, PipelineStep
-from ..pipeline.pipeline_step import PipelineStepType
+from junban import PipelineStep
+
+from ..pipeline_context import BiotrainerPipelineContext
 
 from ....embedding import get_embedding_service, EmbeddingService, EmbeddingStatsTracker, EmbeddingStats
 from ....shared import get_logger
@@ -14,13 +15,25 @@ from ....shared import get_logger
 logger = get_logger(__name__)
 
 
-class EmbeddingStep(PipelineStep):
+class EmbeddingStep(PipelineStep[BiotrainerPipelineContext]):
 
-    def get_step_type(self) -> PipelineStepType:
-        return PipelineStepType.EMBEDDING
+    def _check_entry_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        assert context.input_data is not None, f"Input data cannot be None at the embedding step!"
+        return True
+
+    def _check_exit_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        assert context.id2emb is not None and len(context.id2emb) > 0, \
+            f"id2emb cannot be None or empty after the embedding step!"
+        return True
+
+    def get_start_message(self) -> str:
+        return "Embedding..."
+
+    def get_end_message(self) -> str:
+        return "Embedding done!"
 
     @staticmethod
-    def _do_embed(context: PipelineContext) -> PipelineContext:
+    def _do_embed(context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # Generate embeddings if necessary, otherwise use existing embeddings
         embeddings_file = context.config.get("embeddings_file", None)
 
@@ -80,7 +93,7 @@ class EmbeddingStep(PipelineStep):
         return context
 
     @staticmethod
-    def _extract_embeddings(context: PipelineContext) -> Optional[Dict[str, torch.Tensor]]:
+    def _extract_embeddings(context: BiotrainerPipelineContext) -> Optional[Dict[str, torch.Tensor]]:
         input_data = context.input_data
         if isinstance(input_data, list):
             first_value = input_data[0]
@@ -91,9 +104,7 @@ class EmbeddingStep(PipelineStep):
                     return id2emb
         return None
 
-    def process(self, context: PipelineContext) -> PipelineContext:
-        assert context.input_data is not None, f"Input data cannot be None at the embedding step!"
-
+    def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         maybe_id2emb = self._extract_embeddings(context)
         if maybe_id2emb is not None:
             assert len(maybe_id2emb) == len(
@@ -108,11 +119,12 @@ class EmbeddingStep(PipelineStep):
 
 
 class FineTuningEmbeddingStep(EmbeddingStep):
-    def process(self, context: PipelineContext) -> PipelineContext:
+
+    def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # Calculate / Load embeddings from not-finetuned model once in the beginning for baselines later
         logger.info(f'Finetuning embedder model is activated. Non-finetuned embeddings are calculated once at the '
                     f'beginning to calculate baselines later.')
-        context = super().process(context)
+        context = super()._execute(context)
 
         embedding_service = get_embedding_service(
             custom_tokenizer_config=context.config.get("custom_tokenizer_config"),
@@ -121,6 +133,5 @@ class FineTuningEmbeddingStep(EmbeddingStep):
             device=context.config["device"],
             finetuning_config=context.config["finetuning_config"]
         )
-
         context.embedding_service = embedding_service
         return context

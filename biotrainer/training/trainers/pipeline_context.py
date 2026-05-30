@@ -1,15 +1,16 @@
 from pathlib import Path
+from junban import PipelineContext
 from typing import Dict, Any, Union, List, Optional
 from biotrainer_core.data_classes import SequenceData
 
-from ..target_manager import TargetManager
+from .target_manager import TargetManager
 
-from ...output_files import OutputManager
+from ..output_files import OutputManager
 
-from ....embedding import PeftEmbeddingService
+from ...embedding import PeftEmbeddingService
 
 
-class PipelineContext:
+class BiotrainerPipelineContext(PipelineContext):
     """Context object that maintains state throughout the pipeline execution"""
 
     def __init__(self, config: Dict[str, Any], output_manager: OutputManager, custom_pipeline: bool):

@@ -8,9 +8,10 @@ from biotrainer_core.utils.constants import METRICS_WITHOUT_REVERSED_SORTING
 
 from .training_factory import TrainingFactory
 
+from junban import PipelineStep
+
 from ..cv_splitter import CrossValidationSplitter
-from ..pipeline import PipelineContext, PipelineStep
-from ..pipeline.pipeline_step import PipelineStepType
+from ..pipeline_context import BiotrainerPipelineContext
 
 from ...solvers import Solver
 from ...models import count_parameters
@@ -21,12 +22,22 @@ from ....shared import get_logger
 logger = get_logger(__name__)
 
 
-class TrainingStep(PipelineStep):
+class TrainingStep(PipelineStep[BiotrainerPipelineContext]):
 
-    def get_step_type(self) -> PipelineStepType:
-        return PipelineStepType.TRAINING
+    def _check_entry_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        return True
 
-    def _run_cross_validation(self, context: PipelineContext, splits: List[Split]) -> List[SplitResult]:
+    def _check_exit_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        assert context.best_split is not None, f"best_split cannot be None after the training step!"
+        return True
+
+    def get_start_message(self) -> str:
+        return "Training model..."
+
+    def get_end_message(self) -> str:
+        return "Training complete!"
+
+    def _run_cross_validation(self, context: BiotrainerPipelineContext, splits: List[Split]) -> List[SplitResult]:
         split_results = list()
         for split in splits:
             for hyper_params in context.hp_manager.search(mode="no_search"):
@@ -38,7 +49,7 @@ class TrainingStep(PipelineStep):
 
         return split_results
 
-    def _run_nested_cross_validation(self, context: PipelineContext, cross_validation_config: Dict[str, Any],
+    def _run_nested_cross_validation(self, context: BiotrainerPipelineContext, cross_validation_config: Dict[str, Any],
                                      cross_validation_splitter: CrossValidationSplitter,
                                      splits: List[Split]) -> List[SplitResult]:
         hp_search_method = cross_validation_config["search_method"]
@@ -89,7 +100,7 @@ class TrainingStep(PipelineStep):
     def _get_split_name(split: Split, inner_split: Optional[Split] = None) -> str:
         return f"{split.name}-{inner_split.name}" if inner_split else split.name
 
-    def _do_training_by_split(self, context: PipelineContext,
+    def _do_training_by_split(self, context: BiotrainerPipelineContext,
                               outer_split: Split,
                               hyper_params: Dict[str, Any],
                               inner_split: Split = None):
@@ -162,7 +173,7 @@ class TrainingStep(PipelineStep):
         return best_epoch_metrics, solver
 
     @staticmethod
-    def _do_and_log_training(context: PipelineContext, split_name: str, solver: Solver, train_loader: DataLoader,
+    def _do_and_log_training(context: BiotrainerPipelineContext, split_name: str, solver: Solver, train_loader: DataLoader,
                              val_loader: DataLoader) -> EpochMetrics:
         start_time_abs = str(datetime.datetime.now().isoformat())
         start_time = time.perf_counter()
@@ -190,7 +201,7 @@ class TrainingStep(PipelineStep):
                       reverse=reverse)
 
     @staticmethod
-    def _get_best_model_of_splits(context: PipelineContext, cross_validation_config: Dict[str, Any],
+    def _get_best_model_of_splits(context: BiotrainerPipelineContext, cross_validation_config: Dict[str, Any],
                                   split_results: List[SplitResult]) -> SplitResult:
         choose_by_metric = cross_validation_config["choose_by"]
         split_results_sorted = TrainingStep._sort_according_to_chosen_metric(
@@ -216,7 +227,7 @@ class TrainingStep(PipelineStep):
         return sum_metric / len(split_results)
 
     @staticmethod
-    def _log_average_result_of_splits(context: PipelineContext, split_results: List[SplitResult]):
+    def _log_average_result_of_splits(context: BiotrainerPipelineContext, split_results: List[SplitResult]):
         n = len(split_results)
         if n > 1:  # Not for hold_out cross validation
             average_dict_training = {}
@@ -234,7 +245,7 @@ class TrainingStep(PipelineStep):
             logger.info(f"Average split results (validation): {average_dict_validation}")
             context.output_manager.update_training_result("average", best_epoch_metrics=average_epoch_metrics)
 
-    def process(self, context: PipelineContext) -> PipelineContext:
+    def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         del context.id2emb  # No longer required and should not be used later in the routine
         context.id2emb = None
 

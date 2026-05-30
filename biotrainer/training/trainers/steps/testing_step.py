@@ -3,8 +3,9 @@ from biotrainer_core.data_classes import Protocol, BiotrainerPrediction
 
 from .training_factory import TrainingFactory
 
-from ..pipeline import PipelineContext, PipelineStep
-from ..pipeline.pipeline_step import PipelineStepType
+from junban import PipelineStep
+
+from ..pipeline_context import BiotrainerPipelineContext
 
 from ...utilities import revert_mappings
 from ...solvers import get_metrics_calculator
@@ -15,13 +16,24 @@ from ....shared import get_logger
 logger = get_logger(__name__)
 
 
-class TestingStep(PipelineStep):
+class TestingStep(PipelineStep[BiotrainerPipelineContext]):
 
-    def get_step_type(self) -> PipelineStepType:
-        return PipelineStepType.TESTING
+    def _check_entry_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        assert context.test_datasets is not None, f"test_datasets cannot be None at the testing step!"
+        assert context.best_split is not None, f"best_split cannot be None at the testing step!"
+        return True
+
+    def _check_exit_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        return True
+
+    def get_start_message(self) -> str:
+        return "Testing model..."
+
+    def get_end_message(self) -> str:
+        return "Testing complete!"
 
     @staticmethod
-    def _do_and_log_evaluation(context: PipelineContext, solver, test_loader, test_set_id: str):
+    def _do_and_log_evaluation(context: BiotrainerPipelineContext, solver, test_loader, test_set_id: str):
         # re-initialize the model to avoid any undesired information leakage and only load checkpoint weights
         solver.load_checkpoint(resume_training=False)
         test_results = solver.inference(test_loader, calculate_test_metrics=True)
@@ -41,7 +53,7 @@ class TestingStep(PipelineStep):
         return test_results
 
     @staticmethod
-    def _do_and_log_prediction(context: PipelineContext, solver, pred_loader):
+    def _do_and_log_prediction(context: BiotrainerPipelineContext, solver, pred_loader):
         protocol = context.config["protocol"]
         class_int2str = context.target_manager.class_int2str
         # re-initialize the model to avoid any undesired information leakage and only load checkpoint weights
@@ -70,7 +82,7 @@ class TestingStep(PipelineStep):
         return predictions
 
     @staticmethod
-    def _do_and_log_bootstrapping_evaluation(context: PipelineContext,
+    def _do_and_log_bootstrapping_evaluation(context: BiotrainerPipelineContext,
                                              metrics_calculator,
                                              test_results, test_loader, test_set_id: str):
         logger.info(f'Running bootstrapping evaluation on the best model for test set ({test_set_id})')
@@ -84,12 +96,10 @@ class TestingStep(PipelineStep):
                                                bootstrapped_metrics=bootstrapping_dict)
         logger.info(f'Bootstrapping results for test set ({test_set_id}): {bootstrapping_dict}')
 
-    def process(self, context: PipelineContext) -> PipelineContext:
+    def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # TESTING
         test_datasets = context.test_datasets
         best_split = context.best_split
-        assert test_datasets is not None, f"test_datasets cannot be None at the testing step!"
-        assert best_split is not None, f"best_split cannot be None at the testing step!"
 
         finetuning = "finetuning_config" in context.config
         for test_set_id, test_dataset in test_datasets.items():

@@ -1,14 +1,25 @@
-from ..pipeline import PipelineStep, PipelineContext
-from ..pipeline.pipeline_step import PipelineStepType
+from junban import PipelineStep
+
+from ..pipeline_context import BiotrainerPipelineContext
 
 from ...validations import InputValidator
 
 
-class InputValidationStep(PipelineStep):
-    def get_step_type(self) -> PipelineStepType:
-        return PipelineStepType.INPUT_VALIDATION
+class InputValidationStep(PipelineStep[BiotrainerPipelineContext]):
 
-    def process(self, context: PipelineContext) -> PipelineContext:
+    def _check_entry_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        return True
+
+    def _check_exit_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        return True
+
+    def get_start_message(self) -> str:
+        return "Validating input..."
+
+    def get_end_message(self) -> str:
+        return "Input validation complete!"
+
+    def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         if context.config.get("validate_input", True):
             protocol = context.config["protocol"]
             input_validator = InputValidator(protocol=protocol)

@@ -4,25 +4,42 @@ from typing import Union
 from copy import deepcopy
 from biotrainer_core.data_classes import Protocol
 
-from ..pipeline import PipelineContext, PipelineStep
-from ..pipeline.pipeline_step import PipelineStepType
+from junban import PipelineStep
 
+from ..pipeline_context import BiotrainerPipelineContext
 from ..target_manager import TargetManager
 
 from ...utilities import EmbeddingDatasetSample
-
 from ....shared import get_logger
 
 logger = get_logger(__name__)
 
 
-class DatasetCreationStep(PipelineStep):
+class DatasetCreationStep(PipelineStep[BiotrainerPipelineContext]):
 
-    def get_step_type(self) -> PipelineStepType:
-        return PipelineStepType.DATASET_CREATION
+    def _check_entry_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        id2emb = context.id2emb
+        assert id2emb is not None and len(id2emb) > 0, f"id2emb cannot be None or empty at the dataset creation step!"
+        assert context.target_manager is not None, f"target_manager cannot be None at the dataset creation step!"
+        first_embedding = next(iter(context.id2emb.values()))
+        assert isinstance(first_embedding, torch.Tensor), \
+            f"id2emb must contain embeddings of type torch.Tensor in DatasetCreationStep!"
+        return True
+
+    def _check_exit_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        assert context.train_dataset is not None, f"train_dataset cannot be None after the dataset creation step!"
+        assert context.val_dataset is not None, f"val_dataset cannot be None after the dataset creation step!"
+        assert context.test_datasets is not None, f"test_datasets cannot be None after the dataset creation step!"
+        return True
+
+    def get_start_message(self) -> str:
+        return "Creating datasets..."
+
+    def get_end_message(self) -> str:
+        return "Datasets created!"
 
     @staticmethod
-    def _get_class_weights(context: PipelineContext, target_manager: TargetManager) -> Union[
+    def _get_class_weights(context: BiotrainerPipelineContext, target_manager: TargetManager) -> Union[
         None, torch.FloatTensor]:
         protocol = context.config["protocol"]
         # Get x_to_class specific logs and weights
@@ -33,26 +50,17 @@ class DatasetCreationStep(PipelineStep):
                 class_str2int=target_manager.class_str2int
             )
             context.class_str2int = target_manager.class_str2int
-
             # Compute class weights to pass as bias to model if option is set
             class_weights = target_manager.compute_class_weights()
             if class_weights is not None:
                 computed_class_weights = {class_index: class_value.item() for
                                           class_index, class_value in enumerate(class_weights)}
                 context.output_manager.update_derived_values(computed_class_weights=computed_class_weights)
-
         return class_weights
 
-    def process(self, context: PipelineContext) -> PipelineContext:
-        id2emb = context.id2emb
-        assert id2emb is not None and len(id2emb) > 0, f"id2emb cannot be None or empty at the dataset creation step!"
-        assert context.target_manager is not None, f"target_manager cannot be None at the dataset creation step!"
-
+    def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # TARGETS => DATASETS
         target_manager = context.target_manager
-        first_embedding = next(iter(context.id2emb.values()))
-        assert isinstance(first_embedding, torch.Tensor), \
-            f"id2emb must contain embeddings of type torch.Tensor in DatasetCreationStep!"
 
         finetuning = "finetuning_config" in context.config
         if finetuning:
@@ -70,12 +78,11 @@ class DatasetCreationStep(PipelineStep):
             baseline_test_datasets = deepcopy(test_datasets)
 
         # LOG COMMON VALUES FOR ALL k-fold SPLITS:
+        first_embedding = next(iter(context.id2emb.values()))
         context.n_features = first_embedding.shape[-1]  # Last position in shape is always embedding dim
         context.n_classes = target_manager.number_of_outputs
-
         logger.info(f"Number of features (i.e. embedding dimension): {context.n_features}")
         logger.info(f"Number of outputs (i.e. classes, equals 1 for regression): {context.n_classes}")
-
         context.output_manager.update_derived_values(
             n_features=context.n_features,
             n_testing_ids=sum(len(test_dataset) for test_dataset in test_datasets.values()),
@@ -91,6 +98,6 @@ class DatasetCreationStep(PipelineStep):
 
         # CLASS WEIGHTS
         context.class_weights = self._get_class_weights(context=context, target_manager=target_manager)
-
         context.target_manager = target_manager
+
         return context

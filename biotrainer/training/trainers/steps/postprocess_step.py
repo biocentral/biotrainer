@@ -1,34 +1,45 @@
 import time
 import datetime
 
-from ..pipeline import PipelineContext, PipelineStep
-from ..pipeline.pipeline_step import PipelineStepType
+from junban import PipelineStep
+
+from ..pipeline_context import BiotrainerPipelineContext
 
 from ....shared import get_logger
 
 logger = get_logger(__name__)
 
 
-class PostProcessStep(PipelineStep):
+class PostProcessStep(PipelineStep[BiotrainerPipelineContext]):
 
-    def get_step_type(self) -> PipelineStepType:
-        return PipelineStepType.POST_PROCESS
+    def _check_entry_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        assert context.best_split is not None, f"Best split cannot be None at postprocess step!"
+        return True
+
+    def _check_exit_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        return True
+
+    def get_start_message(self) -> str:
+        return "Running post-processing..."
+
+    def get_end_message(self) -> str:
+        return "Post-processing complete!"
 
     @staticmethod
-    def _onnx_export(context: PipelineContext):
+    def _onnx_export(context: BiotrainerPipelineContext):
         try:
             context.best_split.solver.save_as_onnx(embedding_dimension=context.n_features)
         except Exception:
             logger.error("Could not save model as ONNX!")
 
     @staticmethod
-    def _save_finetuned_model(context: PipelineContext):
+    def _save_finetuned_model(context: BiotrainerPipelineContext):
         embedding_service = context.embedding_service
         if embedding_service:
             embedding_service.save_embedder(output_dir=context.config["log_dir"])
 
     @staticmethod
-    def _log_time(context: PipelineContext):
+    def _log_time(context: BiotrainerPipelineContext):
         pipeline_end_time = time.perf_counter()
         pipeline_end_time_abs = str(datetime.datetime.now().isoformat())
         pipeline_elapsed_time = pipeline_end_time - context.pipeline_start_time
@@ -39,9 +50,7 @@ class PostProcessStep(PipelineStep):
 
         logger.info(f"Extensive output information can be found at {context.config['output_dir']}/out.yml")
 
-    def process(self, context: PipelineContext) -> PipelineContext:
-        assert context.best_split is not None, f"Best split cannot be None at postprocess step!"
-
+    def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # SAVE BEST SPLIT AS ONNX
         self._onnx_export(context)
 

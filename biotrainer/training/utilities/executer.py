@@ -1,16 +1,18 @@
 from pathlib import Path
+from junban import Pipeline
 from typing import Union, Dict, Any, Optional, List
 from biotrainer_core.data_classes import BiotrainerModelResult
 
+from ..trainers import Trainer
 from ..config import Configurator
-from ..trainers import Trainer, Pipeline
+from ..trainers.pipeline_context import BiotrainerPipelineContext
 from ..output_files import OutputManager, output_observer_factory, BiotrainerOutputObserver
 
 from ...shared.logging import clear_logging
 
 
 def parse_config_file_and_execute_run(config: Union[str, Path, Dict[str, Any]],
-                                      custom_pipeline: Optional[Pipeline] = None,
+                                      custom_pipeline: Optional[Pipeline[BiotrainerPipelineContext]] = None,
                                       custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
                                       write_to_file: Optional[bool] = True) -> BiotrainerModelResult:
     # Verify config via configurator

@@ -2,26 +2,37 @@ import time
 import datetime
 
 from pathlib import Path
+from junban import PipelineStep
+
 from biotrainer_core.data_classes import Protocol
 from biotrainer_core.functions.seeding import seed_all
 from biotrainer_core.functions.hashing import calculate_model_hash
 
 from ..hp_manager import HyperParameterManager
-from ..pipeline import PipelineStep, PipelineContext
-from ..pipeline.pipeline_step import PipelineStepType
+from ..pipeline_context import BiotrainerPipelineContext
 
 from ....shared import get_logger, __version__, setup_logging, get_device
 
 logger = get_logger(__name__)
 
 
-class SetupStep(PipelineStep):
+class SetupStep(PipelineStep[BiotrainerPipelineContext]):
 
-    def get_step_type(self) -> PipelineStepType:
-        return PipelineStepType.SETUP
+    def _check_entry_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        return True
+
+    def _check_exit_assumptions(self, context: BiotrainerPipelineContext) -> bool:
+        assert context.model_hash is not None, f"model_hash cannot be None after the setup step!"
+        return True
+
+    def get_start_message(self) -> str:
+        return "Running setup..."
+
+    def get_end_message(self) -> str:
+        return "Setup complete!"
 
     @staticmethod
-    def _post_process_config(context: PipelineContext):
+    def _post_process_config(context: BiotrainerPipelineContext):
         context.config["protocol"] = Protocol.from_string(context.config["protocol"])
 
         # Create output dir
@@ -49,7 +60,7 @@ class SetupStep(PipelineStep):
         context.input_data = context.config.get("input_file", None) or context.config.get("input_data", None)
         assert context.input_data is not None, "input_file or input_data must be provided in the config!"
 
-    def process(self, context: PipelineContext) -> PipelineContext:
+    def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         context.pipeline_start_time = time.perf_counter()
         pipeline_start_time_abs = str(datetime.datetime.now().isoformat())
 

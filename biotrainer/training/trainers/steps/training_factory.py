@@ -4,7 +4,7 @@ import random
 from typing import List, Dict, Any
 from torch.utils.data import DataLoader
 
-from ..pipeline import PipelineContext
+from ..pipeline_context import BiotrainerPipelineContext
 
 from ...losses import get_loss
 from ...optimizers import get_optimizer
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 class TrainingFactory:
     @staticmethod
-    def create_dataset(context: PipelineContext, split: List, mode: str, finetuning: bool = False) -> BiotrainerDataset:
+    def create_dataset(context: BiotrainerPipelineContext, split: List, mode: str, finetuning: bool = False) -> BiotrainerDataset:
         # Apply limited sample number
         limited_sample_size = context.config["limited_sample_size"]
         if mode == "train" and limited_sample_size and limited_sample_size > 0:
@@ -37,7 +37,7 @@ class TrainingFactory:
                            )
 
     @staticmethod
-    def create_dataloader(context: PipelineContext, dataset, hyper_params: Dict,
+    def create_dataloader(context: BiotrainerPipelineContext, dataset, hyper_params: Dict,
                           finetuning: bool = False) -> DataLoader:
         # Create dataloader from dataset
         if finetuning:
@@ -51,7 +51,7 @@ class TrainingFactory:
         )
 
     @staticmethod
-    def create_solver(context: PipelineContext, split_name: str, model, loss_function, optimizer,
+    def create_solver(context: BiotrainerPipelineContext, split_name: str, model, loss_function, optimizer,
                       hyper_params: Dict) -> Solver:
         return get_solver(protocol=context.config["protocol"], name=split_name, network=model, optimizer=optimizer,
                           loss_function=loss_function,
@@ -62,7 +62,7 @@ class TrainingFactory:
                           log_dir=hyper_params["log_dir"], n_classes=context.n_classes)
 
     @staticmethod
-    def create_model_loss_optimizer(context: PipelineContext,
+    def create_model_loss_optimizer(context: BiotrainerPipelineContext,
                                     hyper_params: Dict[str, Any]) -> (
             torch.nn.Module, torch.nn.Module, torch.nn.Module):
         # Initialize model
