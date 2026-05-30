@@ -33,12 +33,24 @@ class BiotrainerModel:
 
     def train(self, config: Union[str, Path, Dict[str, Any]],
               custom_pipeline: Optional[Pipeline[BiotrainerPipelineContext]] = None,
-              custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None) -> BiotrainerModelResult:
+              custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
+              write_to_file: Optional[bool] = True) -> BiotrainerModelResult:
+        """
+        Train a model using the provided configuration and optional custom pipeline and output observers.
+
+        :param config: Biotrainer configuration file path or dictionary.
+        :param custom_pipeline: A custom pipeline for the training process.
+        :param custom_output_observers: Custom Observers for the output (e.g. for tensorboard)
+        :param write_to_file: If True, the training result will be written to a file (out.yml).
+        :return: BiotrainerModelResult object containing the trained model results.
+        """
         if self.training_result is not None:
             print(f"Warning: Training result already available! Overwriting with new training result..")
 
-        training_result = parse_config_file_and_execute_run(config=config, custom_pipeline=custom_pipeline,
-                                                            custom_output_observers=custom_output_observers)
+        training_result = parse_config_file_and_execute_run(config=config,
+                                                            custom_pipeline=custom_pipeline,
+                                                            custom_output_observers=custom_output_observers,
+                                                            write_to_file=write_to_file)
         self.training_result = training_result
         return training_result
 
