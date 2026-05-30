@@ -9,7 +9,6 @@ from .pipelines import (AutoEvalReport, setup_output_dir, validate_input, autoev
                         autoeval_zeroshot_pipeline, autoeval_zeroshot_contact_pipeline, AutoEvalProgress)
 from .autoeval_frameworks import AvailableFramework
 
-from ..training.trainers import Pipeline
 from ..bioengineer import ZeroShotMethod, BioEngineer
 from ..training.output_files import BiotrainerOutputObserver
 
@@ -22,7 +21,6 @@ def autoeval_pipeline(embedder_name: str,
                       use_half_precision: Optional[bool] = False,
                       min_seq_length: Optional[int] = 0,
                       max_seq_length: Optional[int] = 2000,
-                      custom_pipeline: Optional[Pipeline] = None,
                       custom_tokenizer_config: Optional[dict] = None,
                       precomputed_per_residue_embeddings: Optional[Path] = None,
                       precomputed_per_sequence_embeddings: Optional[Path] = None,
@@ -113,7 +111,6 @@ def autoeval_pipeline(embedder_name: str,
                                                     use_half_precision=use_half_precision,
                                                     min_seq_length=min_seq_length,
                                                     max_seq_length=max_seq_length,
-                                                    custom_pipeline=custom_pipeline,
                                                     custom_tokenizer_config=custom_tokenizer_config,
                                                     precomputed_per_residue_embeddings=precomputed_per_residue_embeddings,
                                                     precomputed_per_sequence_embeddings=precomputed_per_sequence_embeddings,

@@ -15,7 +15,6 @@ from .autoeval_report import AutoEvalReport, SupervisedFrameworkReport
 from ..core import AutoEvalFramework, AutoEvalConfigBank, AutoEvalTask
 
 from ...shared import get_device
-from ...training.trainers import Pipeline
 from ...training.output_files import BiotrainerOutputObserver
 from ...embedding import EmbeddingService, get_embedding_service
 from ...training.utilities.executer import parse_config_file_and_execute_run
@@ -93,7 +92,6 @@ def _run_pipeline(embedder_name: str,
                   output_dir: Path,
                   min_seq_length: int,
                   max_seq_length: int,
-                  custom_pipeline: Optional[Pipeline] = None,
                   custom_storage_path: Optional[str] = None,
                   custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
                   force_download: Optional[bool] = False,
@@ -105,18 +103,15 @@ def _run_pipeline(embedder_name: str,
                                                                                                  custom_storage_path=custom_storage_path,
                                                                                                  force_download=force_download)
     # Embed if no custom pipeline provided - that must handle the embedding step independently
-    embeddings_file_per_residue = None
-    embeddings_file_per_sequence = None
-    if not custom_pipeline:
-        print(f"Embedding {len(unique_per_residue)} sequences per_residue")
-        embeddings_file_per_residue = embedding_function_per_residue(
-            [seq_record.seq for _, seq_record in unique_per_residue.items()]
-        )
+    print(f"Embedding {len(unique_per_residue)} sequences per_residue")
+    embeddings_file_per_residue = embedding_function_per_residue(
+        [seq_record.seq for _, seq_record in unique_per_residue.items()]
+    )
 
-        print(f"Embedding {len(unique_per_sequence)} sequences per_sequence")
-        embeddings_file_per_sequence = embedding_function_per_sequence(
-            [seq_record.seq for _, seq_record in unique_per_sequence.items()]
-        )
+    print(f"Embedding {len(unique_per_sequence)} sequences per_sequence")
+    embeddings_file_per_sequence = embedding_function_per_sequence(
+        [seq_record.seq for _, seq_record in unique_per_sequence.items()]
+    )
 
     _check_h5_file(name="per-residue", h5_path=embeddings_file_per_residue, expected_length=len(unique_per_residue))
     _check_h5_file(name="per-sequence", h5_path=embeddings_file_per_sequence, expected_length=len(unique_per_sequence))
@@ -148,13 +143,10 @@ def _run_pipeline(embedder_name: str,
             continue
 
         # No result exists yet -> execute biotrainer
-        if custom_pipeline:
-            task_embeddings_file = None
-        else:
-            assert embeddings_file_per_sequence is not None and embeddings_file_per_residue is not None
-            task_embeddings_file = embeddings_file_per_sequence if (Protocol.from_string(config["protocol"]) in
-                                                                    Protocol.using_per_sequence_embeddings()) \
-                else embeddings_file_per_residue
+        assert embeddings_file_per_sequence is not None and embeddings_file_per_residue is not None
+        task_embeddings_file = embeddings_file_per_sequence if (Protocol.from_string(config["protocol"]) in
+                                                                Protocol.using_per_sequence_embeddings()) \
+            else embeddings_file_per_residue
         config = AutoEvalConfigBank.add_custom_values_to_config(config=config,
                                                                 embedder_name=embedder_name,
                                                                 embeddings_file=task_embeddings_file,
@@ -164,7 +156,6 @@ def _run_pipeline(embedder_name: str,
                                                                 )
 
         result = parse_config_file_and_execute_run(config=config,
-                                                   custom_pipeline=custom_pipeline,
                                                    custom_output_observers=custom_output_observers)
 
         supervised_framework_report.update_result(combined_task_name=current_task_name, result=result)
@@ -185,7 +176,6 @@ def _run_pipeline(embedder_name: str,
 def _setup_embedding_functions(embedder_name,
                                output_dir,
                                use_half_precision: Optional[bool] = False,
-                               custom_pipeline: Optional[Pipeline] = None,
                                precomputed_per_residue_embeddings: Optional[Path] = None,
                                precomputed_per_sequence_embeddings: Optional[Path] = None,
                                custom_tokenizer_config: Optional[dict] = None,
@@ -195,10 +185,6 @@ def _setup_embedding_functions(embedder_name,
                                    Callable[
                                        [Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
                                device=None, ):
-    # Custom Pipeline -> Embedding calculation handled inside of pipeline
-    if custom_pipeline:
-        return None, None
-
     # Precomputed Embeddings -> Return paths
     assert (precomputed_per_residue_embeddings is None) == (precomputed_per_sequence_embeddings is None)
     if precomputed_per_residue_embeddings and precomputed_per_sequence_embeddings:
@@ -295,7 +281,6 @@ def autoeval_supervised_pipeline(embedder_name: str,
                                  use_half_precision: Optional[bool] = False,
                                  min_seq_length: Optional[int] = 0,
                                  max_seq_length: Optional[int] = 2000,
-                                 custom_pipeline: Optional[Pipeline] = None,
                                  custom_tokenizer_config: Optional[dict] = None,
                                  precomputed_per_residue_embeddings: Optional[Path] = None,
                                  precomputed_per_sequence_embeddings: Optional[Path] = None,
@@ -307,13 +292,6 @@ def autoeval_supervised_pipeline(embedder_name: str,
                                  custom_output_observers: List[BiotrainerOutputObserver] = None,
                                  device=None,
                                  ) -> Generator[AutoEvalProgress, None, None]:
-    if custom_pipeline is not None and any([v is not None for v in [custom_tokenizer_config,
-                                                                    precomputed_per_residue_embeddings,
-                                                                    precomputed_per_sequence_embeddings,
-                                                                    custom_embedding_function_per_residue,
-                                                                    custom_embedding_function_per_sequence]]):
-        raise ValueError(f"You must either provide a custom_pipeline or custom embedding functions and configurations!")
-
     if (precomputed_per_residue_embeddings is None) ^ (precomputed_per_sequence_embeddings is None):
         raise ValueError(f"You must provide either paths to both precomputed per-sequence and per-residue embeddings "
                          f"or no precomputed path at all!")
@@ -333,7 +311,6 @@ def autoeval_supervised_pipeline(embedder_name: str,
         embedder_name=embedder_name,
         output_dir=output_dir,
         use_half_precision=use_half_precision,
-        custom_pipeline=custom_pipeline,
         custom_tokenizer_config=custom_tokenizer_config,
         precomputed_per_residue_embeddings=precomputed_per_residue_embeddings,
         precomputed_per_sequence_embeddings=precomputed_per_sequence_embeddings,
@@ -350,7 +327,6 @@ def autoeval_supervised_pipeline(embedder_name: str,
                              output_dir=output_dir,
                              min_seq_length=min_seq_length,
                              max_seq_length=max_seq_length,
-                             custom_pipeline=custom_pipeline,
                              custom_storage_path=custom_storage_path,
                              custom_output_observers=custom_output_observers,
                              force_download=force_download,
