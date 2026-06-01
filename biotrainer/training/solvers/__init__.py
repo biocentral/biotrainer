@@ -3,15 +3,11 @@ from biotrainer_core.data_classes import Protocol
 
 from .solver import Solver
 from .gp_solver import GPSolver
-from .solver_utils import get_mean_and_confidence_bounds
 from .residue_solvers import ResidueClassificationSolver, ResidueRegressionSolver
 from .residues_solvers import ResiduesClassificationSolver, ResiduesRegressionSolver
 from .sequence_solvers import SequenceClassificationSolver, SequenceRegressionSolver
 
-from .metrics_calculator import MetricsCalculator, SequenceClassificationMetricsCalculator, \
-    ResidueClassificationMetricsCalculator, ResiduesClassificationMetricsCalculator, \
-    SequenceRegressionMetricsCalculator, ResidueRegressionMetricsCalculator, ResiduesRegressionMetricsCalculator
-
+from ...shared import METRIC_CALCULATORS
 
 __SOLVERS = {
     Protocol.residue_to_class: ResidueClassificationSolver,
@@ -20,15 +16,6 @@ __SOLVERS = {
     Protocol.residues_to_value: ResiduesRegressionSolver,
     Protocol.sequence_to_class: SequenceClassificationSolver,
     Protocol.sequence_to_value: SequenceRegressionSolver,
-}
-
-__METRICS_CALCULATORS = {
-    Protocol.residue_to_class: ResidueClassificationMetricsCalculator,
-    Protocol.residue_to_value: ResidueRegressionMetricsCalculator,
-    Protocol.residues_to_class: ResiduesClassificationMetricsCalculator,
-    Protocol.residues_to_value: ResiduesRegressionMetricsCalculator,
-    Protocol.sequence_to_class: SequenceClassificationMetricsCalculator,
-    Protocol.sequence_to_value: SequenceRegressionMetricsCalculator,
 }
 
 
@@ -58,7 +45,7 @@ def get_solver(protocol: Protocol, name: str,
 
 
 def get_metrics_calculator(protocol: Protocol, device: Optional = None, n_classes: Optional[int] = 0):
-    metrics_calc = __METRICS_CALCULATORS.get(protocol)
+    metrics_calc = METRIC_CALCULATORS.get(protocol)
 
     if not metrics_calc:
         raise NotImplementedError
@@ -68,8 +55,6 @@ def get_metrics_calculator(protocol: Protocol, device: Optional = None, n_classe
 
 __all__ = [
     'Solver',
-    'MetricsCalculator',
     'get_solver',
     'get_metrics_calculator',
-    'get_mean_and_confidence_bounds'
 ]

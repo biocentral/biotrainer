@@ -14,9 +14,8 @@ from .bioengineer_baselines import BioEngineerBaseline, ConstantEngineerBaseline
 from .bioengineer_data_classes import VariantScore, ZeroShotMethod, Variant, RankingResult, ZeroShotContactSingleProtein, ZeroShotContactDatasetResult
 from .bioengineer_metrics import evaluate_contact_map
 
-from ..shared import get_device
-from ..inference import Inferencer
-from ..solvers.metrics_calculator import SequenceRegressionMetricsCalculator
+from ..shared import get_device, Bootstrapper
+from ..shared.metrics.metrics_calculator import SequenceRegressionMetricsCalculator
 
 
 class BioEngineer:
@@ -228,7 +227,7 @@ class BioEngineer:
         v_d = {m: torch.tensor(v) for m, v in variant_dict.items()}
         a_s = {m: torch.tensor(v) for m, v in actual_scores.items()}
 
-        bt_res = Inferencer._do_bootstrapping(iterations=30, sample_size=len(common_variants), confidence_level=0.05,
+        bt_res = Bootstrapper._do_bootstrapping(iterations=30, sample_size=len(common_variants), confidence_level=0.05,
                                               seq_ids=list(common_variants), all_predictions_dict=v_d,
                                               all_targets_dict=a_s,
                                               metrics_calculator=SequenceRegressionMetricsCalculator(device="cpu",

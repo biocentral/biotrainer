@@ -123,7 +123,7 @@ class OutputManager:
         Example:
             output_manager.add_test_result(
                 "test_set_1",
-                metrics={"accuracy": 0.95},
+                inference_result=BiotrainerInferenceResult(),
                 bootstrapped_metrics=[...]
             )
         """

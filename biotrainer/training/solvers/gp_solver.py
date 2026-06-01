@@ -3,8 +3,8 @@ import torch
 
 from pathlib import Path
 from torch.utils.data import DataLoader
-from typing import Callable, Dict, Optional, Union, List, Any
-from biotrainer_core.data_classes import EpochMetrics, BiotrainerPrediction, BiotrainerResiduePrediction
+from typing import Dict, Optional, List
+from biotrainer_core.data_classes import EpochMetrics, BiotrainerPrediction, BiotrainerInferenceResult
 
 from .solver import Solver
 from ..models.gp import GPModelAdapter
@@ -78,7 +78,7 @@ class GPSolver(Solver):
         for epoch in range(self.start_epoch, self.number_of_epochs):
             # === VALIDATION ===
             val_results = self.inference(validation_dataloader, calculate_test_metrics=True)
-            validation_epoch_metrics = val_results['metrics']
+            validation_epoch_metrics = val_results.metrics
 
             # === TRAINING ===
             self.network.gp.train()
@@ -137,8 +137,7 @@ class GPSolver(Solver):
 
         return epoch_iterations
 
-    def inference(self, dataloader: DataLoader, calculate_test_metrics: bool = False) -> \
-            Dict[str, Union[List[Any], Dict[str, Union[float, int]]]]:
+    def inference(self, dataloader: DataLoader, calculate_test_metrics: bool = False) -> BiotrainerInferenceResult:
         """
         Override inference to handle GP predictions properly.
         """
@@ -148,8 +147,7 @@ class GPSolver(Solver):
         all_predictions = []
         all_probabilities = []
         all_labels = []
-        mapped_predictions = {}
-        mapped_probabilities = {}
+        mapped_predictions = []
 
         with torch.no_grad(), gpytorch.settings.fast_pred_var():
             for seq_ids, X, y, lengths in dataloader:
@@ -170,10 +168,10 @@ class GPSolver(Solver):
                 all_probabilities.append(probabilities)
 
                 # Map to sequence IDs
+                probabilities = probabilities.cpu().tolist()
                 for idx, pred in enumerate(predicted.cpu().tolist()):
-                    mapped_predictions[seq_ids[idx]] = pred
-                for idx, prob in enumerate(probabilities.cpu().tolist()):
-                    mapped_probabilities[seq_ids[idx]] = prob
+                    biotrainer_prediction = BiotrainerPrediction(seq_id=seq_ids[idx], prediction=pred, raw_prediction=probabilities[idx])
+                    mapped_predictions.append(biotrainer_prediction)
 
         metrics = None
         if calculate_test_metrics:
@@ -209,19 +207,14 @@ class GPSolver(Solver):
             }
             # TODO Negative accuracy as proxy for validation loss in classification tasks (lower = better)
             metrics['loss'] = metrics['mse'] if 'mse' in metrics else -1 * metrics.get('accuracy', 0)
-            return {
-                'metrics': metrics,
-                'mapped_predictions': mapped_predictions,
-                'mapped_probabilities': mapped_probabilities
-            }
+        return BiotrainerInferenceResult(metrics=metrics, predictions=mapped_predictions)
 
     def model_has_dropout(self):
         return True  # TODO Hack for uncertainty estimation
 
     def inference_monte_carlo_dropout(self, dataloader: DataLoader,
                                       n_forward_passes: int = 30,
-                                      confidence_level: float = 0.05) -> List[
-        Union[BiotrainerPrediction, BiotrainerResiduePrediction]]:
+                                      confidence_level: float = 0.05) -> List[BiotrainerPrediction]:
         """
         Calculate inference results with uncertainty estimates from GP predictive distributions.
 

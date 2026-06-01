@@ -3,7 +3,9 @@
 ## Version 2.0.0
 
 ### Breaking
+
 * embedding_service.generate_embeddings now yields sequence_data unified with the embedding
+* Removed custom_pipeline parameter from AutoEval
 
 ## 31.03.2026 - Version 1.4.0
 

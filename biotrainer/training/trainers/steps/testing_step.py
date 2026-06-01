@@ -1,5 +1,5 @@
 from typing import List
-from biotrainer_core.data_classes import Protocol, BiotrainerPrediction
+from biotrainer_core.data_classes import Protocol, BiotrainerPrediction, BiotrainerInferenceResult
 
 from .training_factory import TrainingFactory
 
@@ -7,11 +7,11 @@ from junban import PipelineStep
 
 from ..pipeline_context import BiotrainerPipelineContext
 
+from ...validations import SanityChecker
 from ...utilities import revert_mappings
 from ...solvers import get_metrics_calculator
-from ...validations import SanityChecker, Bootstrapper
 
-from ....shared import get_logger
+from ....shared import get_logger, Bootstrapper
 
 logger = get_logger(__name__)
 
@@ -33,23 +33,23 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
         return "Testing complete!"
 
     @staticmethod
-    def _do_and_log_evaluation(context: BiotrainerPipelineContext, solver, test_loader, test_set_id: str):
+    def _do_and_log_evaluation(context: BiotrainerPipelineContext, solver, test_loader,
+                               test_set_id: str) -> BiotrainerInferenceResult:
         # re-initialize the model to avoid any undesired information leakage and only load checkpoint weights
         solver.load_checkpoint(resume_training=False)
         test_results = solver.inference(test_loader, calculate_test_metrics=True)
 
         if context.config.get("save_split_ids", False):
-            test_results['test_set_predictions'] = revert_mappings(protocol=context.config["protocol"],
-                                                                   test_predictions=test_results['mapped_predictions'],
-                                                                   class_int2str=context.target_manager.class_int2str)
+            test_results_to_log = test_results.revert_mappings(protocol=context.config["protocol"],
+                                                               class_int2str=context.target_manager.class_int2str)
             context.output_manager.add_test_result(test_set_id=test_set_id,
-                                                   **{k: v for k, v in test_results.items()
-                                                      if k != "mapped_probabilities"})
+                                                   inference_result=test_results_to_log)
         else:
+            test_results_to_log = test_results.omit_predictions()
             context.output_manager.add_test_result(test_set_id=test_set_id,
-                                                   metrics=test_results['metrics'])
+                                                   inference_result=test_results_to_log)
 
-        logger.info(f"Test set {test_set_id} metrics: {test_results['metrics']}")
+        logger.info(f"Test set {test_set_id} metrics: {test_results.metrics}")
         return test_results
 
     @staticmethod
@@ -63,19 +63,15 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
         if protocol in Protocol.per_sequence_protocols() and solver.model_has_dropout():
             mcd_results: List[BiotrainerPrediction] = solver.inference_monte_carlo_dropout(pred_loader,
                                                                                            n_forward_passes=30)
-            mcd_results = [result.revert_mappings(protocol=protocol, class_int2str=class_int2str) for result in
+            predictions = [result.revert_mappings(protocol=protocol, class_int2str=class_int2str) for result in
                            mcd_results]
-            predictions = {
-                result.seq_id: {"prediction": result.prediction, "mcd_mean": result.mcd_mean, "mcd_std": result.mcd_std,
-                                "bald_score": result.bald_score}
-                for result in mcd_results}
         else:
             pred_results = solver.inference(pred_loader, calculate_test_metrics=False)
-            predictions = revert_mappings(protocol=protocol,
-                                          test_predictions=pred_results['mapped_predictions'],
-                                          class_int2str=context.target_manager.class_int2str)
+            pred_results = pred_results.revert_mappings(protocol=protocol, class_int2str=class_int2str)
+            predictions = pred_results.predictions
+
         # Remap hashes to actual ids
-        predictions = {context.hash2id.get(seq_hash, seq_hash): pred for seq_hash, pred in predictions.items()}
+        predictions = [pred.replace_seq_id(context.hash2id.get(pred.seq_id, pred.seq_id)) for pred in predictions]
         context.output_manager.add_predictions(predictions=predictions)
 
         logger.info(f"Calculated predictions for {len(context.prediction_dataset)} samples!")
@@ -84,17 +80,19 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
     @staticmethod
     def _do_and_log_bootstrapping_evaluation(context: BiotrainerPipelineContext,
                                              metrics_calculator,
-                                             test_results, test_loader, test_set_id: str):
+                                             test_results: BiotrainerInferenceResult,
+                                             test_loader, test_set_id: str):
         logger.info(f'Running bootstrapping evaluation on the best model for test set ({test_set_id})')
-        bootstrapping_dict = Bootstrapper.bootstrap(protocol=context.config["protocol"],
-                                                    device=context.config["device"],
-                                                    bootstrapping_iterations=context.config["bootstrapping_iterations"],
-                                                    metrics_calculator=metrics_calculator,
-                                                    mapped_predictions=test_results["mapped_predictions"],
-                                                    test_loader=test_loader)
+        bootstrapped_metrics = Bootstrapper.bootstrap(protocol=context.config["protocol"],
+                                                      device=context.config["device"],
+                                                      bootstrapping_iterations=context.config[
+                                                          "bootstrapping_iterations"],
+                                                      metrics_calculator=metrics_calculator,
+                                                      predictions=test_results.predictions,
+                                                      test_loader=test_loader)
         context.output_manager.add_test_result(test_set_id=test_set_id,
-                                               bootstrapped_metrics=bootstrapping_dict)
-        logger.info(f'Bootstrapping results for test set ({test_set_id}): {bootstrapping_dict}')
+                                               bootstrapped_metrics=bootstrapped_metrics)
+        logger.info(f'Bootstrapping results for test set ({test_set_id}): {bootstrapped_metrics}')
 
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # TESTING
@@ -146,7 +144,7 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
                                                test_dataset=baseline_test_dataset,
                                                test_loader=baseline_test_loader,
                                                metrics_calculator=metrics_calculator,
-                                               test_results_dict=test_results,
+                                               test_results=test_results,
                                                class_weights=context.class_weights,
                                                mode="warn")
                 baseline_results, warnings = sanity_checker.check_test_results(test_set_id=test_set_id)

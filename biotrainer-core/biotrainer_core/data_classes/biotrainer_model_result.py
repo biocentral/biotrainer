@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field
 from typing import Any, Dict, Optional, List, Union, Tuple
 
 from .embedding_stats import EmbeddingStats
-from .biotrainer_prediction import BiotrainerPrediction
 from .metrics import EpochMetrics, BootstrappedMetric
+from .biotrainer_prediction import BiotrainerPrediction, BiotrainerInferenceResult
 
 
 class DerivedValues(BaseModel):
@@ -48,7 +48,7 @@ class TrainingResult(BaseModel):
 
 class TestResult(BaseModel):
     """ Test results after training. """
-    metrics: Dict[str, float] = Field(default_factory=dict, description="Plain test metrics")
+    inference_result: Optional[BiotrainerInferenceResult] = Field(default=None, description="Plain test inference result")
     bootstrapped_metrics: Optional[List[BootstrappedMetric]] = Field(default=None,
                                                                      description="Bootstrapped test metrics")
     baselines: Optional[Dict[str, List[BootstrappedMetric]]] = Field(default=None,
@@ -73,7 +73,7 @@ class BiotrainerModelResult(BaseModel):
         if file_path.suffix in [".yml", ".yaml"]:
             with open(file_path, "r") as tr_file:
                 training_output = yaml.load(tr_file, Loader=yaml.RoundTripLoader)
-            return cls.model_validate(training_output)
+            return cls.model_validate(training_output, strict=False)
         elif file_path.suffix in [".json"]:
             training_output = file_path.read_text()
             return cls.model_validate_json(training_output)

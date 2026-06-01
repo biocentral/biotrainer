@@ -10,17 +10,17 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 from biotrainer_core.functions.seeding import seed_all
 from typing import Union, Optional, Dict, Iterable, Tuple, Any, List
-from biotrainer_core.utils.constants import MASK_AND_LABELS_PAD_VALUE
-from biotrainer_core.data_classes import Protocol, BootstrappedMetric, BiotrainerPrediction, BiotrainerResiduePrediction
+from biotrainer_core.data_classes import Protocol, BootstrappedMetric, BiotrainerPrediction, BiotrainerInferenceResult
 
 from ..losses import get_loss
 from ..models import get_model
+from ..solvers import get_solver
 from ..optimizers import get_optimizer
 from ..output_files import InferenceOutputManager
 from ..datasets import get_dataset, get_embeddings_collate_function
-from ..solvers import get_solver, get_mean_and_confidence_bounds, MetricsCalculator
 from ..utilities import EmbeddingDatasetSample, revert_mappings
 
+from ...shared import Bootstrapper
 from ...embedding import EmbeddingService
 
 
@@ -115,26 +115,13 @@ class Inferencer:
         else:
             return to_convert
 
-    @staticmethod
-    def _pad_tensor(protocol: Protocol, target: Union[Any, torch.Tensor], length_to_pad: int, device):
-        target_tensor = torch.as_tensor(target, device=device)
-        if protocol in Protocol.per_residue_protocols():
-            if target_tensor.shape[0] < length_to_pad:
-                padding_size = length_to_pad - target_tensor.shape[0]
-                padding = torch.full((padding_size,), MASK_AND_LABELS_PAD_VALUE, dtype=target_tensor.dtype,
-                                     device=device)
-                return torch.cat([target_tensor, padding])
-            else:
-                return target_tensor
-        else:
-            return target_tensor
-
     def _convert_target_dict(self, target_dict: Dict[str, str]):
         if self.protocol in Protocol.classification_protocols():
             if self.protocol in Protocol.per_residue_protocols():
                 max_prediction_length = len(max(target_dict.values(), key=len))
-                return {seq_id: self._pad_tensor(protocol=self.protocol, target=self._convert_class_str2int(prediction),
-                                                 length_to_pad=max_prediction_length, device=self.device)
+                return {seq_id: Bootstrapper._pad_tensor(protocol=self.protocol,
+                                                         target=self._convert_class_str2int(prediction),
+                                                         length_to_pad=max_prediction_length, device=self.device)
                         for seq_id, prediction in target_dict.items()}
             else:
                 return {seq_id: torch.tensor(self._convert_class_str2int(prediction),
@@ -232,8 +219,7 @@ class Inferencer:
                         embeddings: Union[Iterable, Dict],
                         targets: Optional[List] = None,
                         split_name: str = "hold_out",
-                        scale_embeddings: Optional[bool] = True,
-                        include_probabilities: bool = False) -> Dict[str, Union[Dict, str, int, float]]:
+                        scale_embeddings: Optional[bool] = True) -> BiotrainerInferenceResult:
         """
         Calculate predictions from embeddings.
 
@@ -241,33 +227,20 @@ class Inferencer:
         :param targets: Iterable that contains the targets to calculate metrics
         :param split_name: Name of the split to use for prediction. Default is "hold_out".
         :param scale_embeddings: If True, the feature_scaler fitted during training is used to scale the embeddings.
-        :param include_probabilities: If True, the probabilities used to predict classes are also reported.
-                                      Is only useful for classification tasks, otherwise the "probabilities" are the
-                                      same as the predictions.
-        :return: Dictionary containing the following sub-dictionaries:
+        :return: BiotrainerInferenceResult containing the following sub-dictionaries:
                  - 'metrics': Calculated metrics if 'targets' are given, otherwise 'None'.
-                 - 'mapped_predictions': Class or value prediction from the given embeddings.
-                 - 'mapped_probabilities': Probabilities for classification tasks if include_probabilities is True.
-                 Predictions and probabilities are either 'mapped' to keys from an embeddings dict or indexes if
+                 - 'predictions': Class or value prediction from the given embeddings.
+                 Predictions are either 'mapped' to keys from an embeddings dict or indexes if
                  embeddings are given as a list.
         """
         embeddings_dict = self._preprocess_embeddings(embeddings=embeddings, scale_embeddings=scale_embeddings)
 
         solver, dataloader = self._load_solver_and_dataloader(embeddings_dict, split_name, targets)
 
-        inference_dict = solver.inference(dataloader, calculate_test_metrics=targets is not None)
-        predictions = inference_dict["mapped_predictions"]
+        inference_result = solver.inference(dataloader, calculate_test_metrics=targets is not None)
+        inference_result = inference_result.revert_mappings(protocol=self.protocol, class_int2str=self.class_int2str)
 
-        # For class predictions, revert from int (model output) to str (class name)
-        inference_dict["mapped_predictions"] = revert_mappings(protocol=self.protocol, test_predictions=predictions,
-                                                               class_int2str=self.class_int2str)
-        inference_dict["mapped_probabilities"] = {k: v.cpu().tolist() if v is torch.tensor else v for k, v in
-                                                  inference_dict["mapped_probabilities"].items()}
-
-        if not include_probabilities:
-            return {k: v for k, v in inference_dict.items() if k != "mapped_probabilities"}
-        else:
-            return inference_dict
+        return inference_result
 
     def from_embeddings_with_bootstrapping(self, embeddings: Union[Iterable, Dict],
                                            targets: List,
@@ -308,81 +281,20 @@ class Inferencer:
         seq_ids = list(embeddings_dict.keys())
 
         all_predictions = self.from_embeddings(embeddings_dict, targets,
-                                               scale_embeddings=scale_embeddings)["mapped_predictions"]
-        all_predictions_dict = self._convert_target_dict(all_predictions)
+                                               scale_embeddings=scale_embeddings).predictions
+        all_predictions_dict = self._convert_target_dict({pred.seq_id: pred.prediction for pred in all_predictions})
 
         all_targets_dict = {seq_id: targets[idx] for idx, seq_id in enumerate(seq_ids)}
         all_targets_dict = self._convert_target_dict(all_targets_dict)
 
         solver, _ = self.solvers_and_loaders_by_split[split_name]
 
-        return self._do_bootstrapping(iterations=iterations, sample_size=sample_size, confidence_level=confidence_level,
-                                      seq_ids=seq_ids, all_predictions_dict=all_predictions_dict,
-                                      all_targets_dict=all_targets_dict, metrics_calculator=solver.metrics_calculator)
-
-    @staticmethod
-    def _do_bootstrapping(iterations: int,
-                          sample_size: int,
-                          confidence_level: float,
-                          seq_ids: List[str],
-                          all_predictions_dict: Dict,
-                          all_targets_dict: Dict,
-                          metrics_calculator: MetricsCalculator) -> List[BootstrappedMetric]:
-        """
-
-        :param iterations: Number of iterations to perform bootstrapping
-        :param sample_size: Sample size to use for bootstrapping. -1 defaults to all embeddings which is recommended.
-                            It is possible, but not recommended to use a sample size larger or smaller
-                            than the number of embeddings, because this might render the variance estimate unreliable.
-                            See: https://math.mit.edu/~dav/05.dir/class24-prep-a.pdf (6.2)
-        :param confidence_level: Confidence level for result error intervals (0.05 => 95% percentile)
-        :param seq_ids: List of sequence IDs
-        :param all_predictions_dict: Dictionary of all predictions
-        :param all_targets_dict: Dictionary of all targets
-        :param metrics_calculator: Metrics calculator object
-        :return:
-        """
-        if sample_size == -1:
-            sample_size = len(seq_ids)
-
-        # Convert dictionaries to tensors
-        all_predictions = torch.stack([all_predictions_dict[seq_id] for seq_id in seq_ids])
-        all_targets = torch.stack([all_targets_dict[seq_id] for seq_id in seq_ids])
-
-        # Set random seed
-        seed = np.random.get_state()[1][0] if np.random.get_state() else 42
-        rng = np.random.RandomState(seed)
-
-        # Generate all random indices at once
-        all_indices = rng.choice(len(seq_ids), size=(iterations, sample_size), replace=True)
-
-        iteration_results = []
-        for indices in all_indices:
-            # Use integer indexing instead of string keys
-            sampled_predictions = all_predictions[indices]
-            sampled_targets = all_targets[indices]
-
-            iteration_result = metrics_calculator.compute_metrics(
-                predicted=sampled_predictions,
-                labels=sampled_targets
-            )
-            iteration_results.append(iteration_result)
-
-        # Process results
-        metrics = list(iteration_results[0].keys())
-        results = []
-        for metric in metrics:
-            all_metric_values = torch.tensor([res[metric] for res in iteration_results], dtype=torch.float16)
-            mean, _, lower_bound, upper_bound = get_mean_and_confidence_bounds(
-                values=all_metric_values,
-                dimension=0,
-                confidence_level=confidence_level
-            )
-            results.append(BootstrappedMetric(name=metric, mean=mean.item(), lower=lower_bound.item(),
-                                              upper=upper_bound.item(), iterations=iterations, sample_size=sample_size,
-                                              confidence_level=confidence_level))
-
-        return results
+        return Bootstrapper._do_bootstrapping(iterations=iterations, sample_size=sample_size,
+                                              confidence_level=confidence_level,
+                                              seq_ids=seq_ids,
+                                              all_predictions_dict=all_predictions_dict,
+                                              all_targets_dict=all_targets_dict,
+                                              metrics_calculator=solver.metrics_calculator)
 
     def from_embeddings_with_monte_carlo_dropout(self,
                                                  embeddings: Union[Iterable, Dict],
@@ -390,8 +302,7 @@ class Inferencer:
                                                  scale_embeddings: Optional[bool] = True,
                                                  n_forward_passes: int = 30,
                                                  confidence_level: float = 0.05,
-                                                 seed: int = 42) -> List[
-        Union[BiotrainerPrediction, BiotrainerResiduePrediction]]:
+                                                 seed: int = 42) -> List[BiotrainerPrediction]:
         """
         Calculate predictions by using Monte Carlo dropout.
         Only works if the model has at least one dropout layer employed.

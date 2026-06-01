@@ -3,10 +3,11 @@ import torch
 from torch.utils.data import DataLoader
 from contextlib import nullcontext as _nullcontext
 from typing import Dict, Union, Optional, Callable, List
-from biotrainer_core.data_classes import BiotrainerResiduePrediction
+from biotrainer_core.data_classes import BiotrainerPrediction
 
 from .solver import Solver
-from .solver_utils import get_mean_and_confidence_bounds
+
+from ...shared import get_mean_and_confidence_bounds
 
 
 class ResidueSolver(Solver):
@@ -75,7 +76,7 @@ class ResidueSolver(Solver):
 
     def inference_monte_carlo_dropout(self, dataloader: DataLoader,
                                       n_forward_passes: int = 30,
-                                      confidence_level: float = 0.05) -> List[BiotrainerResiduePrediction]:
+                                      confidence_level: float = 0.05) -> List[BiotrainerPrediction]:
         """
         Calculate inference results from existing models for given embeddings.
         Adaption needed for residue_to_x tasks because of multiple predictions for each sequence
@@ -122,28 +123,28 @@ class ResidueSolver(Solver):
                     _, predictions_by_mean = torch.max(dropout_mean, dim=0)
 
                 for residue_idx, residue_prediction in enumerate(predictions_by_mean):
-                    predictions.append(BiotrainerResiduePrediction(seq_id=seq_id,
-                                                                   residue_index=residue_idx,
-                                                                   prediction=residue_prediction.item(),
-                                                                   mcd_predictions=[
-                                                                       dropout_iteration["prediction"][seq_idx][
-                                                                           residue_idx] for
-                                                                       dropout_iteration in dropout_iterations],
-                                                                   mcd_mean=dropout_mean.T[
-                                                                       residue_idx].tolist() if not is_regression else
-                                                                   dropout_mean[residue_idx].tolist(),
-                                                                   mcd_std=dropout_std.T[
-                                                                       residue_idx].tolist() if not is_regression else
-                                                                   dropout_std[residue_idx].tolist(),
-                                                                   mcd_lower_bound=lower_bound.T[
-                                                                       residue_idx].tolist() if not is_regression else
-                                                                   lower_bound[
-                                                                       residue_idx].tolist(),
-                                                                   mcd_upper_bound=upper_bound.T[
-                                                                       residue_idx].tolist() if not is_regression else
-                                                                   upper_bound[
-                                                                       residue_idx].tolist()
-                                                                   ))
+                    predictions.append(BiotrainerPrediction(seq_id=seq_id,
+                                                            residue_index=residue_idx,
+                                                            prediction=residue_prediction.item(),
+                                                            mcd_predictions=[
+                                                                dropout_iteration["prediction"][seq_idx][
+                                                                    residue_idx] for
+                                                                dropout_iteration in dropout_iterations],
+                                                            mcd_mean=dropout_mean.T[
+                                                                residue_idx].tolist() if not is_regression else
+                                                            dropout_mean[residue_idx].tolist(),
+                                                            mcd_std=dropout_std.T[
+                                                                residue_idx].tolist() if not is_regression else
+                                                            dropout_std[residue_idx].tolist(),
+                                                            mcd_lower_bound=lower_bound.T[
+                                                                residue_idx].tolist() if not is_regression else
+                                                            lower_bound[
+                                                                residue_idx].tolist(),
+                                                            mcd_upper_bound=upper_bound.T[
+                                                                residue_idx].tolist() if not is_regression else
+                                                            upper_bound[
+                                                                residue_idx].tolist()
+                                                            ))
                 seq_idx += 1
 
         return predictions

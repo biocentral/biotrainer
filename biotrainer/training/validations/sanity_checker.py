@@ -3,18 +3,17 @@ import random
 
 from scipy.stats import pearsonr
 from torch.utils.data import DataLoader
-from typing import Dict, List, Any, Optional
-from biotrainer_core.data_classes import Protocol
+from typing import Dict, List, Any, Optional, Tuple
+from biotrainer_core.data_classes import Protocol, BiotrainerInferenceResult, BiotrainerPrediction, BootstrappedMetric
 from biotrainer_core.utils.constants import MASK_AND_LABELS_PAD_VALUE, INTERACTION_INDICATOR
 
-from .bootstrapper import Bootstrapper
 
 from ..losses import get_loss
 from ..models import get_model
+from ..solvers import get_solver
 from ..optimizers import get_optimizer
-from ..solvers import MetricsCalculator, get_solver
 
-from ...shared import get_logger
+from ...shared import get_logger, MetricsCalculator, Bootstrapper
 
 logger = get_logger(__name__)
 
@@ -29,7 +28,7 @@ class SanityChecker:
                  val_dataset: List,
                  test_dataset: List,
                  test_loader: DataLoader,
-                 test_results_dict: Dict[str, Any],
+                 test_results: BiotrainerInferenceResult,
                  class_weights: Optional[torch.Tensor] = None,
                  mode: str = "warn"):
         self.training_config = training_config
@@ -48,7 +47,7 @@ class SanityChecker:
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
         self.test_loader = test_loader
-        self.test_results_dict = test_results_dict
+        self.test_results = test_results
 
         self.class_weights = class_weights
         self.mode = mode
@@ -80,7 +79,7 @@ class SanityChecker:
         return self._train_set_targets
 
 
-    def check_test_results(self, test_set_id) -> (Dict[str, Any], List[str]):
+    def check_test_results(self, test_set_id) -> Tuple[Dict[str, List[BootstrappedMetric]], List[str]]:
         logger.info(f"Running sanity checks on test set results ({test_set_id}) ..")
 
         self._check_metrics()
@@ -93,8 +92,8 @@ class SanityChecker:
 
     def _check_metrics(self):
         if self.protocol in Protocol.classification_protocols():
-            if "metrics" in self.test_results_dict.keys():
-                test_result_metrics = self.test_results_dict['metrics']
+            if self.test_results.metrics is not None and len(self.test_results.metrics) > 0:
+                test_result_metrics = self.test_results.metrics
             else:
                 self._handle_sanity_check_warning(f"No test result metrics found!")
                 return
@@ -111,15 +110,15 @@ class SanityChecker:
                         f"Accuracy ({accuracy}) == Precision == Recall for binary prediction!")
 
     def _check_predictions(self):
-        mapped_predictions = self.test_results_dict.get('mapped_predictions', None)
+        predictions = self.test_results.predictions
 
-        if mapped_predictions:
-            predictions = list(mapped_predictions.values())
+        if predictions and len(predictions) > 0:
+            preds = [pred.prediction for pred in predictions]
             # Check if the model is only predicting the same value for all test samples:
-            if all(prediction == predictions[0] for prediction in predictions):
-                self._handle_sanity_check_warning(f"Model is only predicting {predictions[0]} for all test samples!")
+            if all(pred == preds[0] for pred in preds):
+                self._handle_sanity_check_warning(f"Model is only predicting {preds[0]} for all test samples!")
 
-    def _check_baselines(self) -> Dict[str, Any]:
+    def _check_baselines(self) -> Dict[str, List[BootstrappedMetric]]:
         torch.manual_seed(self.training_config["seed"])
         # TODO Implement random hyperparameter baseline for GP models
         baseline_dict = {} if self.training_config["model_choice"] == "GP" else {
@@ -140,7 +139,7 @@ class SanityChecker:
 
         return baseline_dict
 
-    def _one_only_baseline(self):
+    def _one_only_baseline(self) -> List[BootstrappedMetric]:
         """
         Predicts "1" for every sample in the test set. (Only for binary classification)
         """
@@ -150,7 +149,7 @@ class SanityChecker:
         logger.info(f"One-Only Baseline: {one_only_baseline}")
         return one_only_baseline
 
-    def _zero_only_baseline(self):
+    def _zero_only_baseline(self) -> List[BootstrappedMetric]:
         """
         Predicts "0" for every sample in the test set. (Only for binary classification)
         """
@@ -160,7 +159,7 @@ class SanityChecker:
         logger.info(f"Zero-Only Baseline: {zero_only_baseline}")
         return zero_only_baseline
 
-    def _mean_only_baseline(self):
+    def _mean_only_baseline(self) -> List[BootstrappedMetric]:
         """
         Predicts the mean of the train set for every sample in the test set. (Only for regression)
         """
@@ -178,18 +177,21 @@ class SanityChecker:
         logger.info(f"Mean-Only Baseline: {mean_only_baseline}")
         return mean_only_baseline
 
-    def __value_only_baseline(self, value: float):
+    def __value_only_baseline(self, value: float) -> List[BootstrappedMetric]:
         """ Calculates the value-only baselines (1, 0, mean, ...) """
         if self.protocol in Protocol.per_residue_protocols():
-            test_set_value_predictions = {sample.seq_id: [value] * len(sample.target) for sample in self.test_dataset}
+            test_set_value_predictions = [BiotrainerPrediction(seq_id=sample.seq_id,
+                                                               prediction=[value] * len(sample.target))
+                                          for sample in self.test_dataset]
         else:  # per-sequence protocols
-            test_set_value_predictions = {sample.seq_id: value for sample in self.test_dataset}
+            test_set_value_predictions = [BiotrainerPrediction(seq_id=sample.seq_id, prediction=value)
+                                          for sample in self.test_dataset]
 
         value_only_baseline = Bootstrapper.bootstrap(protocol=self.protocol,
                                                      device=self.device,
                                                      bootstrapping_iterations=self.bootstrapping_iterations,
                                                      metrics_calculator=self.metrics_calculator,
-                                                     mapped_predictions=test_set_value_predictions,
+                                                     predictions=test_set_value_predictions,
                                                      test_loader=self.test_loader)
         return value_only_baseline
 
@@ -215,8 +217,7 @@ class SanityChecker:
                                                            device=self.device,
                                                            bootstrapping_iterations=self.bootstrapping_iterations,
                                                            metrics_calculator=solver.metrics_calculator,
-                                                           mapped_predictions=random_init_inference[
-                                                               "mapped_predictions"],
+                                                           predictions=random_init_inference.predictions,
                                                            test_loader=self.test_loader)
         logger.info(f"Random-Model Baseline: {random_init_bootstrapping}")
         return random_init_bootstrapping
@@ -235,16 +236,22 @@ class SanityChecker:
 
             if self.protocol in Protocol.per_residue_protocols():
                 # Random sampling (uniform) between min and max for each residue
-                test_set_value_predictions = {
-                    sample.seq_id: [random.uniform(min_target, max_target) for _ in range(len(sample.target))]
+                test_set_value_predictions = [
+                    BiotrainerPrediction(
+                        seq_id=sample.seq_id,
+                        prediction=[random.uniform(min_target, max_target) for _ in range(len(sample.target))]
+                    )
                     for sample in self.test_dataset
-                }
+                ]
             else:  # per_sequence protocols
                 # Random sampling (uniform) between min and max value
-                test_set_value_predictions = {
-                    sample.seq_id: random.uniform(min_target, max_target)
+                test_set_value_predictions = [
+                    BiotrainerPrediction(
+                        seq_id=sample.seq_id,
+                        prediction=random.uniform(min_target, max_target)
+                    )
                     for sample in self.test_dataset
-                }
+                ]
 
         elif self.protocol in Protocol.classification_protocols():
             # Calculate class distribution from train set
@@ -254,17 +261,23 @@ class SanityChecker:
             class_probabilities = class_counts.float() / len(train_set_targets)
             if self.protocol in Protocol.per_residue_protocols():
                 # Random sampling based on class distribution for each residue
-                test_set_value_predictions = {
-                    sample.seq_id: [int(torch.multinomial(class_probabilities, 1).item())
+                test_set_value_predictions = [
+                    BiotrainerPrediction(
+                        seq_id=sample.seq_id,
+                        prediction=[int(torch.multinomial(class_probabilities, 1).item())
                                     for _ in range(len(sample.target))]
+                    )
                     for sample in self.test_dataset
-                }
+                ]
             else:  # per_sequence protocols
                 # Random sampling based on class distribution
-                test_set_value_predictions = {
-                    sample.seq_id: int(torch.multinomial(class_probabilities, 1).item())
+                test_set_value_predictions = [
+                    BiotrainerPrediction(
+                        seq_id=sample.seq_id,
+                        prediction=int(torch.multinomial(class_probabilities, 1).item())
+                    )
                     for sample in self.test_dataset
-                }
+                ]
 
         assert test_set_value_predictions is not None
 
@@ -273,7 +286,7 @@ class SanityChecker:
             device=self.device,
             bootstrapping_iterations=self.bootstrapping_iterations,
             metrics_calculator=self.metrics_calculator,
-            mapped_predictions=test_set_value_predictions,
+            predictions=test_set_value_predictions,
             test_loader=self.test_loader
         )
         logger.info(f"Random-Sampling Baseline: {random_sampling_baseline}")

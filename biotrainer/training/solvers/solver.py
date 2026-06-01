@@ -12,15 +12,12 @@ from biotrainer_core.data_classes import Protocol
 from contextlib import nullcontext as _nullcontext
 from safetensors.torch import load_file, save_file
 from typing import Callable, Optional, Union, Dict, List, Any
-from biotrainer_core.data_classes import EpochMetrics, BiotrainerPrediction, BiotrainerResiduePrediction
-
-from .metrics_calculator import MetricsCalculator
-from .solver_utils import get_mean_and_confidence_bounds
+from biotrainer_core.data_classes import EpochMetrics, BiotrainerPrediction, BiotrainerInferenceResult
 
 from ..models import BiotrainerModel
 from ..output_files import OutputManager
 
-from ...shared import get_logger
+from ...shared import get_logger, MetricsCalculator, get_mean_and_confidence_bounds
 
 logger = get_logger(__name__)
 
@@ -127,13 +124,11 @@ class Solver(ABC):
 
         return epoch_iterations
 
-    def inference(self, dataloader: DataLoader, calculate_test_metrics: bool = False) -> \
-            Dict[str, Union[List[Any], Dict[str, Union[float, int]]]]:
+    def inference(self, dataloader: DataLoader, calculate_test_metrics: bool = False) -> BiotrainerInferenceResult:
         self.network = self.network.eval()
 
         predict_iterations = list()
-        mapped_predictions = dict()
-        mapped_probabilities = dict()
+        predictions = list()
 
         for i, (seq_ids, X, y, lengths) in enumerate(dataloader):
             if calculate_test_metrics:  # For test set, y must be valid targets
@@ -144,24 +139,21 @@ class Solver(ABC):
                 iteration_result = self._prediction_iteration(x=X, lengths=lengths)
 
             predict_iterations.append(iteration_result)
-            # Create dict with seq_id: prediction
-            for idx, prediction in enumerate(iteration_result["prediction"]):
-                mapped_predictions[seq_ids[idx]] = prediction
 
-            for idx, probability in enumerate(iteration_result["probabilities"]):
-                mapped_probabilities[seq_ids[idx]] = probability
+            for idx, prediction in enumerate(iteration_result["prediction"]):
+                biotrainer_prediction = BiotrainerPrediction(seq_id=seq_ids[idx],
+                                                             prediction=prediction,
+                                                             raw_prediction=iteration_result["probabilities"][idx]
+                                                             )
+
+                predictions.append(biotrainer_prediction)
 
         metrics = None
         if calculate_test_metrics:
             metrics = {**Solver._aggregate_iteration_losses(predict_iterations),
                        **self.metrics_calculator.compute_metrics()
                        }
-
-        return {
-            'metrics': metrics,
-            'mapped_predictions': mapped_predictions,
-            'mapped_probabilities': mapped_probabilities
-        }
+        return BiotrainerInferenceResult(metrics=metrics, predictions=predictions)
 
     def model_has_dropout(self):
         return self._has_dropout(self.network)
@@ -196,8 +188,7 @@ class Solver(ABC):
 
     def inference_monte_carlo_dropout(self, dataloader: DataLoader,
                                       n_forward_passes: int = 30,
-                                      confidence_level: float = 0.05) -> List[
-        Union[BiotrainerPrediction, BiotrainerResiduePrediction]]:
+                                      confidence_level: float = 0.05) -> List[BiotrainerPrediction]:
         """
         Calculate inference results from existing models for given embeddings. Implementation here is for
         per-sequence protocols. For per-residue, see the residue_solvers script.
@@ -229,18 +220,18 @@ class Solver(ABC):
 
             for idx, prediction in enumerate(prediction_by_mean):
                 predictions.append(BiotrainerPrediction(seq_id=seq_ids[idx],
-                                                                prediction=prediction.item(),
-                                                                mcd_predictions=[dropout_iteration["prediction"][idx]
-                                                                                 for
-                                                                                 dropout_iteration in
-                                                                                 dropout_iterations],
-                                                                mcd_mean=dropout_mean[idx].tolist(),
-                                                                mcd_std=dropout_std[idx].tolist(),
-                                                                mcd_lower_bound=lower_bound[idx].tolist(),
-                                                                mcd_upper_bound=upper_bound[idx].tolist(),
-                                                                bald_score=bald_scores[
-                                                                    idx].item() if bald_scores is not None else None,
-                                                                )
+                                                        prediction=prediction.item(),
+                                                        mcd_predictions=[dropout_iteration["prediction"][idx]
+                                                                         for
+                                                                         dropout_iteration in
+                                                                         dropout_iterations],
+                                                        mcd_mean=dropout_mean[idx].tolist(),
+                                                        mcd_std=dropout_std[idx].tolist(),
+                                                        mcd_lower_bound=lower_bound[idx].tolist(),
+                                                        mcd_upper_bound=upper_bound[idx].tolist(),
+                                                        bald_score=bald_scores[
+                                                            idx].item() if bald_scores is not None else None,
+                                                        )
                                    )
 
         return predictions
@@ -268,8 +259,8 @@ class Solver(ABC):
                 train_set_result = self.inference(training_dataloader, calculate_test_metrics=True)
                 val_set_result = self.inference(validation_dataloader, calculate_test_metrics=True)
                 return {
-                    "training": train_set_result["metrics"],
-                    "validation": val_set_result["metrics"],
+                    "training": train_set_result.metrics,
+                    "validation": val_set_result.metrics,
                     "epoch": self.start_epoch
                 }
 
