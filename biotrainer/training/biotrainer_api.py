@@ -6,7 +6,7 @@ from pathlib import Path
 from junban import Pipeline
 from typing import Union, Dict, Any, Optional, List
 from biotrainer_core.input_files import read_FASTA
-from biotrainer_core.data_classes import BiotrainerModelResult, SequenceData
+from biotrainer_core.data_classes import BiotrainerModelResult, SequenceData, BiotrainerInferenceResult
 
 from .inference import Inferencer
 from .trainers.pipeline_context import BiotrainerPipelineContext
@@ -54,18 +54,18 @@ class BiotrainerModel:
         self.training_result = training_result
         return training_result
 
-    def inferencer(self):
+    def inferencer(self) -> Inferencer:
         if self._inferencer is not None:
-            return self.inferencer
+            return self._inferencer
         if self.training_result is None:
             raise ValueError("No training result available!")
-        inferencer, iom = Inferencer.create_from_out_file(out_file_path=self.training_result,  # TODO
-                                                          automatic_path_correction=True)
-        self._inferencer = inferencer
+        inf, iom = Inferencer.from_training_result(training_result=self.training_result,
+                                                   automatic_path_correction=False)
+        self._inferencer = inf
         self._iom = iom
-        return inferencer
+        return inf
 
-    def inference_output_manager(self):
+    def inference_output_manager(self) -> InferenceOutputManager:
         if self._iom is not None:
             return self._iom
         _ = self.inferencer()
@@ -75,9 +75,9 @@ class BiotrainerModel:
                               seq_data: List[SequenceData],
                               save_embeddings: Optional[bool] = False,
                               scale_embeddings: Optional[bool] = True,
-                              ):
+                              ) -> BiotrainerInferenceResult:
         input_ids = {record.get_id_for_id2emb(): record.seq_id for record in seq_data}
-        inferencer = self.inferencer()
+        inf = self.inferencer()
         iom = self.inference_output_manager()
 
         embedding_service = get_embedding_service(embedder_name=iom.embedder_name(),
@@ -98,27 +98,27 @@ class BiotrainerModel:
             if save_embeddings:
                 shutil.copy(result_file, os.getcwd())
 
-        result = inferencer.from_embeddings(embeddings=embeddings, scale_embeddings=scale_embeddings)[
-            "mapped_predictions"]
+        inference_result = inf.from_embeddings(embeddings=embeddings, scale_embeddings=scale_embeddings)
 
         sorted_results = []
-        for seq_hash, prediction in result.items():
-            input_id = input_ids[seq_hash]
-            sorted_results.append((input_id, seq_hash, prediction))
+        for prediction in inference_result.predictions:
+            input_id = input_ids[prediction.seq_id]
+            sorted_results.append((input_id, prediction.seq_id, prediction))
 
         sorted_results = sorted(sorted_results, key=lambda x: x[0])
 
         for input_id, seq_hash, prediction in sorted_results:
             print(f"Prediction for {input_id} (sequence hash {seq_hash}):\n\t{prediction}")
 
-        return result
+        return inference_result
 
     def predict(self,
                 model_input: Union[str, List[SequenceData]],
                 save_embeddings: Optional[bool] = False,
                 scale_embeddings: Optional[bool] = True,
-                ) -> Dict[str, Any]:
+                ) -> BiotrainerInferenceResult:
         """ Convenience function to create predictions from a fasta file or sequence data list.
+            Automatically embeds the sequences (as defined in the training config) and calculates predictions.
             Use the .inferencer() method to get a more flexible and powerful interface.
         """
         if self.training_result is None:

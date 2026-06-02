@@ -169,25 +169,28 @@ class OutputManager:
 
 
 class InferenceOutputManager(OutputManager):
-    def __init__(self, output_file_path: Path, automatic_path_correction: bool = True):
+    def __init__(self,
+                 training_result: BiotrainerModelResult,
+                 output_file_path: Optional[Path] = None,
+                 automatic_path_correction: bool = True):
         super().__init__(observers=[])
-        print(f"Reading {output_file_path}..")
-        with open(output_file_path, "r") as output_file:
-            training_output = yaml.load(output_file, Loader=yaml.RoundTripLoader)
-            self._input_config = training_output["config"]
-            self._derived_values = training_output["derived_values"]
-            self._training_results = training_output["training_results"]
-            self._test_results = training_output["test_results"]
-            self._predictions = training_output["predictions"]
+        self._input_config = training_result.config
+        self._derived_values = training_result.derived_values
+        self._training_results = training_result.training_results
+        self._test_results = training_result.test_results
+        self._predictions = training_result.predictions
 
         if automatic_path_correction:
             self._do_automatic_path_correction(output_file_path)
 
-        if self._derived_values["biotrainer_version"] != __version__:
+        if self._derived_values.biotrainer_version != __version__:
             print("WARNING: The loaded model was trained on a different biotrainer version than currently running.\n"
                   "This may lead to unexpected behaviour if another torch version was used for training.")
 
-    def _do_automatic_path_correction(self, output_file_path: Path):
+    def _do_automatic_path_correction(self, output_file_path: Optional[Path]):
+        if output_file_path is None:
+            return
+
         log_dir = self._input_config["log_dir"]
         log_dir_path = Path(log_dir)
         if not log_dir_path.exists():
@@ -232,20 +235,20 @@ class InferenceOutputManager(OutputManager):
         return self._input_config["disable_pytorch_compile"]
 
     def n_features(self):
-        return self._derived_values["n_features"]
+        return self._derived_values.n_features
 
     def class_int2str(self):
-        return self._derived_values.get("class_int2str", None)
+        return self._derived_values.class_int2str
 
     def class_str2int(self):
-        return self._derived_values.get("class_str2int", None)
+        return self._derived_values.class_str2int
 
     def training_results(self):
         return self._training_results
 
     def split_config(self, split_name: str):
-        config = {**self._input_config, **self._derived_values}
-        config.update(self._training_results[split_name]["split_hyper_params"])
+        config = {**self._input_config, **self._derived_values.model_dump()}
+        config.update(self._training_results[split_name].split_hyper_params)
         return deepcopy(config)
 
     def adapter_path(self) -> Optional[Path]:
@@ -270,7 +273,7 @@ class InferenceOutputManager(OutputManager):
         return None
 
     def class_weights(self):
-        class_weights = self._derived_values.get("computed_class_weights", None)
+        class_weights = self._derived_values.computed_class_weights
         # Restore sorting of class weights (are sorted by ascending index from class_int2str)
         if class_weights is not None:
             class_weights = torch.tensor([class_weights[idx] for idx in range(len(class_weights))])

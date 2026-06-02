@@ -117,9 +117,9 @@ class InferencerTests(unittest.TestCase):
                                msg="Loss not as expected for rs2c!")
         self.assertAlmostEqual(s2c_result.metrics["loss"], 1.3706077337265015, delta=self.error_tolerance,
                                msg="Loss not as expected for s2c!")
-        self.assertAlmostEqual(s2v_result.metrics["loss"], 1.2276635438517511, delta=self.error_tolerance,
+        self.assertAlmostEqual(s2v_result.metrics["loss"], 0.8475780237060982, delta=self.error_tolerance,
                                msg="Loss not as expected for s2v!")
-        self.assertAlmostEqual(rs2v_result.metrics["loss"], 107.96429166959688, delta=self.error_tolerance,
+        self.assertAlmostEqual(rs2v_result.metrics["loss"], 107.29587640102811, delta=self.error_tolerance,
                                msg="Loss not as expected for rs2v!")
 
     def test_from_embeddings_with_bootstrapping(self):

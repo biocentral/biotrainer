@@ -10,7 +10,8 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 from biotrainer_core.functions.seeding import seed_all
 from typing import Union, Optional, Dict, Iterable, Tuple, Any, List
-from biotrainer_core.data_classes import Protocol, BootstrappedMetric, BiotrainerPrediction, BiotrainerInferenceResult
+from biotrainer_core.data_classes import Protocol, BootstrappedMetric, BiotrainerPrediction, BiotrainerInferenceResult, \
+    BiotrainerModelResult
 
 from ..losses import get_loss
 from ..models import get_model
@@ -44,7 +45,8 @@ class Inferencer:
         self.iom = iom
 
     @classmethod
-    def create_from_out_file(cls, out_file_path: str,
+    def create_from_out_file(cls,
+                             out_file_path: Union[str, Path],
                              automatic_path_correction: bool = True,
                              ) -> Tuple[Inferencer, InferenceOutputManager]:
         """
@@ -59,7 +61,23 @@ class Inferencer:
         :return: Tuple with Inferencer object configured with the output variables from the out.yml file,
                  and the output variables as dict
         """
-        inference_output_manager = InferenceOutputManager(Path(out_file_path),
+        training_result = BiotrainerModelResult.from_file(out_file_path)
+        inference_output_manager = InferenceOutputManager(
+            training_result=training_result,
+            output_file_path=Path(out_file_path),
+            automatic_path_correction=automatic_path_correction)
+        return cls(inference_output_manager), inference_output_manager
+
+    @classmethod
+    def from_training_result(cls, training_result: BiotrainerModelResult,
+                             out_file_path: Optional[Union[str, Path]] = None,
+                             automatic_path_correction: bool = False):
+        """
+        Create the inferencer object from the BiotrainerModelResult object. The out_file_path is optional
+        and should only be given if the location of the output and/or checkpoint files differs from the default.
+        """
+        inference_output_manager = InferenceOutputManager(training_result=training_result,
+                                                          output_file_path=Path(out_file_path) if out_file_path else None,
                                                           automatic_path_correction=automatic_path_correction)
         return cls(inference_output_manager), inference_output_manager
 
