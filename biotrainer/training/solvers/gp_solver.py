@@ -357,9 +357,35 @@ class GPSolver(Solver):
 
         return samples
 
+    def save_checkpoint(self, epoch: int):
+        if self.network.gp is None or self.network.likelihood is None:
+            # Skip saving before GP is initialized — parent's format is incompatible with GP load
+            logger.info("Skipping checkpoint save: GP not yet initialized.")
+            return
+
+        from safetensors.torch import save_file
+
+        state = {'epoch': torch.tensor(epoch)}
+        # Save GP state with 'gp.' prefix, excluding likelihood keys
+        # (ExactGP's state_dict includes likelihood.* keys which we save separately)
+        for k, v in self.network.gp.state_dict().items():
+            if not k.startswith('likelihood.'):
+                state[f'gp.{k}'] = v.contiguous()
+        # Save likelihood state with 'likelihood.' prefix
+        for k, v in self.network.likelihood.state_dict().items():
+            state[f'likelihood.{k}'] = v.contiguous()
+
+        if self.log_dir:
+            save_path = Path(self.log_dir) / self.checkpoint_name
+        else:
+            save_path = Path(self._tempdir.name) / self.checkpoint_name
+
+        save_file(state, str(save_path))
+        if epoch == 0:
+            logger.info(f"Checkpoint(s) will be stored at {save_path}")
+
     def load_checkpoint(self, checkpoint_path: Path = None, resume_training: bool = False,
                         disable_pytorch_compile: bool = True):
-        return  # TODO
         if checkpoint_path:
             checkpoint_file = checkpoint_path
             self.checkpoint_type = checkpoint_path.suffix
@@ -375,11 +401,23 @@ class GPSolver(Solver):
         state = load_file(str(checkpoint_file))
         epoch = int(state['epoch'].item())
 
+        # If GP hasn't been initialized yet (e.g. loading for testing), initialize with dummy data
         if self.network.gp is None or self.network.likelihood is None:
-            raise RuntimeError("Load GP checkpoint after the GP has been initialized (ensure_initialized).")
+            n_dummy = max(2, self.network.n_classes) if self.network._is_classification else 2
+            dummy_x = torch.zeros(n_dummy, self.network.n_features, device=self.device)
+            if self.network._is_classification:
+                # Need at least one sample per class for DirichletClassificationLikelihood
+                dummy_y = torch.arange(self.network.n_classes, device=self.device, dtype=torch.long)
+            else:
+                dummy_y = torch.zeros(n_dummy, device=self.device, dtype=torch.float)
+            self.network.ensure_initialized(train_x=dummy_x, train_y=dummy_y, device=self.device)
 
-        # Reconstruct GP state_dict
+        # Reconstruct GP state_dict (non-likelihood keys saved under 'gp.' prefix)
         gp_state = {k.replace('gp.', '', 1): v for k, v in state.items() if k.startswith('gp.')}
+        # Also include likelihood keys since ExactGP's state_dict contains them
+        for k, v in state.items():
+            if k.startswith('likelihood.'):
+                gp_state[k] = v
         self.network.gp.load_state_dict(gp_state)
 
         # Reconstruct likelihood state_dict

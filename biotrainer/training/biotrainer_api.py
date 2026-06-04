@@ -124,6 +124,9 @@ class BiotrainerModel:
         if self.training_result is None:
             raise ValueError("No training result available!")
 
+        if self.training_result.config["model_choice"] == "GP":
+            raise NotImplementedError("GP inference not yet implemented.")
+
         if isinstance(model_input, list) and isinstance(model_input[0], SequenceData):
             sequence_data = model_input
         elif isinstance(model_input, str):

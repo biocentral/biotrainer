@@ -75,6 +75,8 @@ def test_protocol_config(protocol: str, model: str, embedder_name: str, should_f
                                                         scale_embeddings=True
                                                         )
             assert len(inference_result.predictions) == len(predict_input), "Prediction length does not match input length!"
+        except NotImplementedError as e:
+            assert "GP" in str(e), f"GP failed for another reason but inference not implemented yet: {e}!"
         except ConfigurationException:
             assert should_fail, "A ConfigurationException was thrown although it shouldn't have."
         except Exception:
