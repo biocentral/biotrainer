@@ -28,7 +28,7 @@ configurations = {
         "input_file": "test_input_files/r2c/input.fasta",
         "protocol": "sequence_to_class",
         "auto_resume": True,
-        "pretrained_model": "placeholder.pt"
+        "pretrained_model": "placeholder.safetensors"
     },
     "mutual_exclusive_device_half_precision": {
         "input_file": "test_input_files/r2c/input.fasta",

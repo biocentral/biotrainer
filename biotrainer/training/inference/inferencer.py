@@ -169,14 +169,6 @@ class Inferencer:
         dataloader = loader(dataset)
         return solver, dataloader
 
-    def convert_all_checkpoints_to_safetensors(self) -> None:
-        """
-        Converts all checkpoint files for the splits from .pt to .safetensors, if not already stored as .safetensors
-        """
-        for split_name, (solver, _) in self.solvers_and_loaders_by_split.items():
-            if "pt" in solver.checkpoint_type:
-                solver.save_checkpoint(solver.start_epoch)
-
     def convert_to_onnx(self, output_dir: Optional[str] = None) -> List[str]:
         """
         Converts the model to ONNX format for the given embedding dimension.

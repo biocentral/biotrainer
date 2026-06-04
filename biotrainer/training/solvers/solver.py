@@ -37,8 +37,8 @@ class Solver(ABC):
                  n_classes: Optional[int] = 0):
 
         self.split_name = split_name
-        self.checkpoint_type = "safetensors"
-        self.checkpoint_name = f"{self.split_name}_checkpoint.{self.checkpoint_type}"
+        _checkpoint_type = "safetensors"
+        self.checkpoint_name = f"{self.split_name}_checkpoint.{_checkpoint_type}"
         self.protocol = protocol
         self.network = network
         self.optimizer = optimizer
@@ -273,7 +273,6 @@ class Solver(ABC):
                         disable_pytorch_compile: bool = True):
         if checkpoint_path:
             checkpoint_file = checkpoint_path
-            self.checkpoint_type = checkpoint_path.suffix
         elif self.log_dir:
             checkpoint_file = Path(self.log_dir) / self.checkpoint_name
         else:
