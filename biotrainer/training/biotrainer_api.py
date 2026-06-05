@@ -17,8 +17,9 @@ from ..embedding import get_embedding_service
 
 
 class BiotrainerModel:
-    def __init__(self, training_result: Optional[BiotrainerModelResult] = None, ):
+    def __init__(self, training_result: Optional[BiotrainerModelResult] = None, output_file_path: Optional[Path] = None):
         self.training_result = training_result
+        self._output_file_path = output_file_path
         self._inferencer: Optional[Inferencer] = None
         self._iom: Optional[InferenceOutputManager] = None
 
@@ -27,7 +28,8 @@ class BiotrainerModel:
         if isinstance(training_result, BiotrainerModelResult):
             return cls(training_result=training_result)
         elif isinstance(training_result, (Path, str)):
-            return cls(training_result=BiotrainerModelResult.from_file(training_result))
+            return cls(training_result=BiotrainerModelResult.from_file(training_result),
+                       output_file_path=Path(training_result))
         else:
             raise TypeError(f"Invalid type for training_result: {type(training_result)}")
 
@@ -60,6 +62,7 @@ class BiotrainerModel:
         if self.training_result is None:
             raise ValueError("No training result available!")
         inf, iom = Inferencer.from_training_result(training_result=self.training_result,
+                                                   out_file_path=self._output_file_path,
                                                    automatic_path_correction=True)
         self._inferencer = inf
         self._iom = iom

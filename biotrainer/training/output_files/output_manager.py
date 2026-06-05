@@ -196,10 +196,8 @@ class InferenceOutputManager(OutputManager):
         if not log_dir_path.exists():
             # Split the output file path and reconstruct without the last component
             output_dir = Path(*output_file_path.parts[:-1])
-            # Expect checkpoints to be in output/{model_hash}/
-            checkpoints_path = Path(self._derived_values.model_hash)
 
-            new_log_dir_path = output_dir / checkpoints_path
+            new_log_dir_path = output_dir
             if not new_log_dir_path.exists():
                 print(f"Could not automatically correct the checkpoint file paths! "
                       f"Tried: {str(new_log_dir_path)} but it does not exist.")
