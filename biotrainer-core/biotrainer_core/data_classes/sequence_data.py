@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 
-from typing import Dict, Any, Union, Optional, List, Tuple
+from typing import Dict, Any, Union, Optional, List, Tuple, Iterable
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationInfo
 
 from ..functions.hashing import calculate_sequence_hash
@@ -34,7 +34,7 @@ class SequenceData(BaseModel):
 
     # Generic attributes dict (stores everything)
     attributes: Optional[Dict[str, Any]] = Field(default=None, description="Attributes such as TARGET, SET or MASK")
-    embedding: Optional[Any] = Field(default=None, description="Embedding")
+    embedding: Optional[Iterable] = Field(default=None, description="Embedding (should be a list or torch.tensor or numpy array)")
 
     @field_validator("embedding")
     @classmethod

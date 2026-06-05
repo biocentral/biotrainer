@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Iterable, Any
 
 from ..data_classes import Protocol
 from ..utils import constants as biotrainer_constants
@@ -30,12 +30,12 @@ class BiotrainerInferenceResult(BaseModel):
 
 class BiotrainerPrediction(BaseModel):
     seq_id: str = Field(description="Sequence identifier")
-    prediction: Any = Field(description="Predicted value")
+    prediction: Union[str, float, Iterable] = Field(description="Predicted value")
     is_aggregated: bool = Field(default=False,
                                 description="Whether the prediction is an aggregated per-residue prediction")
     residue_index: Optional[int] = Field(default=None,
                                          description="Residue index for non-collapsed per-residue predictions")
-    raw_prediction: Optional[Any] = Field(default=None, description="Raw prediction of the model")
+    raw_prediction: Optional[Union[str, float, Iterable]] = Field(default=None, description="Raw prediction of the model")
     mcd_predictions: Optional[List[Any]] = Field(default=None, description="All Monte-Carlo-Dropout predictions")
     mcd_mean: Optional[Union[float, List[float]]] = Field(default=None, description="Monte-Carlo-Dropout mean(s)")
     mcd_std: Optional[Union[float, List[float]]] = Field(default=None,
