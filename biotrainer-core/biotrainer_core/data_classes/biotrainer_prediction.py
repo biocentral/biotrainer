@@ -22,6 +22,12 @@ class BiotrainerInferenceResult(BaseModel):
     def prediction_by_id(self, seq_id: str) -> Optional[BiotrainerPrediction]:
         return next((pred for pred in self.predictions if pred.seq_id == seq_id), None)
 
+    def replace_seq_ids(self, hash2id: Dict[str, str]):
+        return BiotrainerInferenceResult(
+            predictions=[pred.replace_seq_id(hash2id.get(pred.seq_id)) for pred in self.predictions],
+            metrics=self.metrics)
+
+
 class BiotrainerPrediction(BaseModel):
     seq_id: str = Field(description="Sequence identifier")
     prediction: Any = Field(description="Predicted value")
@@ -47,10 +53,10 @@ class BiotrainerPrediction(BaseModel):
 
         pred = self.prediction
         mcd_preds = self.mcd_predictions
-        raw_pred  = self.raw_prediction
+        raw_pred = self.raw_prediction
         is_aggregated = False
         if protocol in Protocol.classification_protocols():
-            if isinstance(pred, list): # per-residue
+            if isinstance(pred, list):  # per-residue
                 delimiter = ""  # classification delimiter
                 pred = delimiter.join([class_int2str[int(pred_idx)] for pred_idx in pred])
                 mcd_preds = [delimiter.join([class_int2str[int(mcd_pred_idx)] for mcd_pred_idx in mcd_pred])
