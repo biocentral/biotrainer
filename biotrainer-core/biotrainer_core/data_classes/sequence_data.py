@@ -34,25 +34,7 @@ class SequenceData(BaseModel):
 
     # Generic attributes dict (stores everything)
     attributes: Optional[Dict[str, Any]] = Field(default=None, description="Attributes such as TARGET, SET or MASK")
-    embedding: Optional[Iterable] = Field(default=None, description="Embedding (should be a list or torch.tensor or numpy array)")
-
-    @field_validator("embedding")
-    @classmethod
-    def validate_embedding(cls, v, info: ValidationInfo):
-        if v is None:
-            return v
-        if _TORCH_AVAILABLE:
-            if isinstance(v, torch.Tensor):
-                return v.float()
-            if isinstance(v, list) or (_NUMPY_AVAILABLE and isinstance(v, np.ndarray)):
-                return torch.tensor(v, dtype=torch.float)
-        elif isinstance(v, list):
-            return v
-        elif _NUMPY_AVAILABLE and isinstance(v, np.ndarray):
-            return v
-        else:
-            return v
-        raise ValueError(f"Invalid embedding type: {type(v)}")
+    embedding: Optional[Union[list, Any]] = Field(default=None, description="Embedding (should be a list or torch.tensor or numpy array)")
 
     @model_validator(mode="after")
     def validate_record(self):
@@ -139,6 +121,19 @@ class SequenceData(BaseModel):
     def get_ppi(self) -> Union[None, str]:
         """ Get the INTERACTOR id (i.e. another sequence id in the same fasta file) """
         return self.attributes.get("INTERACTOR")
+
+    def get_torch_embedding(self):
+        if not _TORCH_AVAILABLE:
+            raise ImportError("PyTorch is not installed")
+        embd = self.embedding
+        if isinstance(embd, torch.Tensor):
+            return embd.float()
+        if _NUMPY_AVAILABLE:
+            if isinstance(embd, np.ndarray):
+                return torch.tensor(embd, dtype=torch.float)
+        if isinstance(embd, list) or isinstance(embd, Iterable):
+            return torch.tensor(embd, dtype=torch.float)
+        raise ValueError(f"Invalid embedding type: {type(embd)}")
 
     # --- Hash / ID ---
 

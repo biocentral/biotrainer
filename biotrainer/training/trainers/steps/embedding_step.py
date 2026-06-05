@@ -100,7 +100,8 @@ class EmbeddingStep(PipelineStep[BiotrainerPipelineContext]):
             if isinstance(first_value, SequenceData):
                 first_embedding = first_value.embedding
                 if first_embedding is not None:
-                    id2emb = {seq_record.get_id_for_id2emb(): seq_record.embedding for seq_record in input_data}
+                    id2emb = {seq_record.get_id_for_id2emb(): seq_record.get_torch_embedding()
+                              for seq_record in input_data}
                     return id2emb
         return None
 
