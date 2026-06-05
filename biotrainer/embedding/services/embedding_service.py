@@ -277,7 +277,7 @@ class EmbeddingService:
             embeddings_file_path = output_dir
         else:
             # Create protocol path to embeddings
-            embeddings_file_path = output_dir / protocol.name
+            embeddings_file_path = output_dir / "embeddings"
             if not os.path.isdir(embeddings_file_path):
                 os.mkdir(embeddings_file_path)
 

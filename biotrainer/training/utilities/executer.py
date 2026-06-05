@@ -50,7 +50,7 @@ def parse_config_file_and_execute_run(config: Union[str, Path, Dict[str, Any]],
 
     # Save output_variables in out.yml
     if write_to_file:
-        output_manager.write_to_file(output_dir=output_dir)
+        output_manager.write_to_file(output_dir=Path(output_manager.model_result.config["log_dir"]))
 
     output_result = output_manager.model_result
 

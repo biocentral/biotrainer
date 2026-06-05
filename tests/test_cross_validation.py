@@ -29,7 +29,7 @@ def test_cross_validation(cv_config: dict):
 
         try:
             result = BiotrainerModel().train(config=str(Path(tmp_config_path).absolute()))
-            assert os.path.exists(f"{tmp_dir_name}/out.yml"), "No output file generated, run failed!"
+            assert os.path.exists(f"{result.config['log_dir']}/out.yml"), "No output file generated, run failed!"
         except ConfigurationException:
             assert False, "A ConfigurationException was thrown although it shouldn't have."
         except Exception:

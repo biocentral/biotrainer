@@ -69,7 +69,7 @@ def test_protocol_config(protocol: str, model: str, embedder_name: str, should_f
             biotrainer_model = BiotrainerModel()
             training_result = biotrainer_model.train(config=config)
             assert len(training_result.test_results) > 0, "Result does not contain test set metrics!"
-            assert os.path.exists(f"{tmp_dir_name}/out.yml"), "No output file generated, run failed!"
+            assert os.path.exists(f"{training_result.config['log_dir']}/out.yml"), "No output file generated, run failed!"
             inference_result = biotrainer_model.predict(model_input=predict_input,
                                                         save_embeddings=False,
                                                         scale_embeddings=True
