@@ -60,7 +60,7 @@ class BiotrainerModel:
         if self.training_result is None:
             raise ValueError("No training result available!")
         inf, iom = Inferencer.from_training_result(training_result=self.training_result,
-                                                   automatic_path_correction=False)
+                                                   automatic_path_correction=True)
         self._inferencer = inf
         self._iom = iom
         return inf
