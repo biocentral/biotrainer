@@ -44,7 +44,7 @@ class TrainingResult(BaseModel):
     training_losses: List[float] = Field(default_factory=list, description="Training losses for each epoch")
     validation_losses: List[float] = Field(default_factory=list, description="Validation losses for each epoch")
     best_epoch_metrics: Optional[EpochMetrics] = Field(default=None, description="Best training epoch metrics")
-
+    sanity_check_warnings: Optional[List[str]] = Field(default=None, description="Warnings from sanity checks")
 
 class TestResult(BaseModel):
     """ Test results after training. """

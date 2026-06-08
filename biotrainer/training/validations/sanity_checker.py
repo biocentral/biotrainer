@@ -1,12 +1,13 @@
 import torch
 import random
 
+from abc import ABC
 from scipy.stats import pearsonr
 from torch.utils.data import DataLoader
 from typing import Dict, List, Any, Optional, Tuple
-from biotrainer_core.data_classes import Protocol, BiotrainerInferenceResult, BiotrainerPrediction, BootstrappedMetric
+from biotrainer_core.data_classes import Protocol, BiotrainerInferenceResult, BiotrainerPrediction, BootstrappedMetric, \
+    EpochMetrics
 from biotrainer_core.utils.constants import MASK_AND_LABELS_PAD_VALUE, INTERACTION_INDICATOR
-
 
 from ..losses import get_loss
 from ..models import get_model
@@ -18,19 +19,48 @@ from ...shared import get_logger, MetricsCalculator, Bootstrapper
 logger = get_logger(__name__)
 
 
-class SanityChecker:
-    def __init__(self,
-                 training_config: Dict[str, Any],
-                 n_classes: int,
-                 n_features: int,
-                 metrics_calculator: MetricsCalculator,
-                 train_dataset: List,
-                 val_dataset: List,
-                 test_dataset: List,
-                 test_loader: DataLoader,
-                 test_results: BiotrainerInferenceResult,
-                 class_weights: Optional[torch.Tensor] = None,
-                 mode: str = "warn"):
+class SanityChecker(ABC):
+    _mode: str = "warn"
+    _warnings: List[str] = []
+
+    def __init__(self, mode: str = "warn"):
+        self._mode = mode
+        self._warnings = []
+
+    def _handle_sanity_check_warning(self, warning: str):
+        self._warnings.append(warning)
+        if self._mode == "warn":
+            logger.warning(warning)
+        elif self._mode == "error":
+            #  Might be useful for integration tests later
+            raise SanityException(warning)
+
+
+class SanityCheckerForTrainValSets(SanityChecker):
+    def __init__(self, best_epoch_metrics: EpochMetrics, mode: str = "warn"):
+        super().__init__(mode)
+        self.best_epoch_metrics = best_epoch_metrics
+
+    def check_train_val_results(self, cv_split_name: str) -> List[str]:
+        logger.info(f"Running sanity checks on {cv_split_name} results ..")
+        self._check_train_val_loss(cv_split_name)
+        logger.info(f"Sanity check on {cv_split_name} results finished!")
+        return self._warnings
+
+    def _check_train_val_loss(self, cv_split_name: str):
+        train_loss = self.best_epoch_metrics.training["loss"]
+        val_loss = self.best_epoch_metrics.validation["loss"]
+        if train_loss > val_loss:
+            self._handle_sanity_check_warning(f"Training loss ({train_loss}) is higher than "
+                                              f"validation loss ({val_loss}) for CV split {cv_split_name}!")
+
+
+class SanityCheckerForTestSets(SanityChecker):
+    def __init__(self, training_config: Dict[str, Any], n_classes: int, n_features: int,
+                 metrics_calculator: MetricsCalculator, train_dataset: List, val_dataset: List, test_dataset: List,
+                 test_loader: DataLoader, test_results: BiotrainerInferenceResult,
+                 class_weights: Optional[torch.Tensor] = None, mode: str = "warn"):
+        super().__init__(mode)
         self.training_config = training_config
         self.protocol = self.training_config.get("protocol")
         self.n_classes = n_classes
@@ -50,18 +80,19 @@ class SanityChecker:
         self.test_results = test_results
 
         self.class_weights = class_weights
-        self.mode = mode
 
-        self._warnings = []
         self._train_set_targets = None  # Calculated later
 
-    def _handle_sanity_check_warning(self, warning: str):
-        self._warnings.append(warning)
-        if self.mode == "warn":
-            logger.warning(warning)
-        elif self.mode == "error":
-            #  Might be useful for integration tests later
-            raise SanityException(warning)
+    def check_test_results(self, test_set_id) -> Tuple[Dict[str, List[BootstrappedMetric]], List[str]]:
+        logger.info(f"Running sanity checks on test set results ({test_set_id}) ..")
+
+        self._check_metrics()
+        self._check_predictions()
+        baseline_dict = self._check_baselines()
+
+        logger.info(f"Sanity check on test results ({test_set_id}) finished!")
+
+        return baseline_dict, self._warnings
 
     def __calculate_train_set_targets(self) -> torch.Tensor:
         if self._train_set_targets is not None:
@@ -77,18 +108,6 @@ class SanityChecker:
             self._train_set_targets = torch.tensor([sample.target for sample in self.train_dataset])
 
         return self._train_set_targets
-
-
-    def check_test_results(self, test_set_id) -> Tuple[Dict[str, List[BootstrappedMetric]], List[str]]:
-        logger.info(f"Running sanity checks on test set results ({test_set_id}) ..")
-
-        self._check_metrics()
-        self._check_predictions()
-        baseline_dict = self._check_baselines()
-
-        logger.info(f"Sanity check on test results ({test_set_id}) finished!")
-
-        return baseline_dict, self._warnings
 
     def _check_metrics(self):
         if self.protocol in Protocol.classification_protocols():

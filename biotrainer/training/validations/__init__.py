@@ -1,8 +1,9 @@
 from .input_validator import InputValidator
-from .sanity_checker import SanityChecker, SanityException
+from .sanity_checker import SanityCheckerForTrainValSets, SanityCheckerForTestSets, SanityException
 
 __all__ = [
-    "SanityChecker",
+    "SanityCheckerForTrainValSets",
+    "SanityCheckerForTestSets",
     "SanityException",
     "InputValidator",
 ]

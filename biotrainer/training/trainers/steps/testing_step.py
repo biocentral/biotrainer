@@ -7,9 +7,8 @@ from junban import PipelineStep
 
 from ..pipeline_context import BiotrainerPipelineContext
 
-from ...validations import SanityChecker
-from ...utilities import revert_mappings
 from ...solvers import get_metrics_calculator
+from ...validations import SanityCheckerForTestSets
 
 from ....shared import get_logger, Bootstrapper
 
@@ -136,17 +135,17 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
                                                                          dataset=baseline_test_dataset_embeddings,
                                                                          hyper_params=best_split.hyper_params,
                                                                          finetuning=False)
-                sanity_checker = SanityChecker(training_config=context.config,
-                                               n_classes=context.n_classes,
-                                               n_features=context.n_features,
-                                               train_dataset=context.train_dataset,
-                                               val_dataset=context.val_dataset,
-                                               test_dataset=baseline_test_dataset,
-                                               test_loader=baseline_test_loader,
-                                               metrics_calculator=metrics_calculator,
-                                               test_results=test_results,
-                                               class_weights=context.class_weights,
-                                               mode="warn")
+                sanity_checker = SanityCheckerForTestSets(training_config=context.config,
+                                                          n_classes=context.n_classes,
+                                                          n_features=context.n_features,
+                                                          train_dataset=context.train_dataset,
+                                                          val_dataset=context.val_dataset,
+                                                          test_dataset=baseline_test_dataset,
+                                                          test_loader=baseline_test_loader,
+                                                          metrics_calculator=metrics_calculator,
+                                                          test_results=test_results,
+                                                          class_weights=context.class_weights,
+                                                          mode="warn")
                 baseline_results, warnings = sanity_checker.check_test_results(test_set_id=test_set_id)
                 if baseline_results is not None and len(baseline_results) > 0:
                     context.output_manager.add_test_result(test_set_id=test_set_id,

@@ -16,6 +16,7 @@ from ..pipeline_context import BiotrainerPipelineContext
 from ...solvers import Solver
 from ...models import count_parameters
 from ...utilities import Split, SplitResult
+from ...validations import SanityCheckerForTrainValSets
 
 from ....shared import get_logger
 
@@ -169,6 +170,12 @@ class TrainingStep(PipelineStep[BiotrainerPipelineContext]):
         # Save metrics from best training epoch
         context.output_manager.update_training_result(current_split_name,
                                                          best_epoch_metrics=best_epoch_metrics)
+
+        # Run sanity checks on best epoch metrics
+        sanity_checker_cv = SanityCheckerForTrainValSets(best_epoch_metrics=best_epoch_metrics, mode="warn")
+        warnings = sanity_checker_cv.check_train_val_results(cv_split_name=current_split_name)
+        if len(warnings) > 0:
+            context.output_manager.update_training_result(current_split_name, sanity_check_warnings=warnings)
 
         return best_epoch_metrics, solver
 
