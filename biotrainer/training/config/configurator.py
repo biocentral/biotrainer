@@ -4,8 +4,8 @@ from ruamel import yaml
 from pathlib import Path
 from itertools import chain
 from ruamel.yaml import YAMLError
-from typing import Union, List, Dict, Any, Tuple
-from biotrainer_core.data_classes import Protocol
+from typing import Union, List, Dict, Any, Tuple, Optional
+from biotrainer_core.data_classes import Protocol, SequenceData
 
 from .config_option import ConfigOption, ConfigKey
 from .deprecated_config import deprecated_config_keys
@@ -185,12 +185,15 @@ class Configurator:
 
         return main_config, sub_configs
 
-    def verify_config(self, ignore_file_checks: bool = False) -> Dict[str, Any]:
+    def verify_config(self, input_data: Optional[List[SequenceData]] = None,
+                      ignore_file_checks: bool = False) -> Dict[str, Any]:
         """
         Reads the YAML configuration, performs value transformations (such as downloading files),
         and verifies the configuration's correctness.
 
         Args:
+            input_data (Optional[List[SequenceData]], optional): Input data to be used for training. Defaults to None
+            (data must be provided in config as a file).
             ignore_file_checks (bool, optional): If True, file-related checks are not performed. Defaults to False.
 
         Returns:
@@ -212,7 +215,8 @@ class Configurator:
 
         if not validate_config_rules(protocol=self.protocol,
                                      ignore_file_checks=ignore_file_checks,
-                                     config_dict=self._config_dict):
+                                     config_dict=self._config_dict,
+                                     input_data=input_data):
             raise ConfigurationException(f"Provided config is not valid!")
 
         verified_config = {}
@@ -299,18 +303,22 @@ class Configurator:
         postprocessed_config["protocol"] = self.protocol.name
         return postprocessed_config
 
-    def get_verified_config(self, ignore_file_checks: bool = False) -> Dict[str, Any]:
+    def get_verified_config(self,
+                            input_data: Optional[List[SequenceData]] = None,
+                            ignore_file_checks: bool = False) -> Dict[str, Any]:
         """
         Reads the YAML configuration, performs value transformations (such as downloading files),
         and verifies the configuration's correctness.
         Convenience function to perform validation and postprocessing at once for backwards compatibility.
 
         Args:
+            input_data (Optional[List[SequenceData]], optional): Input data to be used for training. Defaults to None
+            (data must be provided in config as a file).
             ignore_file_checks (bool, optional): If True, file-related checks are not performed. Defaults to False
         Returns:
             Dict[str, Any]: Dictionary with configuration option names as keys and their respective (transformed) values
         Raises:
             ConfigurationException: If any validation rule is violated or if required options are missing.
         """
-        verified_config = self.verify_config(ignore_file_checks=ignore_file_checks)
+        verified_config = self.verify_config(input_data=input_data, ignore_file_checks=ignore_file_checks)
         return self.postprocess_config(verified_config)

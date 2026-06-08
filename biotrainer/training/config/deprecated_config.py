@@ -5,7 +5,7 @@ def deprecated_config_keys(config_dict: Dict[str, Any]) -> Dict[str, str]:
     deprecated_keys_with_replacement = {"sequence_file": "input_file",
                                         "labels_file": "input_file",
                                         "mask_file": "input_file",
-                                        }
+                                        "input_data": "input_file/input_data parameter"}
 
     contained_deprecated_keys = {}
     for key in config_dict.keys():

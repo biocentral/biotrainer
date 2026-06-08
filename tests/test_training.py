@@ -73,8 +73,7 @@ class TrainingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             config = deepcopy(s2c_config)
             config.pop("input_file")
-            config["input_data"] = input_data
-            result = BiotrainerModel().train(config=config)
+            result = BiotrainerModel().train(config=config, input_data=input_data)
             self.assertEqual(result.config['input_data'], len(input_data))
 
     def test_direct_input_data_with_embeddings(self):
@@ -98,8 +97,7 @@ class TrainingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             config = deepcopy(s2c_config)
             config.pop("input_file")
-            config["input_data"] = input_data
-            result = BiotrainerModel().train(config=config)
+            result = BiotrainerModel().train(config=config, input_data=input_data)
             self.assertEqual(result.config['input_data'], len(input_data))
 
         # Errors
@@ -111,5 +109,4 @@ class TrainingTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as tmp_dir_name:
                 config = deepcopy(s2c_config)
                 config.pop("input_file")
-                config["input_data"] = input_data
-                result = BiotrainerModel().train(config=config)
+                result = BiotrainerModel().train(config=config, input_data=input_data)

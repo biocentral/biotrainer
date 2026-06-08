@@ -1,5 +1,5 @@
-from typing import Dict, Any
-from biotrainer_core.data_classes import Protocol
+from typing import Dict, Any, Optional, List
+from biotrainer_core.data_classes import Protocol, SequenceData
 
 from .config_utils import is_url, is_list_option
 from .config_option import ConfigOption, ConfigKey
@@ -93,17 +93,18 @@ def validate_config_options(protocol: Protocol,
     return validated_config
 
 
-def validate_config_rules(protocol: Protocol, ignore_file_checks: bool, config_dict: Dict[str, Any]) -> bool:
+def validate_config_rules(protocol: Protocol, ignore_file_checks: bool, config_dict: Dict[str, Any],
+                          input_data: Optional[List[SequenceData]]) -> bool:
     # Input files
     if not ignore_file_checks:
         if "hf_dataset" in config_dict:
-            if "input_file" in config_dict or "input_data" in config_dict:
+            if "input_file" in config_dict or (input_data is not None and len(input_data) > 0):
                 raise ConfigurationException("If you want to use a dataset from HuggingFace, "
                                              "do not provide any other input source!")
         else:
-            if "input_file" in config_dict and "input_data" in config_dict:
+            if "input_file" in config_dict and input_data is not None and len(input_data) > 0:
                 raise ConfigurationException("Only provide one of input_file and input_data!")
-            if ("input_file" not in config_dict) and ("input_data" not in config_dict):
+            if ("input_file" not in config_dict) and (input_data is None or len(input_data) == 0):
                 raise ConfigurationException("No huggingface dataset or input_file/input_data provided!")
 
     # Mutual Exclusive

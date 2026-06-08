@@ -1,7 +1,7 @@
 from pathlib import Path
 from junban import Pipeline
 from typing import Union, Dict, Any, Optional, List
-from biotrainer_core.data_classes import BiotrainerModelResult
+from biotrainer_core.data_classes import BiotrainerModelResult, SequenceData
 
 from ..trainers import Trainer
 from ..config import Configurator
@@ -12,6 +12,7 @@ from ...shared.logging import clear_logging
 
 
 def parse_config_file_and_execute_run(config: Union[str, Path, Dict[str, Any]],
+                                      input_data: Optional[List[SequenceData]] = None,
                                       custom_pipeline: Optional[Pipeline[BiotrainerPipelineContext]] = None,
                                       custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
                                       write_to_file: Optional[bool] = True) -> BiotrainerModelResult:
@@ -26,7 +27,13 @@ def parse_config_file_and_execute_run(config: Union[str, Path, Dict[str, Any]],
 
     assert configurator is not None, f"Config could not be read, incorrect type: {type(config)}"
 
-    config = configurator.get_verified_config(ignore_file_checks=False)
+    config = configurator.get_verified_config(input_data=input_data, ignore_file_checks=False)
+
+    if input_data is not None and len(input_data) > 0:
+        config["input_data"] = input_data
+        assert "input_file" not in config, (f"Cannot have both input_file and input_data, "
+                                            f"should have been caught by the config verification!")
+
     output_dir = Path(config["output_dir"])
 
     output_observers = output_observer_factory(output_dir=output_dir, config=config)

@@ -33,7 +33,9 @@ class BiotrainerModel:
         else:
             raise TypeError(f"Invalid type for training_result: {type(training_result)}")
 
-    def train(self, config: Union[str, Path, Dict[str, Any]],
+    def train(self,
+              config: Union[str, Path, Dict[str, Any]],
+              input_data: Optional[List[SequenceData]] = None,
               custom_pipeline: Optional[Pipeline[BiotrainerPipelineContext]] = None,
               custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
               write_to_file: Optional[bool] = True) -> BiotrainerModelResult:
@@ -41,6 +43,7 @@ class BiotrainerModel:
         Train a model using the provided configuration and optional custom pipeline and output observers.
 
         :param config: Biotrainer configuration file path or dictionary.
+        :param input_data: Optional list of SequenceData objects for training. If None, data will be loaded from config.
         :param custom_pipeline: A custom pipeline for the training process.
         :param custom_output_observers: Custom Observers for the output (e.g. for tensorboard)
         :param write_to_file: If True, the training result will be written to a file (out.yml).
@@ -50,6 +53,7 @@ class BiotrainerModel:
             print(f"Warning: Training result already available! Overwriting with new training result..")
 
         training_result = parse_config_file_and_execute_run(config=config,
+                                                            input_data=input_data,
                                                             custom_pipeline=custom_pipeline,
                                                             custom_output_observers=custom_output_observers,
                                                             write_to_file=write_to_file)
