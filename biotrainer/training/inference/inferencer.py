@@ -17,9 +17,9 @@ from ..losses import get_loss
 from ..models import get_model
 from ..solvers import get_solver
 from ..optimizers import get_optimizer
+from ..utilities import EmbeddingDatasetSample
 from ..output_files import InferenceOutputManager
 from ..datasets import get_dataset, get_embeddings_collate_function
-from ..utilities import EmbeddingDatasetSample, revert_mappings
 
 from ...shared import Bootstrapper
 from ...embedding import EmbeddingService
