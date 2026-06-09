@@ -55,18 +55,13 @@ class SetupStep(PipelineStep[BiotrainerPipelineContext]):
         device = get_device(context.config["device"] if "device" in context.config.keys() else None)
         context.config["device"] = device
 
-        # Set input data
-        context.input_data = context.config.get("input_file", None) or context.config.get("input_data", None)
-        assert context.input_data is not None, "input_file or input_data must be provided in the config!"
-
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         context.pipeline_start_time = time.perf_counter()
         pipeline_start_time_abs = str(datetime.datetime.now().isoformat())
 
         # Calculate model hash
-        model_hash = calculate_model_hash(dataset_files=[Path(val) for key, val in context.config.items()
-                                                         if "_file" in key and Path(str(val)).exists()],
-                                          config=context.config,
+        model_hash = calculate_model_hash(config=context.config,
+                                          input_data=context.input_data,
                                           custom_trainer=context.custom_pipeline
                                           )
         context.model_hash = model_hash

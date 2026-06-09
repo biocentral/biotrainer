@@ -21,8 +21,8 @@ class DefaultPipeline:
     def _default_pipeline() -> Pipeline[BiotrainerPipelineContext]:
         return Pipeline(name="TRAINING PIPELINE",
                         steps=[
-                            SetupStep(),
                             InputValidationStep(),
+                            SetupStep(),
                             EmbeddingStep(),
                             DataLoadingStep(),
                             ScalingStep(),

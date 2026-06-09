@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 
+from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Union, Optional, List, Tuple, Iterable
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationInfo
 
 from ..functions.hashing import calculate_sequence_hash
 from ..utils.constants import RESIDUE_TO_VALUE_TARGET_DELIMITER
@@ -34,7 +35,7 @@ class SequenceData(BaseModel):
 
     # Generic attributes dict (stores everything)
     attributes: Optional[Dict[str, Any]] = Field(default=None, description="Attributes such as TARGET, SET or MASK")
-    embedding: Optional[Union[list, Any]] = Field(default=None, description="Embedding (should be a list or torch.tensor or numpy array)")
+    embedding: Optional[Union[list, Any]] = Field(default=None, exclude=True, description="Embedding (should be a list or torch.tensor or numpy array)")
 
     @model_validator(mode="after")
     def validate_record(self):
@@ -144,6 +145,33 @@ class SequenceData(BaseModel):
         if self.seq is not None and self.seq != "":
             return self.get_hash()
         return self.seq_id
+
+    def get_embedding_hash(self) -> Optional[str]:
+        """
+        Efficiently hash the embedding via its raw byte representation.
+        Returns None if no embedding is set.
+
+        NOTE: We normalize to float64 before hashing to avoid false cache
+        misses caused purely by dtype differences (e.g. float32 vs float64)
+        when the underlying values are identical.
+        """
+        if self.embedding is None:
+            return None
+
+        if _TORCH_AVAILABLE and isinstance(self.embedding, torch.Tensor):
+            raw_bytes = self.embedding.cpu().detach().double().numpy().tobytes()
+        elif _NUMPY_AVAILABLE and isinstance(self.embedding, np.ndarray):
+            raw_bytes = self.embedding.astype(np.float64).tobytes()
+        elif isinstance(self.embedding, list):
+            if _NUMPY_AVAILABLE:
+                raw_bytes = np.array(self.embedding, dtype=np.float64).tobytes()
+            else:
+                # Fallback: repr is slow but only hits when numpy is absent
+                raw_bytes = repr(self.embedding).encode()
+        else:
+            raw_bytes = repr(self.embedding).encode()
+
+        return hashlib.sha256(raw_bytes).hexdigest()
 
     # --- Copy helpers ---
 

@@ -101,13 +101,4 @@ def general_config(protocol: Protocol) -> Tuple[ConfigKey, List[ConfigOption]]:
                          gte=0
                      ),
                      ),
-        ConfigOption(name="validate_input",
-                     description="Run checks on the given input_file data before training.",
-                     category=general_category,
-                     required=False,
-                     default=True,
-                     constraints=ConfigConstraints(
-                         type=bool,
-                     ),
-                     )
     ]
