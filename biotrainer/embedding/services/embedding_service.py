@@ -8,9 +8,9 @@ import multiprocessing as mp
 
 from tqdm import tqdm
 from pathlib import Path
-from biotrainer_core.input_files import read_FASTA
 from biotrainer_core.data_classes import SequenceData, Protocol
-from typing import Dict, List, Union, Optional, Generator, Tuple, Any
+from biotrainer_core.input_files import read_FASTA, read_id2emb, store_embedding_to_handle
+from typing import Dict, List, Union, Optional, Generator, Tuple, Any, Set
 
 from ..stats import EmbeddingStatsTracker
 from ..interfaces import EmbedderInterface
@@ -173,7 +173,7 @@ class EmbeddingService:
     @staticmethod
     def store_embedding(embeddings_file_handle,
                         emb_record: SequenceData,
-                        store_by_hash: bool = True):
+                        store_by_hash: bool = True) -> bool:
         h5_index = emb_record.get_hash() if store_by_hash else emb_record.seq_id
 
         # Handle both torch tensors and numpy arrays
@@ -183,8 +183,7 @@ class EmbeddingService:
         else:
             embedding_data = embedding
 
-        embeddings_file_handle.create_dataset(h5_index, data=embedding_data, compression="gzip", chunks=True)
-        embeddings_file_handle[h5_index].attrs["original_id"] = emb_record.seq_id
+        return store_embedding_to_handle(embeddings_file_handle, h5_index, emb_record.seq_id, embedding_data)
 
     def generate_embeddings(self,
                             input_data: Union[str, Path, List[str], List[SequenceData], Dict[str, SequenceData]],
@@ -368,20 +367,9 @@ class EmbeddingService:
         logger.info(f"Loading embeddings from: {embeddings_file_path}")
         start = time.perf_counter()
 
-        # Old version see:
-        # https://stackoverflow.com/questions/48385256/optimal-hdf5-dataset-chunk-shape-for-reading-rows/48405220#48405220
         # Sequence hash from embeddings file -> Embedding
-        id2emb = {}
-        with h5py.File(embeddings_file_path, 'r') as embeddings_file:
-            if ids_to_load is None:
-                # Load all sequences
-                id2emb = {idx: torch.tensor(embedding).float() for (idx, embedding) in embeddings_file.items()}
-            else:
-                for idx in ids_to_load:
-                    if idx in embeddings_file:
-                        id2emb[idx] = torch.tensor(embeddings_file[idx][:]).float()
-                    else:
-                        raise ValueError(f"Sequence hash {idx} not found in embeddings file!")
+        id2emb = read_id2emb(embeddings_file_path, ids_to_load)
+        id2emb = {idx: torch.tensor(embedding).float() for (idx, embedding) in id2emb.items()}
 
         # Logging
         logger.info(f"Read {len(id2emb)} entries.")
