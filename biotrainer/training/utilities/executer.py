@@ -41,7 +41,6 @@ def parse_config_file_and_execute_run(config: Union[str, Path, Dict[str, Any]],
         output_observers.extend(custom_output_observers)
 
     output_manager = OutputManager(observers=output_observers)
-    output_manager.add_config(config=config)
 
     trainer: Trainer
     if custom_pipeline:

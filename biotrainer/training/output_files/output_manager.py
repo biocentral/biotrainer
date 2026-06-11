@@ -47,6 +47,7 @@ class OutputManager:
         return value
 
     def add_config(self, config: Dict[str, Any]) -> None:
+        assert len(self._model_result.config) == 0, "Config already set!"
         converted_config = {
             str(k): self._convert_config_value(k, v)
             for k, v in config.items()
