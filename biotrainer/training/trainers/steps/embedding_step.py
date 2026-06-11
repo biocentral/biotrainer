@@ -73,7 +73,7 @@ class EmbeddingStep(PipelineStep[BiotrainerPipelineContext]):
         context.output_manager.update_derived_values(embeddings_file=str(embeddings_file))
 
         # Mapping from id to embeddings
-        ids_to_load = [seq_record.get_hash() for seq_record in context.input_data]
+        ids_to_load = {seq_record.get_hash() for seq_record in context.input_data}
         id2emb = EmbeddingService.load_embeddings(embeddings_file_path=str(embeddings_file),
                                                   ids_to_load=ids_to_load)
 

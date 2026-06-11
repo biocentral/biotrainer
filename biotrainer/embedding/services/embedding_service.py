@@ -354,7 +354,7 @@ class EmbeddingService:
         return reduced_embeddings, fitted_transform
 
     @staticmethod
-    def load_embeddings(embeddings_file_path: str, ids_to_load: Optional[List[str]] = None) -> Dict[str, torch.Tensor]:
+    def load_embeddings(embeddings_file_path: str, ids_to_load: Optional[Set[str]] = None) -> Dict[str, torch.Tensor]:
         """
         Loads precomputed embeddings from a file.
 
