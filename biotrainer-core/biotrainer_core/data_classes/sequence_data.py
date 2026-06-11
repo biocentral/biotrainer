@@ -209,6 +209,50 @@ class SequenceData(BaseModel):
                 header_parts.append(f"{key}={value}")
         return " ".join(header_parts) + "\n" + self.seq
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Return the dictionary representation of the model using alias.
+
+        This has the following differences from calling pydantic's
+        `self.model_dump(by_alias=True)`:
+
+        * `None` is only added to the output dict for nullable fields that
+          were set at model initialization. Other fields with value `None`
+          are ignored.
+        """
+        excluded_fields = set([])
+
+        _dict = self.model_dump(
+            by_alias=True,
+            exclude=excluded_fields,
+            exclude_none=True,
+        )
+        # set to None if label (nullable) is None
+        # and model_fields_set contains the field
+        if self.label is None and "label" in self.model_fields_set:
+            _dict['label'] = None
+
+        # set to None if set (nullable) is None
+        # and model_fields_set contains the field
+        if self.set is None and "set" in self.model_fields_set:
+            _dict['set'] = None
+
+        # set to None if mask (nullable) is None
+        # and model_fields_set contains the field
+        if self.mask is None and "mask" in self.model_fields_set:
+            _dict['mask'] = None
+
+        # set to None if attributes (nullable) is None
+        # and model_fields_set contains the field
+        if self.attributes is None and "attributes" in self.model_fields_set:
+            _dict['attributes'] = None
+
+        # set to None if embedding (nullable) is None
+        # and model_fields_set contains the field
+        if self.embedding is None and "embedding" in self.model_fields_set:
+            _dict['embedding'] = None
+
+        return _dict
+
     # --- Static helpers ---
 
     @staticmethod
