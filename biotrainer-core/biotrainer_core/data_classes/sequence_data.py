@@ -72,6 +72,11 @@ class SequenceData(BaseModel):
 
         self.attributes = attrs
 
+        # Reallocate vice versa to ensure consistency
+        self.label = self.attributes.get("TARGET", self.label)
+        self.set = self.attributes.get("SET", self.set)
+        self.mask = self.attributes.get("MASK", self.mask)
+
         # Validate mask length matches sequence length
         mask_val = self.attributes.get("MASK")
         if mask_val is not None and len(mask_val) != len(self.seq):
