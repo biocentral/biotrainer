@@ -1,7 +1,11 @@
+import io
 import h5py
+import base64
 
 from pathlib import Path
-from typing import Optional, Set, Dict, Any, Union
+from typing import Optional, Set, Dict, Any, Union, List
+
+from ..data_classes import SequenceData
 
 
 def read_id2emb(h5_file_path: Union[str, Path], ids_to_load: Optional[Set[str]] = None) -> Dict[str, Any]:
@@ -29,8 +33,23 @@ def store_embedding_to_path(h5_file_path: Union[str, Path], seq_hash: str, seq_i
         store_embedding_to_handle(h5_file_handle, seq_hash, seq_id, embedding_data)
     return True
 
+
 def store_embedding_to_handle(h5_file_handle: h5py.File, seq_hash: str, seq_id: str, embedding_data):
     """ Store embedding in h5_file via h5py.File handle """
     h5_file_handle.create_dataset(seq_hash, data=embedding_data, compression="gzip", chunks=True)
     h5_file_handle[seq_hash].attrs["original_id"] = seq_id
     return True
+
+
+def export_sequence_data_with_embeddings(embd_records: List[SequenceData]) -> str:
+    """ Export sequence data with embeddings to a base64-encoded h5 file string """
+    h5_io = io.BytesIO()
+    with h5py.File(h5_io, "w") as embeddings_file:
+        for embd_record in embd_records:
+            seq_hash = embd_record.get_hash()
+            store_embedding_to_handle(embeddings_file, seq_hash, embd_record.seq_id, embd_record.embedding)
+
+    h5_io.seek(0)
+    h5_base64 = base64.b64encode(h5_io.getvalue()).decode("utf-8")
+    h5_io.close()
+    return h5_base64
