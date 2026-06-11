@@ -3,6 +3,7 @@ import json
 import hashlib
 
 from pathlib import Path
+from copy import deepcopy
 from typing import Dict, Any, List, Optional
 
 
@@ -52,6 +53,7 @@ def calculate_model_hash(
     Returns:
         A hex string hash uniquely identifying this model setup
     """
+    config = deepcopy(config)
     # 0. Remove input_file from config (is represented by input_data)
     config.pop('input_file', None)
     config.pop('input_data', None)
