@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import os
 import time
-import h5py
 import torch
 import multiprocessing as mp
 
 from tqdm import tqdm
 from pathlib import Path
+from biotrainer_core.input_files import read_FASTA
 from biotrainer_core.data_classes import SequenceData, Protocol
-from biotrainer_core.input_files import read_FASTA, read_id2emb, store_embedding_to_handle
+from biotrainer_core.h5_files import read_id2emb, store_embedding_to_handle
 from typing import Dict, List, Union, Optional, Generator, Tuple, Any, Set
 
 from ..stats import EmbeddingStatsTracker
