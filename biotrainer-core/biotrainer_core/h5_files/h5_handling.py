@@ -5,6 +5,7 @@ import base64
 from pathlib import Path
 from typing import Optional, Set, Dict, Any, Union, List
 
+from ..input_files import read_FASTA
 from ..data_classes import SequenceData
 
 
@@ -53,3 +54,29 @@ def export_sequence_data_with_embeddings(embd_records: List[SequenceData]) -> st
     h5_base64 = base64.b64encode(h5_io.getvalue()).decode("utf-8")
     h5_io.close()
     return h5_base64
+
+
+def filter_h5_with_fasta(h5_file_path: Union[str, Path], fasta_file_path: Union[str, Path],
+                         h5_output_path: Union[str, Path]) -> int:
+    """
+    Filter h5_file_path to only contain sequences/seq_ids present in FASTA file
+
+    :returns number of entries kept
+    """
+    seq_data = read_FASTA(fasta_file_path)
+    if len(seq_data) == 0:
+        raise ValueError(f"No sequences found in FASTA file {fasta_file_path}!")
+    seq_ids = {seq_record.seq_id for seq_record in seq_data
+               if seq_record.seq_id is not None and len(seq_record.seq_id) > 0}
+    seq_hashes = {seq_record.get_hash() for seq_record in seq_data}
+    combined = seq_ids | seq_hashes
+    n_kept = 0
+    with h5py.File(h5_file_path, "r+") as h5_input_file:
+        with h5py.File(h5_output_path, "a") as h5_output_file:
+            for key in h5_input_file.keys():
+                if key in combined:
+                    store_embedding_to_handle(h5_output_file, key,
+                                              h5_input_file[key].attrs["original_id"],
+                                              h5_input_file[key][:])
+                    n_kept += 1
+    return n_kept
