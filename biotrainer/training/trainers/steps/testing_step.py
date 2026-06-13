@@ -69,6 +69,10 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
             pred_results = pred_results.revert_mappings(protocol=protocol, class_int2str=class_int2str)
             predictions = pred_results.predictions
 
+        assert len(predictions) == len(context.prediction_dataset), \
+            (f"Number of predictions ({len(predictions)}) does not match "
+             f"number of sequences in dataset ({len(context.prediction_dataset)})!")
+
         # Remap hashes to actual ids
         predictions = [pred.replace_seq_id(context.hash2id.get(pred.seq_id, pred.seq_id)) for pred in predictions]
         context.output_manager.add_predictions(predictions=predictions)
