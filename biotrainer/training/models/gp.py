@@ -7,7 +7,6 @@ from torch.nn import Parameter
 
 from .biotrainer_model import BiotrainerModel
 
-
 try:
     import gpytorch
     from gpytorch.kernels import RBFKernel, ScaleKernel
@@ -27,11 +26,11 @@ class _ExactGPModel(gpytorch.models.ExactGP):  # type: ignore[misc]
     """
 
     def __init__(
-        self,
-        train_x: torch.Tensor,
-        train_y: torch.Tensor,
-        likelihood: gpytorch.likelihoods._GaussianLikelihoodBase,  # type: ignore[attr-defined]
-        num_classes: Optional[int] = None,
+            self,
+            train_x: torch.Tensor,
+            train_y: torch.Tensor,
+            likelihood: gpytorch.likelihoods._GaussianLikelihoodBase,  # type: ignore[attr-defined]
+            num_classes: Optional[int] = None,
     ):
         super().__init__(train_x, train_y, likelihood)
         batch_shape = torch.Size((num_classes,)) if num_classes else torch.Size()
@@ -58,13 +57,13 @@ class GPModelAdapter(BiotrainerModel):
     """
 
     def __init__(
-        self,
-        n_classes: int,
-        n_features: int,
-        *,
-        learn_additional_noise: bool = True,
-        device: Optional[Union[str, torch.device]] = None,
-        **kwargs,
+            self,
+            n_classes: int,
+            n_features: int,
+            *,
+            learn_additional_noise: bool = True,
+            device: Optional[Union[str, torch.device]] = None,
+            **kwargs,
     ):
         if gpytorch is None:  # pragma: no cover
             raise ImportError(
@@ -97,7 +96,8 @@ class GPModelAdapter(BiotrainerModel):
         This uses eval mode prediction path for deterministic outputs.
         """
         if self.gp is None or self.likelihood is None:
-            raise RuntimeError("GPModelAdapter is not initialized yet. Call with targets once during training, or use the GPSolver which initializes lazily.")
+            raise RuntimeError(
+                "GPModelAdapter is not initialized yet. Call with targets once during training, or use the GPSolver which initializes lazily.")
 
         self.gp.eval()
         self.likelihood.eval()
@@ -150,7 +150,8 @@ class GPModelAdapter(BiotrainerModel):
 
         if self._is_classification:
             # DirichletClassificationLikelihood expects class labels 0..C-1 as targets to build transformed targets
-            dlik = DirichletClassificationLikelihood(train_y, learn_additional_noise=self.learn_additional_noise).to(dev)
+            dlik = _FixedDirichletClassificationLikelihood(train_y, learn_additional_noise=self.learn_additional_noise,
+                                                           num_classes=self.n_classes).to(dev)
             self.likelihood = dlik
             model_targets = dlik.transformed_targets
             num_classes = int(dlik.num_classes)
@@ -175,3 +176,32 @@ class GPModelAdapter(BiotrainerModel):
         else:
             means = latent.mean if latent.mean.dim() == 1 else latent.mean.squeeze(-1)
             return latent, means
+
+
+class _FixedDirichletClassificationLikelihood(DirichletClassificationLikelihood):
+    """
+     We need to make sure that the number of all classes
+     in the given dataset is used by the Classification Likelihood. For some active learning scenarios, this might
+     not be the case. The default implementation of DirichletClassificationLikelihood uses targets.max() + 1 as
+     the number of classes, which might not match the actual number of classes in the dataset.
+     This can lead to incorrect predictions.
+     By forcing the number of classes to be the same as the number of classes in the dataset,
+     we ensure that the Classification Likelihood is correctly configured.
+    """
+
+    def __init__(self, targets, num_classes, **kwargs):
+        self._forced_num_classes = num_classes
+        super().__init__(targets, **kwargs)
+
+    def _prepare_targets(self, targets, alpha_epsilon=0.01, dtype=torch.float):
+        # Use the global number of classes instead of targets.max() + 1
+        num_classes = self._forced_num_classes
+
+        # Standard Dirichlet transformation logic
+        alpha = alpha_epsilon * torch.ones(targets.shape[-1], num_classes, device=targets.device, dtype=dtype)
+        alpha[torch.arange(len(targets)), targets] = alpha[torch.arange(len(targets)), targets] + 1.0
+
+        sigma2_i = torch.log(alpha.reciprocal() + 1.0)
+        transformed_targets = alpha.log() - 0.5 * sigma2_i
+
+        return sigma2_i.transpose(-2, -1).type(dtype), transformed_targets.type(dtype), num_classes
