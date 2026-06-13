@@ -246,8 +246,9 @@ class GPSolver(Solver):
                     gp_samples = self._sample_gp_classification(X, n_forward_passes)
 
                     # Shape: (n_samples, batch_size, n_classes)
-                    samples_tensor = torch.stack([s["probabilities"] for s in gp_samples], dim=0)
+                    samples_tensor = torch.stack([s["logits"] for s in gp_samples], dim=0)
 
+                    # Convert logits to probabilities
                     probs_tensor = torch.softmax(samples_tensor, dim=-1)
 
                     # Move to (B, S, C)
@@ -340,19 +341,19 @@ class GPSolver(Solver):
                 pred_dist = self.network.likelihood(latent_dist)
 
                 # For DirichletClassificationLikelihood, pred_dist is a Dirichlet
-                # Sample from it to get probability vectors
-                sampled_probs = pred_dist.sample()  # Shape: (batch_size, n_classes) or (n_classes, batch_size)
+                # Sample from it to get logits vectors
+                sampled_logits = pred_dist.sample()  # Shape: (batch_size, n_classes) or (n_classes, batch_size)
 
                 # Handle potential batch_shape transpose
-                if sampled_probs.shape[0] == self.network.n_classes and sampled_probs.dim() == 2:
-                    sampled_probs = sampled_probs.transpose(0, 1)  # (batch_size, n_classes)
+                if sampled_logits.dim() == 2:
+                    sampled_logits = sampled_logits.transpose(0, 1)  # (batch_size, n_classes)
 
                 # Get class predictions from sampled probabilities
-                _, predicted = torch.max(sampled_probs, dim=-1)
+                _, predicted = torch.max(sampled_logits, dim=-1)
 
                 samples.append({
                     'prediction': predicted.cpu().tolist(),
-                    'probabilities': sampled_probs.cpu()
+                    'logits': sampled_logits.cpu()
                 })
 
         return samples
