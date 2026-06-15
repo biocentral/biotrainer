@@ -1,7 +1,8 @@
 from biotrainer_core.data_classes import Protocol
 
 from .ndcg import NDCG
-from .metrics_calculator import MetricsCalculator, ResidueClassificationMetricsCalculator, \
+from .metrics_calculator import MetricsCalculator, SimpleTorchMetricsCalculator, SimpleCustomMetricsCalculator, \
+    ResidueClassificationMetricsCalculator, \
     ResidueRegressionMetricsCalculator, ResiduesClassificationMetricsCalculator, ResiduesRegressionMetricsCalculator, \
     SequenceClassificationMetricsCalculator, SequenceRegressionMetricsCalculator
 from .ci_bounds import get_mean_and_confidence_bounds
@@ -19,5 +20,7 @@ __all__ = [
     "METRIC_CALCULATORS",
     "NDCG",
     "MetricsCalculator",
+    "SimpleTorchMetricsCalculator",
+    "SimpleCustomMetricsCalculator",
     "get_mean_and_confidence_bounds",
 ]

@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Union
+from typing import Optional, Dict, Union, Callable
 from torchmetrics import Accuracy, Precision, Recall, F1Score, SpearmanCorrCoef, MatthewsCorrCoef, Metric, \
     MeanSquaredError
 from biotrainer_core.utils.constants import MASK_AND_LABELS_PAD_VALUE
@@ -26,12 +26,15 @@ class MetricsCalculator(ABC):
 
     @abstractmethod
     def compute_metrics(
-            self, predicted: Optional[torch.Tensor] = None,
+            self,
+            predicted: Optional[torch.Tensor] = None,
             labels: Optional[torch.Tensor] = None) -> Dict[str, Union[int, float]]:
         raise NotImplementedError
 
     @staticmethod
-    def _compute_metric(metric: Metric, predicted: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    def _compute_metric(metric: Metric,
+                        predicted: Optional[torch.Tensor],
+                        labels: Optional[torch.Tensor]) -> torch.Tensor:
         """
         Utility function to calculate metrics either on a per-epoch or a per-batch basis
 
@@ -52,6 +55,37 @@ class MetricsCalculator(ABC):
                 # SCC only accepts float tensors
                 return metric(predicted.cpu().float(), labels.cpu().float())
             return metric(predicted.cpu(), labels.cpu())
+
+
+class SimpleCustomMetricsCalculator(MetricsCalculator):
+    """ A simple metrics calculator that computes a single custom metric. Useful for interaction with the bootstrapper. """
+
+    def __init__(self, device, name: str,
+                 metric_function: Callable[[Optional[torch.Tensor], Optional[torch.Tensor]], torch.Tensor]):
+        super().__init__(device, -1)
+        self._name = name
+        self._metric_function = metric_function
+
+    def compute_metrics(
+            self, predicted: Optional[torch.Tensor] = None,
+            labels: Optional[torch.Tensor] = None) -> Dict[str, Union[int, float]]:
+        res = self._metric_function(predicted, labels)
+        return {self._name: res.item()}
+
+
+class SimpleTorchMetricsCalculator(MetricsCalculator):
+    """ A simple metrics calculator that computes a single torch metric. Useful for interaction with the bootstrapper. """
+
+    def __init__(self, device, name: str, torch_metric: Metric):
+        super().__init__(device, -1)
+        self._name = name
+        self._torch_metric = torch_metric
+
+    def compute_metrics(
+            self, predicted: Optional[torch.Tensor] = None,
+            labels: Optional[torch.Tensor] = None) -> Dict[str, Union[int, float]]:
+        res = self._compute_metric(self._torch_metric, predicted, labels)
+        return {self._name: res.item()}
 
 
 class ClassificationMetricsCalculator(MetricsCalculator):
