@@ -3,8 +3,8 @@ from __future__ import annotations
 import ast
 import hashlib
 
-from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Union, Optional, List, Tuple, Iterable
+from pydantic import BaseModel, Field, model_validator, field_serializer
 
 from ..functions.hashing import calculate_sequence_hash
 from ..utils.constants import RESIDUE_TO_VALUE_TARGET_DELIMITER
@@ -35,7 +35,13 @@ class SequenceData(BaseModel):
 
     # Generic attributes dict (stores everything)
     attributes: Optional[Dict[str, Any]] = Field(default=None, description="Attributes such as TARGET, SET or MASK")
-    embedding: Optional[Union[list, Any]] = Field(default=None, exclude=True, description="Embedding (should be a list or torch.tensor or numpy array)")
+    embedding: Optional[Union[list, Any]] = Field(default=None, description="Embedding (should be a list or torch.tensor or numpy array)")
+
+    @field_serializer('embedding')
+    def serialize_embedding(self, embedding: Any, _info):
+        # This ensures the field is never serialized to JSON to save space,
+        # but keeps the field in the generated schema for openapi.
+        return None
 
     @model_validator(mode="after")
     def validate_record(self):
