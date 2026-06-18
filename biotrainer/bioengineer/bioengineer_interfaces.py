@@ -4,9 +4,9 @@ import numpy as np
 from tqdm import tqdm
 from typing import List, Optional
 from abc import ABC, abstractmethod
+from biotrainer_core.data_classes import VariantScore, Variant, SingleMutationScore, ZeroShotMethod
 
-from .bioengineer_utils import compute_windowed_logits, get_optimal_window, MAX_CONTEXT_LENGTH, prepare_cat_jac_mutations, convert_cat_jac_to_contact_map
-from .bioengineer_data_classes import VariantScore, Variant, SingleMutationScore, ZeroShotMethod
+from .bioengineer_utils import compute_windowed_logits, get_optimal_window, MAX_CONTEXT_LENGTH
 
 from ..embedding.interfaces import BiotrainerTokenizerMixin
 
@@ -310,7 +310,7 @@ class BertLikeEngineer(BioEngineerModelWrapper, ABC):
                                                                                    masked_position=i,
                                                                                    seq_len_with_special=seq_len)
             logits = self._model_forward_fn(input_ids=windowed_tokens,
-                                            attention_mask=windowed_mask) # [seq_len, vocab_size] without EOS/BOS
+                                            attention_mask=windowed_mask)  # [seq_len, vocab_size] without EOS/BOS
 
             # Get log probabilities for the masked position
             token_position = i - start

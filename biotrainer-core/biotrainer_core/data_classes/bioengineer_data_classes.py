@@ -6,8 +6,9 @@ import torch
 
 from enum import Enum
 from typing import Optional, List
-from biotrainer_core.data_classes import MetricEstimate
 from pydantic import BaseModel, Field, field_validator, computed_field, SerializeAsAny
+
+from .metrics import MetricEstimate
 
 
 class ZeroShotMethod(Enum):

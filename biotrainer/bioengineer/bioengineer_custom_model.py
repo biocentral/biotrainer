@@ -1,9 +1,9 @@
 import torch
 
 from abc import ABC, abstractmethod
+from biotrainer_core.data_classes import ZeroShotMethod
 from typing import List, Optional, Dict, Iterable, Tuple
 
-from .bioengineer_data_classes import ZeroShotMethod
 from .bioengineer_interfaces import BertLikeEngineer, GPTLikeEngineer
 
 

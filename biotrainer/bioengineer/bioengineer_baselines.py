@@ -3,9 +3,9 @@ import numpy as np
 
 from enum import Enum
 from typing import List, Dict, Optional
+from biotrainer_core.data_classes import ZeroShotMethod
 from biotrainer_core.utils.constants import STANDARD_AAS
 
-from .bioengineer_data_classes import ZeroShotMethod
 from .bioengineer_interfaces import BioEngineerModelWrapper
 
 

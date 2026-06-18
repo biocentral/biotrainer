@@ -2,9 +2,8 @@ import unittest
 
 from pathlib import Path
 
-from biotrainer.bioengineer import BioEngineer, BioEngineerBaseline, ZeroShotMethod
-from biotrainer.bioengineer.bioengineer_data_classes import Variant
-
+from biotrainer_core.data_classes import ZeroShotMethod, Variant
+from biotrainer.bioengineer import BioEngineer, BioEngineerBaseline
 
 
 class BioEngineerTests(unittest.TestCase):
@@ -23,7 +22,7 @@ class BioEngineerTests(unittest.TestCase):
                     continue
                 self.assertIsNotNone(bio_engineer.model_wrapper, f"Model wrapper for baseline {baseline} is None!")
                 scores, ranking = bio_engineer.rank_pgym_dataset(dataset_file_path=dataset_path,
-                                       method=method)
+                                                                 method=method)
                 self.assertTrue(len(scores) > 0)
                 self.assertTrue(-1 <= ranking.scc.mean <= 1)
                 self.assertTrue(0 <= ranking.ndcg.mean <= 1)
@@ -31,7 +30,7 @@ class BioEngineerTests(unittest.TestCase):
         # Check that baseline creation from name works
         bio_engineer = BioEngineer.from_name(name=BioEngineerBaseline.CONSTANT_BASELINE.name)
         scores, ranking = bio_engineer.rank_pgym_dataset(dataset_file_path=dataset_path,
-                                                 method=ZeroShotMethod.WT_MARGINALS)
+                                                         method=ZeroShotMethod.WT_MARGINALS)
         self.assertTrue(len(scores) > 0)
         self.assertTrue(-1 <= ranking.scc.mean <= 1)
         self.assertTrue(0 <= ranking.ndcg.mean <= 1)

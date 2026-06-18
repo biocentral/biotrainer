@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional, Union, List
+from biotrainer_core.data_classes import ZeroShotMethod
 
 from .autoeval_setup import setup_pipeline
 from .autoeval_report import ZeroShotCachedResults, ZeroShotFrameworkReport, AutoEvalReport
@@ -7,7 +8,7 @@ from .autoeval_progress import AutoEvalProgress
 from ..core import AutoEvalFramework, AutoEvalTask
 
 from ...shared import get_device
-from ...bioengineer import BioEngineer, ZeroShotMethod
+from ...bioengineer import BioEngineer
 
 
 def _run_tasks(framework: AutoEvalFramework,
@@ -52,8 +53,8 @@ def _run_tasks(framework: AutoEvalFramework,
 
             # Cached result does not exist, run bioengineer
             _, ranking_result = bioengineer.rank_pgym_dataset(dataset_file_path=file_path,
-                                                           method=zero_shot_method,
-                                                           single_mutations_only=False)
+                                                              method=zero_shot_method,
+                                                              single_mutations_only=False)
             cached_results.update_and_sync(dataset_name=file_name, result=ranking_result, output_dir=output_dir)
             individual_results[file_name] = ranking_result
 

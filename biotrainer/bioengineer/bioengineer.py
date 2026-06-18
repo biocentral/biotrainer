@@ -6,6 +6,7 @@ import numpy as np
 
 from pathlib import Path
 from typing import List, Optional, Dict, Union, Tuple
+from biotrainer_core.data_classes import Variant, VariantScore, RankingResult, ZeroShotMethod
 
 from .bioengineer_interfaces import BioEngineerModelWrapper
 from .bioengineer_models import ESM2Engineer, ProtBertEngineer, ProtGPT2Engineer

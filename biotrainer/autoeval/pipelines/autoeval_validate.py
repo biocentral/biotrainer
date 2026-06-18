@@ -1,9 +1,9 @@
 from typing import Optional
+from biotrainer_core.data_classes import ZeroShotMethod
 
 from ..core import AutoEvalFramework, AutoEvalMode
 from ..autoeval_frameworks import framework_factory
 
-from ...bioengineer import ZeroShotMethod
 
 def validate_input(framework,
                    zero_shot_method: Optional[ZeroShotMethod],

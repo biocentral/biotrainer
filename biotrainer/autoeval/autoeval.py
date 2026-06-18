@@ -3,13 +3,14 @@ import torch
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Callable, Tuple, List, Union, Iterable, Generator
+from biotrainer_core.data_classes import ZeroShotMethod
 
 from .core import AutoEvalFramework, AutoEvalMode
 from .pipelines import (AutoEvalReport, setup_output_dir, validate_input, autoeval_supervised_pipeline,
                         autoeval_zeroshot_pipeline, autoeval_zeroshot_contact_pipeline, AutoEvalProgress)
 from .autoeval_frameworks import AvailableFramework
 
-from ..bioengineer import ZeroShotMethod, BioEngineer
+from ..bioengineer import BioEngineer
 from ..training.output_files import BiotrainerOutputObserver
 
 
