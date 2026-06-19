@@ -42,12 +42,11 @@ def _plot_label_distribution_discrete(
     ).encode(
         x=alt.X('label:N', title='Class Label', axis=alt.Axis(labelAngle=-45)),
         y=alt.Y('count:Q', title='Number of Sequences'),
-        color=alt.Color('label:N', legend=None, scale=alt.Scale(scheme='category20')),
+        color=alt.Color('label:N', legend=None, scale=alt.Scale(scheme='tableau10')),
         tooltip=[
             alt.Tooltip('label:N', title='Label'),
             alt.Tooltip('count:Q', title='Count'),
             alt.Tooltip('percentage:Q', title='Percentage', format='.1f'),
-            alt.Tooltip('avg_length:Q', title='Avg Length', format='.1f'),
         ]
     ).properties(
         title='Label Distribution',
@@ -99,7 +98,6 @@ def _plot_label_distribution_continuous(
     )
 
     return chart
-    
 
 
 def plot_label_distribution(
@@ -109,4 +107,4 @@ def plot_label_distribution(
     if len(labels_set) > DISCRETE_THRESHOLD:
         return _plot_label_distribution_continuous(dataset)
     return _plot_label_distribution_discrete(dataset)
-    
+
