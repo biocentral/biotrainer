@@ -245,6 +245,10 @@ class ZeroShotFrameworkReport(BaseModel, FrameworkReport):
                                                                      "(combined_task_name -> RankingResult)")
     individual_results: Dict[str, RankingResult] = Field(description="Individual autoeval task results "
                                                                      "(dataset_name -> RankingResult)")
+    aggregated_members: Dict[str, List[str]] = Field(default_factory=dict,
+                                                     description="Datasets contributing to each aggregated task "
+                                                                 "(combined_task_name -> [dataset_name]). Lets the "
+                                                                 "delta plot pair per-dataset scores between models.")
 
     @model_validator(mode='after')
     def check_method(self):
@@ -254,10 +258,11 @@ class ZeroShotFrameworkReport(BaseModel, FrameworkReport):
 
     @classmethod
     def empty(cls, method: ZeroShotMethod) -> ZeroShotFrameworkReport:
-        return cls(method=method, aggregated_results={}, individual_results={})
+        return cls(method=method, aggregated_results={}, individual_results={}, aggregated_members={})
 
     def aggregate(self, task_name: str, individual_results: Dict[str, RankingResult]):
         self.individual_results.update(individual_results)
+        self.aggregated_members[task_name] = list(individual_results.keys())
         self.aggregated_results[task_name] = RankingResult.aggregate(list(individual_results.values()))
 
     def summary(self, development_mode: bool = False):

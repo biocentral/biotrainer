@@ -12,6 +12,7 @@ except Exception:  # pragma: no cover
 from ...pipelines.autoeval_plotting import (
     plot_comparison,
     plot_delta_comparison,
+    compute_paired_delta_stats,
     aggregate_dfs,
     fig_to_png_bytes,
     fig_to_pdf_bytes,
@@ -108,7 +109,12 @@ def render_compare(active: List[AutoEvalReport]):
             st.info("Install 'matplotlib' and 'seaborn' to render the comparison plot.")
 
         st.markdown(f"**Delta Comparison (Baseline: {baseline_model})**")
-        fig_delta, ax_delta = plot_delta_comparison(df_zero, baseline_model)
+        paired_stats = compute_paired_delta_stats(
+            {report.embedder_name: report.zeroshot_results["PGYM"]
+             for report in chosen if "PGYM" in report.zeroshot_results},
+            baseline_model,
+        )
+        fig_delta, ax_delta = plot_delta_comparison(df_zero, baseline_model, paired_stats=paired_stats)
         if fig_delta is not None:
             st.pyplot(fig_delta, use_container_width=True)
             st.download_button("⬇️ Download PNG", data=fig_to_png_bytes(fig_delta),
