@@ -49,7 +49,6 @@ dependencies = [
     "blosum>=2.0.3",
     "pydantic>=2.12.3",
     "biotrainer-core>=0.1.0",
-    "biotrainer-vis>=0.1.0",
     "junban>=1.0.2",
 ]
 
@@ -94,9 +93,7 @@ dependencies = [
 [tool.uv.workspace]
 members = [
     "biotrainer-core",
-    "biotrainer-vis",
 ]
 
 [tool.uv.sources]
 biotrainer-core = { workspace = true }
-biotrainer-vis = { workspace = true }
