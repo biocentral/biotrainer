@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Optional, Union
 
 from .core import AutoEvalFramework
-from .frameworks import PBCFramework, FLIPFramework, PGYMFramework, ZeroShotContactFramework
+from .frameworks import PBCSupervisedFramework, FLIPFramework, PGYMFramework, PBCZeroShotContactFramework
 
 
 class AvailableFramework(Enum):
@@ -13,9 +13,9 @@ class AvailableFramework(Enum):
 
 
 available_frameworks = {AvailableFramework.FLIP: FLIPFramework(),
-                        AvailableFramework.PBC: PBCFramework(),
+                        AvailableFramework.PBC: PBCSupervisedFramework(),
                         AvailableFramework.PGYM: PGYMFramework(),
-                        AvailableFramework.ZEROSHOT_CONTACT: ZeroShotContactFramework()
+                        AvailableFramework.ZEROSHOT_CONTACT: PBCZeroShotContactFramework()
                         }
 
 

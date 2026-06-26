@@ -3,10 +3,10 @@ from .contact_config_bank import ContactConfigBank
 from .contact_data_handler import ZeroShotContactDataHandler
 
 
-class ZeroShotContactFramework(AutoEvalFramework):
+class PBCZeroShotContactFramework(AutoEvalFramework):
     @staticmethod
     def get_name():
-        return "ZEROSHOT_CONTACT"
+        return "PBC_ZEROSHOT_CONTACT"
 
     @staticmethod
     def get_mode() -> AutoEvalMode:

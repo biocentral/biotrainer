@@ -3,10 +3,10 @@ from .pbc_config_bank import PBCConfigBank
 from .pbc_data_handler import PBCDataHandler
 
 
-class PBCFramework(AutoEvalFramework):
+class PBCSupervisedFramework(AutoEvalFramework):
     @staticmethod
     def get_name():
-        return "PBC"
+        return "PBC_SUPERVISED"
 
     @staticmethod
     def get_mode() -> AutoEvalMode:
