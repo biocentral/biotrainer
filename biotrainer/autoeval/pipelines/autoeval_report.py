@@ -8,15 +8,14 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Union, Optional, List, Tuple
-from biotrainer_core.data_classes import EmbeddingStats, ZeroShotMethod, RankingResult
+from biotrainer_core.data_classes import EmbeddingStats, ZeroShotMethod, RankingResult, ZeroShotContactSingleProtein, \
+    ZeroShotContactDatasetResult
 from .autoeval_plotting import plot_comparison, aggregate_dfs
 
 from ..core import AutoEvalTask
 from ..pbc.pbc_datasets import PBC_DATASETS
 from ..flip.flip_datasets import FLIP_DATASETS
 from ..client.autoeval_service_client import AutoEvalServiceClient
-
-from ...bioengineer import ZeroShotMethod, RankingResult
 
 
 def _maybe_metric_abs(metric_name: str, mean: float, lower: float, upper: float) -> Tuple[float, float, float]:
@@ -126,8 +125,9 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
         return metrics
 
     def _extract_metrics_val_set(self, combined_task_name: str, evaluation_metric: str,
-                                  protocol: str) -> list[dict]:
-        val_results = self.results[combined_task_name]["training_results"]["hold_out"]["best_training_epoch_metrics"]["validation"]
+                                 protocol: str) -> list[dict]:
+        val_results = self.results[combined_task_name]["training_results"]["hold_out"]["best_training_epoch_metrics"][
+            "validation"]
         metric_value = val_results[evaluation_metric]
 
         # TODO Bootstrapping for validation set on best training result
@@ -136,13 +136,13 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
         metric_upper = round(metric_value, 3)
 
         return [{
-                "task_name": combined_task_name,
-                "protocol": protocol,
-                "test_set_name": "validation",
-                "evaluation_metric": evaluation_metric,
-                "mean": metric_mean,
-                "lower": metric_lower,
-                "upper": metric_upper
+            "task_name": combined_task_name,
+            "protocol": protocol,
+            "test_set_name": "validation",
+            "evaluation_metric": evaluation_metric,
+            "mean": metric_mean,
+            "lower": metric_lower,
+            "upper": metric_upper
         }]
 
     def _extract_metrics_test_set(self, combined_task_name: str, evaluation_metric: str, metrics: list[Any],
@@ -377,7 +377,8 @@ class ZeroShotCachedResults(BaseModel):
 class ZeroShotContactFrameworkReport(BaseModel, FrameworkReport):
     model_config = {"use_enum_values": True}
 
-    method: ZeroShotMethod = Field(description="Contact method used") # Note - only one applicable zeroshot contact method as of now!
+    method: ZeroShotMethod = Field(
+        description="Contact method used")  # Note - only one applicable zeroshot contact method as of now!
     task_results: Dict[str, ZeroShotContactDatasetResult] = Field(description="Results per taks, i.e. per dataset")
 
     @model_validator(mode='after')
@@ -400,7 +401,7 @@ class ZeroShotContactFrameworkReport(BaseModel, FrameworkReport):
         for combined_task_name, result in self.task_results.items():
             print(f"{combined_task_name}: "
                   f"\t Results:  {result}")
-                  #TODO: add detailed print of metrics!!
+            # TODO: add detailed print of metrics!!
 
     def to_df(self, framework: Optional[str] = None) -> pd.DataFrame:
         rows = []
@@ -414,7 +415,8 @@ class ZeroShotContactFrameworkReport(BaseModel, FrameworkReport):
             for metric_key, metric_value in rr.aggregated_result.items():
                 name = metric_key
                 mean, lower, upper = _maybe_metric_abs(name,
-                                                       mean=metric_value.mean, lower=metric_value.lower, upper=metric_value.upper)
+                                                       mean=metric_value.mean, lower=metric_value.lower,
+                                                       upper=metric_value.upper)
                 rows.append({
                     "TaskLabel": f"{task}\n({name})",
                     "Task": task,
@@ -435,7 +437,8 @@ class ZeroShotContactFrameworkReport(BaseModel, FrameworkReport):
 class ZeroShotContactCachedResults(BaseModel):
     """ Utility class for storing cached results for zero-shot contact evaluation """
     embedder_name: str = Field(description="Name of the embedder")
-    method: ZeroShotMethod = Field(description="Contact method used") # Note - only one applicable zeroshot contact method as of now!
+    method: ZeroShotMethod = Field(
+        description="Contact method used")  # Note - only one applicable zeroshot contact method as of now!
     task_results: Dict[str, ZeroShotContactDatasetResult] = Field(description="Results per taks, i.e. per dataset")
 
     @staticmethod
@@ -482,7 +485,8 @@ class AutoEvalReport(BaseModel):
     training_date: str = Field(description="Date of training")
     supervised_results: Dict[str, SupervisedFrameworkReport] = Field(description="Supervised autoeval results")
     zeroshot_results: Dict[str, ZeroShotFrameworkReport] = Field(description="Zero-Shot autoeval results")
-    zeroshot_contact_results: Dict[str, ZeroShotContactFrameworkReport] = Field(default_factory=dict, description="Zero-Shot contact autoeval results")
+    zeroshot_contact_results: Dict[str, ZeroShotContactFrameworkReport] = Field(default_factory=dict,
+                                                                                description="Zero-Shot contact autoeval results")
 
     @staticmethod
     def get_file_name(embedder_name):
@@ -517,7 +521,9 @@ class AutoEvalReport(BaseModel):
         self.zeroshot_contact_results[framework_name] = report
 
     def maybe_framework_result(self, framework_name: str) -> Optional[FrameworkReport]:
-        return self.supervised_results.get(framework_name, self.zeroshot_results.get(framework_name, self.zeroshot_contact_results.get(framework_name, None)))
+        return self.supervised_results.get(framework_name, self.zeroshot_results.get(framework_name,
+                                                                                     self.zeroshot_contact_results.get(
+                                                                                         framework_name, None)))
 
     def write(self, output_dir: Path):
         report_name = output_dir / self.get_file_name(self.embedder_name)

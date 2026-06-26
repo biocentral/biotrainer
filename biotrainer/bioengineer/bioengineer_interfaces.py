@@ -6,7 +6,8 @@ from typing import List, Optional
 from abc import ABC, abstractmethod
 from biotrainer_core.data_classes import VariantScore, Variant, SingleMutationScore, ZeroShotMethod
 
-from .bioengineer_utils import compute_windowed_logits, get_optimal_window, MAX_CONTEXT_LENGTH
+from .bioengineer_utils import compute_windowed_logits, get_optimal_window, MAX_CONTEXT_LENGTH, \
+    prepare_cat_jac_mutations, convert_cat_jac_to_contact_map
 
 from ..embedding.interfaces import BiotrainerTokenizerMixin
 
@@ -29,7 +30,8 @@ class BioEngineerModelWrapper(ABC, BiotrainerTokenizerMixin):
         raise NotImplementedError
 
     @abstractmethod
-    def _model_batched_forward_fn(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def _model_batched_forward_fn(self, input_ids: torch.Tensor,
+                                  attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """ Batched forward pass separate from single-sequence forward pass. """
         raise NotImplementedError
 
@@ -228,7 +230,8 @@ class BertLikeEngineer(BioEngineerModelWrapper, ABC):
     """
 
     def supported_methods(self) -> List[ZeroShotMethod]:
-        return [ZeroShotMethod.WT_MARGINALS, ZeroShotMethod.MASKED_MARGINALS, ZeroShotMethod.PSEUDOPERPLEXITY, ZeroShotMethod.JACOBIAN_CONTACT]
+        return [ZeroShotMethod.WT_MARGINALS, ZeroShotMethod.MASKED_MARGINALS, ZeroShotMethod.PSEUDOPERPLEXITY,
+                ZeroShotMethod.JACOBIAN_CONTACT]
 
     def _model_forward_fn(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """Helper to standardize model forward pass."""
@@ -241,7 +244,8 @@ class BertLikeEngineer(BioEngineerModelWrapper, ABC):
             logits = logits[0]  # [1, seq_len, vocab_size] -> [seq_len, vocab_size]
         return logits
 
-    def _model_batched_forward_fn(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def _model_batched_forward_fn(self, input_ids: torch.Tensor,
+                                  attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """Helper to standardize model batched forward pass."""
         with torch.no_grad():
             output = self._model(input_ids=input_ids, attention_mask=attention_mask)
@@ -357,7 +361,8 @@ class BertLikeEngineer(BioEngineerModelWrapper, ABC):
         ref_logits = ref_logits[1:-1, aa_token_ids].cpu()
         # Compute the logits for all mutations
         mutated_logits = []
-        for batch_ids, batch_mask in zip(torch.split(mutated_inputs, batch_size), torch.split(mutated_mask, batch_size)):
+        for batch_ids, batch_mask in zip(torch.split(mutated_inputs, batch_size),
+                                         torch.split(mutated_mask, batch_size)):
             mut_logits = self._model_batched_forward_fn(batch_ids, batch_mask)
             mutated_logits.append(mut_logits[:, 1:-1, aa_token_ids].cpu())
         L = len(sequence)
@@ -382,7 +387,8 @@ class GPTLikeEngineer(BioEngineerModelWrapper, ABC):
     def _compute_pseudoperplexity(self, sequence: str) -> float:
         raise NotImplementedError("Pseudo-ppl is for masked LMs; use perplexity for causal LMs")
 
-    def _model_batched_forward_fn(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def _model_batched_forward_fn(self, input_ids: torch.Tensor,
+                                  attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         raise NotImplementedError("Batched forward pass is not defined for causal LMs")
 
     def _compute_categorical_jacobian(self, sequence: str, batch_size: int = 32) -> torch.Tensor:

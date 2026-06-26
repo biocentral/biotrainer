@@ -23,7 +23,7 @@ input_file: path/to/input_file.fasta  # Required for all protocols (unless huggi
 embedder_name: Rostlab/prot_t5_xl_uniref50 | ElnaggarLab/ankh-large | user/your-hf-model | your_model.onnx | one_hot_encoding | random_embedder | AAOntology | blosum62
 use_half_precision: True | False  # Default: False
 embeddings_file: path/to/embeddings.h5  # Optional pre-computed embeddings file
-dimension_reduction_method: umap | tsne  # Default: None, only possible for per-sequence embeddings
+dimension_reduction_method: umap | pca  # Default: None, only possible for per-sequence embeddings
 n_reduced_components: 5  # Default: None, requires dimension_reduction_method to be set
 custom_tokenizer_config: tokenizer_config.json  # If no config is provided, the default T5Tokenizer is used. Only applicable if using an onnx embedder
 scaling_method: none | standard | minmax  # Default: none, only per-sequence embeddings at the moment

@@ -6,13 +6,14 @@ import numpy as np
 
 from pathlib import Path
 from typing import List, Optional, Dict, Union, Tuple
-from biotrainer_core.data_classes import Variant, VariantScore, RankingResult, ZeroShotMethod
+from biotrainer_core.data_classes import Variant, VariantScore, RankingResult, ZeroShotMethod, \
+    ZeroShotContactSingleProtein, ZeroShotContactDatasetResult
+from biotrainer_core.input_files import read_FASTA
 
 from .bioengineer_interfaces import BioEngineerModelWrapper
 from .bioengineer_models import ESM2Engineer, ProtBertEngineer, ProtGPT2Engineer
 from .bioengineer_custom_model import CustomBioEngineerModel, CustomBioEngineerModelWrapper
 from .bioengineer_baselines import BioEngineerBaseline, ConstantEngineerBaseline, RandomEngineerBaseline
-from .bioengineer_data_classes import VariantScore, ZeroShotMethod, Variant, RankingResult, ZeroShotContactSingleProtein, ZeroShotContactDatasetResult
 from .bioengineer_metrics import evaluate_contact_map
 
 from ..shared import get_device, Bootstrapper
@@ -255,10 +256,11 @@ class BioEngineer:
         return self.model_wrapper.zero_shot_contact_map(sequence, batch_size)
 
     def run_contact_dataset(self,
-                          dataset_name: str,
-                          fasta_file_path: Union[str, Path],
-                          contacts_dir_path: Union[str, Path],
-                          method: ZeroShotMethod) -> Tuple[List[ZeroShotContactSingleProtein], ZeroShotContactDatasetResult]:
+                            dataset_name: str,
+                            fasta_file_path: Union[str, Path],
+                            contacts_dir_path: Union[str, Path],
+                            method: ZeroShotMethod) -> Tuple[
+        List[ZeroShotContactSingleProtein], ZeroShotContactDatasetResult]:
         """
         Given a dataset, computes and evaluates contact maps for all proteins in the dataset, using the categorical jacobian based zero-shot method.
         This function loads the dataset, including the ground truth contact maps, and evaluates the predicted contact map per protein.
@@ -309,12 +311,14 @@ class BioEngineer:
             if ground_truth_contact_map.size == 0:
                 raise ValueError(f"Empty contact map for {seq_id}")
             if ground_truth_contact_map.shape != (len(sequence), len(sequence)):
-                raise ValueError(f"Shape mismatch for {seq_id}: expected ({len(sequence)}, {len(sequence)}), got {ground_truth_contact_map.shape}")
+                raise ValueError(
+                    f"Shape mismatch for {seq_id}: expected ({len(sequence)}, {len(sequence)}), got {ground_truth_contact_map.shape}")
 
             predicted_contact_map = None
             match method:
                 case ZeroShotMethod.JACOBIAN_CONTACT:
-                    predicted_contact_map = self.zero_shot_contact_map(sequence) #TODO: let user specify batch size; for now, default=32!
+                    predicted_contact_map = self.zero_shot_contact_map(
+                        sequence)  # TODO: let user specify batch size; for now, default=32!
             assert predicted_contact_map is not None, "Zero-shot method returned no contact map!"
 
             precision_scores = evaluate_contact_map(predicted_contact_map, ground_truth_contact_map)
@@ -328,6 +332,7 @@ class BioEngineer:
 
         # Aggregate results
         print(f"Aggregating results for {dataset_name}...")
-        dataset_result = ZeroShotContactDatasetResult.aggregate_results(dataset_name=dataset_name, per_protein_results=per_protein_results)
+        dataset_result = ZeroShotContactDatasetResult.aggregate_results(dataset_name=dataset_name,
+                                                                        per_protein_results=per_protein_results)
         print(f"Result for {dataset_name}: {dataset_result}")
         return per_protein_results, dataset_result

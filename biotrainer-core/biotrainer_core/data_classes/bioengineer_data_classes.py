@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel, Field, field_validator, computed_field, SerializeAsAny
 
 from .metrics import MetricEstimate
@@ -279,6 +279,34 @@ class ZeroShotContactSingleProtein(BaseModel):
     protein_name: str = Field(description="Name of the protein")
     precision_scores: Dict[str, float] = Field(description="Precision scores for the protein's predicted contacts") #e.g. {"short_P@L2": 0.83, "short_P@L5": 0.78, "long_P@L2": 0.81, "long_P@L5": 0.76}
 
+
+# TODO TEMP TEST
+def get_mean_and_confidence_bounds(values: torch.Tensor, dimension: int, confidence_level: float):
+    """
+    Calculates the mean and confidence range for the given values. Used for bootstrapping error reporting and
+    monte carlo dropout.
+
+    :param values: Predicted values
+    :param dimension: Dimension to consider for values tensor
+    :param confidence_level: Confidence level for result confidence intervals (0.05 => 95% percentile)
+    :return: Tuple: Tensor with mean over values, std.dev and confidence range for each value
+    """
+    if not 0 < confidence_level < 1:
+        raise ValueError(f"Confidence level must be between 0 and 1, given: {confidence_level}!")
+
+    values_float = values.float()
+
+    mean = torch.mean(values_float, dim=dimension)
+    std = torch.std(values_float, dim=dimension)
+
+    # Calculate percentiles from actual distribution
+    lower_percentile = (confidence_level / 2) * 100
+    upper_percentile = (1 - confidence_level / 2) * 100
+
+    lower_bound = torch.quantile(values_float, lower_percentile / 100, dim=dimension)
+    upper_bound = torch.quantile(values_float, upper_percentile / 100, dim=dimension)
+
+    return mean, std, lower_bound, upper_bound
 
 class ZeroShotContactDatasetResult(BaseModel):
     dataset_name: str = Field(description="Name of the dataset")

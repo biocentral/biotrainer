@@ -1,10 +1,11 @@
 import os
 import unittest
 import tempfile
-from pathlib import Path
 
+from pathlib import Path
 from biotrainer.autoeval import autoeval_pipeline
-from biotrainer.bioengineer import BioEngineer, BioEngineerBaseline, ZeroShotMethod
+from biotrainer_core.data_classes import ZeroShotMethod
+from biotrainer.bioengineer import BioEngineer, BioEngineerBaseline
 
 
 class AutoevalTests(unittest.TestCase):
@@ -60,7 +61,7 @@ class AutoevalTests(unittest.TestCase):
             # TODO: add additional assertions / tests!
 
 
-    @unittest.skip(reason="Large test that should only be executed on demand")
+    #@unittest.skip(reason="Large test that should only be executed on demand")
     def test_autoeval_zeroshot_contact_ESM2_8M_UR50D(self):
         """ Checks that autoeval pipeline runs correctly with zero-shot contact ESM2_8M_UR50D """
         TEST_CONTACT_STORAGE = Path(__file__).parent / "test_input_files"
