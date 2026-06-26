@@ -19,4 +19,17 @@ class PBCZeroShotContactFramework(AutoEvalFramework):
         return ContactConfigBank()
 
 
-#TODO: Implement SupervisedContactFramework here!
+class PBCSupervisedContactFramework(AutoEvalFramework):
+    @staticmethod
+    def get_name():
+        return "PBC_SUPERVISED_CONTACT"
+
+    @staticmethod
+    def get_mode() -> AutoEvalMode:
+        return AutoEvalMode.SUPERVISED_CONTACT_ATTENTION
+
+    def get_data_handler(self):
+        return ZeroShotContactDataHandler()
+
+    def get_config_bank(self):
+        return ContactConfigBank()

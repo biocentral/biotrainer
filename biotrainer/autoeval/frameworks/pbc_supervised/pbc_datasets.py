@@ -1,6 +1,6 @@
 from biotrainer_core.data_classes import Protocol
 
-PBC_DATASETS = {
+PBC_SUPERVISED_DATASETS = {
     "conservation": {
         "evaluation_metric": "accuracy",
         "protocol": Protocol.residue_to_class,
@@ -41,6 +41,6 @@ PBC_DATASETS = {
 
 def n_tasks():
     n = 0
-    for dataset in PBC_DATASETS.values():
+    for dataset in PBC_SUPERVISED_DATASETS.values():
         n += len(dataset["splits"]) if "splits" in dataset else 1
     return n

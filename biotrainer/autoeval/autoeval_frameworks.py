@@ -7,15 +7,15 @@ from .frameworks import PBCSupervisedFramework, FLIPFramework, PGYMFramework, PB
 
 class AvailableFramework(Enum):
     FLIP = "FLIP"
-    PBC = "PBC"
+    PBC_SUPERVISED = "PBC_SUPERVISED"
     PGYM = "PGYM"
-    ZEROSHOT_CONTACT = "ZEROSHOT_CONTACT"
+    PBC_ZEROSHOT_CONTACT = "PBC_ZEROSHOT_CONTACT"
 
 
 available_frameworks = {AvailableFramework.FLIP: FLIPFramework(),
-                        AvailableFramework.PBC: PBCSupervisedFramework(),
+                        AvailableFramework.PBC_SUPERVISED: PBCSupervisedFramework(),
                         AvailableFramework.PGYM: PGYMFramework(),
-                        AvailableFramework.ZEROSHOT_CONTACT: PBCZeroShotContactFramework()
+                        AvailableFramework.PBC_ZEROSHOT_CONTACT: PBCZeroShotContactFramework()
                         }
 
 

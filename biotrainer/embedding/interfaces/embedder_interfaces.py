@@ -34,6 +34,8 @@ class EmbedderInterface(abc.ABC, BiotrainerTokenizerMixin):
 
         raise NotImplementedError
 
+    def compute_attention_map(self, sequence: str):
+        raise NotImplementedError
 
     def get_mask_token(self) -> Optional[str]:
         return None

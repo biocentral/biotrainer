@@ -2,7 +2,7 @@ from tqdm import tqdm
 from typing import List, Optional
 from pathlib import Path
 
-from .pbc_datasets import PBC_DATASETS
+from .pbc_datasets import PBC_SUPERVISED_DATASETS
 
 from ...core import AutoEvalDataHandler, AutoEvalTask, AutoEvalMode
 
@@ -12,7 +12,7 @@ class PBCDataHandler(AutoEvalDataHandler):
 
     @staticmethod
     def get_framework_name() -> str:
-        return "PBC"
+        return "PBC_SUPERVISED"
 
     @staticmethod
     def get_download_urls():
@@ -21,7 +21,7 @@ class PBCDataHandler(AutoEvalDataHandler):
     @staticmethod
     def _get_all_dataset_and_split_names():
         dataset_and_split_names = []
-        for dataset, dataset_info in PBC_DATASETS.items():
+        for dataset, dataset_info in PBC_SUPERVISED_DATASETS.items():
             splits = dataset_info.get("splits", None)
             splits = [(dataset, subsplit) for subsplit in splits] if splits else [(dataset, None)]
             dataset_and_split_names.extend(splits)

@@ -45,14 +45,14 @@ class AutoevalTests(unittest.TestCase):
             current_progress = None
             bio_engineer = BioEngineer.from_baseline(baseline=BioEngineerBaseline.RANDOM_BASELINE)
             for progress in autoeval_pipeline(embedder_name="bioengineer_random_baseline",
-                                            framework="ZEROSHOT_CONTACT",
+                                            framework="PBC_ZEROSHOT_CONTACT",
                                             zero_shot_method=ZeroShotMethod.JACOBIAN_CONTACT,
                                             output_dir=tmp_dir_name,
                                             custom_bioengineer=bio_engineer,
                                             custom_storage_path=TEST_CONTACT_STORAGE,
                                             ):
                 print(progress)
-                self.assertTrue(progress.current_framework_name == "ZEROSHOT_CONTACT")
+                self.assertTrue(progress.current_framework_name == "PBC_ZEROSHOT_CONTACT")
                 current_progress = progress
 
             self.assertIsNotNone(current_progress)
@@ -61,7 +61,7 @@ class AutoevalTests(unittest.TestCase):
             # TODO: add additional assertions / tests!
 
 
-    #@unittest.skip(reason="Large test that should only be executed on demand")
+    @unittest.skip(reason="Large test that should only be executed on demand")
     def test_autoeval_zeroshot_contact_ESM2_8M_UR50D(self):
         """ Checks that autoeval pipeline runs correctly with zero-shot contact ESM2_8M_UR50D """
         TEST_CONTACT_STORAGE = Path(__file__).parent / "test_input_files"
@@ -71,13 +71,13 @@ class AutoevalTests(unittest.TestCase):
 
             current_progress = None
             for progress in autoeval_pipeline(embedder_name="facebook/esm2_t6_8M_UR50D",
-                                            framework="ZEROSHOT_CONTACT",
+                                            framework="PBC_ZEROSHOT_CONTACT",
                                             zero_shot_method=ZeroShotMethod.JACOBIAN_CONTACT,
                                             output_dir=tmp_dir_name,
                                             custom_storage_path=TEST_CONTACT_STORAGE,
                                             ):
                 print(progress)
-                self.assertTrue(progress.current_framework_name == "ZEROSHOT_CONTACT")
+                self.assertTrue(progress.current_framework_name == "PBC_ZEROSHOT_CONTACT")
                 current_progress = progress
 
             self.assertIsNotNone(current_progress)

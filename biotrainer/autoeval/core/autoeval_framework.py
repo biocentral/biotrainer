@@ -7,10 +7,12 @@ from abc import ABC, abstractmethod
 from .autoeval_config_bank import AutoEvalConfigBank
 from .autoeval_data_handler import AutoEvalDataHandler
 
+
 class AutoEvalMode(Enum):
     SUPERVISED = "SUPERVISED"
     ZERO_SHOT = "ZERO_SHOT"
     ZERO_SHOT_CONTACT = "ZERO_SHOT_CONTACT"
+    SUPERVISED_CONTACT_ATTENTION = "SUPERVISED_CONTACT_ATTENTION"
 
 
 class AutoEvalFramework(ABC):

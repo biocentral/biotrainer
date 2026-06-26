@@ -95,3 +95,40 @@ class HuggingfaceTransformerEmbedder(EmbedderWithFallback):
 
         # Yield all at once
         yield from processed_embeddings
+
+    # From https://github.com/facebookresearch/esm/blob/main/esm/modules.py
+    # and https://github.com/chandar-lab/AMPLIFY/blob/main/examples/utils.py
+    @staticmethod
+    def _apc(x: torch.Tensor):
+        """Perform average product correct, used for contact prediction."""
+        a1 = x.sum(-1, keepdims=True)
+        a2 = x.sum(-2, keepdims=True)
+        a12 = x.sum((-1, -2), keepdims=True)
+
+        avg = a1 * a2
+        avg.div_(a12)  # in-place to reduce memory
+        normalized = x - avg
+        return normalized
+
+    # From https://github.com/facebookresearch/esm/blob/main/esm/modules.py
+    # and https://github.com/chandar-lab/AMPLIFY/blob/main/examples/utils.py
+    @staticmethod
+    def _symmetrize(x: torch.Tensor):
+        """ Make layer symmetric in final two dimensions, used for contact prediction. """
+        return x + x.transpose(-1, -2)
+
+    # Adapted from https://github.com/chandar-lab/AMPLIFY/blob/main/examples/contact_prediction.ipynb
+    def compute_attention_map(self, sequence: str):
+        with torch.no_grad(), torch.autocast(device_type=str(self._device), dtype=torch.float16, enabled=True):
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
+
+            x = torch.as_tensor(self._tokenizer.encode(sequence)).to(torch.long)  # tokenize the protein
+            x = x.unsqueeze(0).to(self._device)
+            attn_map = self._model(x, output_attentions=True)["attentions"]
+            attn_map = torch.stack(attn_map).detach().cpu()  # stack the attention maps and move to CPU
+            attn_map = attn_map.reshape(-1, x.size(-1), x.size(-1))  # (map, residues, residues)
+            attn_map = attn_map[:, 1:-1, 1:-1]  # remove special tokens <bos> and <eos>
+            attn_map = self._apc(self._symmetrize(attn_map))  # process the attention maps
+            attn_map = attn_map.permute(1, 2, 0)  # (residues, residues, map)
+            return attn_map

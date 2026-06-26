@@ -38,7 +38,7 @@ class ZeroShotContactDataHandler(ContactDataHandler):
     """Handles contact datasets for zeroshot"""
     @staticmethod
     def get_framework_name() -> str:
-        return "ZEROSHOT_CONTACT"
+        return "PBC_ZEROSHOT_CONTACT"
 
     @staticmethod
     def _get_all_dataset_dirs(base_path: Path) -> List[Path]:

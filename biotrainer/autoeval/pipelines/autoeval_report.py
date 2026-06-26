@@ -13,7 +13,7 @@ from biotrainer_core.data_classes import EmbeddingStats, ZeroShotMethod, Ranking
 from .autoeval_plotting import plot_comparison, aggregate_dfs
 
 from ..core import AutoEvalTask
-from ..frameworks.pbc.pbc_datasets import PBC_DATASETS
+from ..frameworks.pbc_supervised.pbc_datasets import PBC_SUPERVISED_DATASETS
 from ..frameworks.flip.flip_datasets import FLIP_DATASETS
 from ..client.autoeval_service_client import AutoEvalServiceClient
 
@@ -108,7 +108,7 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
 
     def extract_metrics(self, combined_task_name: str, development_mode: bool = False) -> list[dict]:
         """Extract metrics for a given task."""
-        framework_to_datasets = {"PBC": PBC_DATASETS, "FLIP": FLIP_DATASETS}
+        framework_to_datasets = {"PBC": PBC_SUPERVISED_DATASETS, "FLIP": FLIP_DATASETS}
 
         metrics = []
         try:
