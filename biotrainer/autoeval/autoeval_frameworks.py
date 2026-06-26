@@ -1,11 +1,8 @@
 from enum import Enum
 from typing import Optional, Union
 
-from .pbc import PBCFramework
-from .flip import FLIPFramework
-from .pgym import PGYMFramework
-from .contact import ZeroShotContactFramework
 from .core import AutoEvalFramework
+from .frameworks import PBCFramework, FLIPFramework, PGYMFramework, ZeroShotContactFramework
 
 
 class AvailableFramework(Enum):

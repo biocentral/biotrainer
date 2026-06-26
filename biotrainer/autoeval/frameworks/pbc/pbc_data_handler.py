@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .pbc_datasets import PBC_DATASETS
 
-from ..core import AutoEvalDataHandler, AutoEvalTask, AutoEvalMode
+from ...core import AutoEvalDataHandler, AutoEvalTask, AutoEvalMode
 
 
 class PBCDataHandler(AutoEvalDataHandler):

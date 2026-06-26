@@ -10,7 +10,7 @@ from biotrainer_core.data_classes import Protocol
 
 from .flip_datasets import FLIP_DATASETS
 
-from ...training.input_files import read_FASTA, write_FASTA, convert_deprecated_fastas
+from ....training.input_files import read_FASTA, write_FASTA, convert_deprecated_fastas
 
 IGNORE_SPLITS = ["mixed_vs_human_2"]
 

@@ -1,4 +1,4 @@
-from ..core import AutoEvalFramework, AutoEvalMode
+from ...core import AutoEvalFramework, AutoEvalMode
 from .contact_config_bank import ContactConfigBank
 from .contact_data_handler import ZeroShotContactDataHandler
 

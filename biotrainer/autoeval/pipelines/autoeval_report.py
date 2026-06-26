@@ -13,8 +13,8 @@ from biotrainer_core.data_classes import EmbeddingStats, ZeroShotMethod, Ranking
 from .autoeval_plotting import plot_comparison, aggregate_dfs
 
 from ..core import AutoEvalTask
-from ..pbc.pbc_datasets import PBC_DATASETS
-from ..flip.flip_datasets import FLIP_DATASETS
+from ..frameworks.pbc.pbc_datasets import PBC_DATASETS
+from ..frameworks.flip.flip_datasets import FLIP_DATASETS
 from ..client.autoeval_service_client import AutoEvalServiceClient
 
 

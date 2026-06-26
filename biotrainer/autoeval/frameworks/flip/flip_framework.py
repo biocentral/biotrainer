@@ -1,4 +1,4 @@
-from ..core import AutoEvalFramework, AutoEvalMode
+from ...core import AutoEvalFramework, AutoEvalMode
 from .flip_config_bank import FLIPConfigBank
 from .flip_data_handler import FLIPDataHandler
 

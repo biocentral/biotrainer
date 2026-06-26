@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .flip_datasets import FLIP_DATASETS
 
-from ..core import AutoEvalDataHandler, AutoEvalTask, AutoEvalMode
+from ...core import AutoEvalDataHandler, AutoEvalTask, AutoEvalMode
 
 
 class FLIPDataHandler(AutoEvalDataHandler):

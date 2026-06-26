@@ -1,4 +1,4 @@
-from ..core import AutoEvalFramework, AutoEvalMode
+from ...core import AutoEvalFramework, AutoEvalMode
 from .pgym_config_bank import PGYMConfigBank
 from .pgym_data_handler import PGYMDataHandler
 

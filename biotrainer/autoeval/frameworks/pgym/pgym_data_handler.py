@@ -4,7 +4,7 @@ import pandas as pd
 from typing import List, Optional
 from pathlib import Path
 
-from ..core import AutoEvalDataHandler, AutoEvalTask
+from ...core import AutoEvalDataHandler, AutoEvalTask
 
 
 class PGYMDataHandler(AutoEvalDataHandler):

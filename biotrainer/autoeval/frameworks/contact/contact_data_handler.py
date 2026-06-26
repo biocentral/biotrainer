@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional, List, Union
 from appdirs import user_cache_dir
 
-from ..core import AutoEvalDataHandler, AutoEvalTask
+from ...core import AutoEvalDataHandler, AutoEvalTask
 
 
 class ContactDataHandler(AutoEvalDataHandler):

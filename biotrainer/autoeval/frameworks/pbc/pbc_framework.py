@@ -1,4 +1,4 @@
-from ..core import AutoEvalFramework, AutoEvalMode
+from ...core import AutoEvalFramework, AutoEvalMode
 from .pbc_config_bank import PBCConfigBank
 from .pbc_data_handler import PBCDataHandler
 
