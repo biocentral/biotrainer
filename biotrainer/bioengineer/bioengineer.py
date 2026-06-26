@@ -332,7 +332,18 @@ class BioEngineer:
 
         # Aggregate results
         print(f"Aggregating results for {dataset_name}...")
-        dataset_result = ZeroShotContactDatasetResult.aggregate_results(dataset_name=dataset_name,
-                                                                        per_protein_results=per_protein_results)
+
+        seed = 42
+        metric_names = list(per_protein_results[0].precision_scores.keys())
+        n_proteins = len(per_protein_results)
+        values = {metric_name: torch.tensor([[p.precision_scores[metric_name]] for p in per_protein_results],
+                                            dtype=torch.float32) for metric_name in metric_names}
+        bt_res = Bootstrapper.direct_metrics_bootstrap(metrics=values,
+                                                       iterations=30,
+                                                       sample_size=n_proteins,
+                                                       seed=seed,
+                                                       confidence_level=0.05)
+        dataset_result = ZeroShotContactDatasetResult(dataset_name=dataset_name,
+                                                      aggregated_result=bt_res)
         print(f"Result for {dataset_name}: {dataset_result}")
         return per_protein_results, dataset_result

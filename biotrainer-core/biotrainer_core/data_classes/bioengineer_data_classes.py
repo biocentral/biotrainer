@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Optional, List, Dict
 from pydantic import BaseModel, Field, field_validator, computed_field, SerializeAsAny
 
-from .metrics import MetricEstimate
+from .metrics import MetricEstimate, BootstrappedMetric
 
 
 class ZeroShotMethod(Enum):
@@ -310,35 +310,11 @@ def get_mean_and_confidence_bounds(values: torch.Tensor, dimension: int, confide
 
 class ZeroShotContactDatasetResult(BaseModel):
     dataset_name: str = Field(description="Name of the dataset")
-    aggregated_result: Dict[str, MetricEstimate] = Field(description="Aggregated precision scores for the dataset")
+    aggregated_result: List[BootstrappedMetric] = Field(description="Aggregated and bootstrapped "
+                                                                    "precision scores for the dataset")
 
     def __str__(self) -> str:
-        scores = ", ".join(f"{k}: {v.mean:.3f}" for k, v in self.aggregated_result.items())
+        scores = ", ".join(f"{metric.name}: {metric.mean:.3f}" for metric in self.aggregated_result)
         if not scores:
             return f"Dataset result [{self.dataset_name}] - No scores available"
         return f"Dataset result [{self.dataset_name}] - {scores}"
-
-    @classmethod
-    def aggregate_results(cls, dataset_name: str, per_protein_results: List[ZeroShotContactSingleProtein]) -> ZeroShotContactDatasetResult:
-        """
-        Aggregate precision scores for the dataset with bootstrapping.
-        """
-        aggregated = {}
-        if len(per_protein_results) > 0:
-            iterations = 30
-            confidence_level = 0.05
-            seed = 42
-            metric_names = list(per_protein_results[0].precision_scores.keys())
-            n_proteins = len(per_protein_results)
-            values = torch.tensor([[p.precision_scores[m] for m in metric_names] for p in per_protein_results],
-                                  dtype=torch.float32)
-            sample_indices = np.random.RandomState(seed).choice(n_proteins, size=(iterations, n_proteins), replace=True)
-            iteration_means = values[torch.from_numpy(sample_indices)].mean(dim=1)
-            mean, _, lower, upper = get_mean_and_confidence_bounds(values=iteration_means,
-                                                                     dimension=0,
-                                                                     confidence_level=confidence_level)
-            aggregated = {
-                metric: MetricEstimate(name=metric, mean=float(mean[i]), lower=float(lower[i]), upper=float(upper[i]))
-                for i, metric in enumerate(metric_names)
-            }
-        return cls(dataset_name=dataset_name, aggregated_result=aggregated)

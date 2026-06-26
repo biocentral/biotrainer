@@ -11,6 +11,26 @@ from .metrics import get_mean_and_confidence_bounds, MetricsCalculator
 class Bootstrapper:
 
     @staticmethod
+    def direct_metrics_bootstrap(metrics: Dict[str, torch.Tensor],
+                         iterations: int,
+                         sample_size: int = -1,
+                         confidence_level: float = 0.05,
+                         seed: int = 42) -> List[BootstrappedMetric]:
+        """ Directly bootstrap over a set of pre-calculated metrics. """
+        bootstrapped_result = []
+        for metric_name, metric_values in metrics.items():
+            sample_indices = np.random.RandomState(seed).choice(sample_size, size=(iterations, sample_size),
+                                                                replace=True)
+            iteration_means = metric_values[torch.from_numpy(sample_indices)].mean(dim=1)
+            mean, _, lower, upper = get_mean_and_confidence_bounds(values=iteration_means,
+                                                                   dimension=0,
+                                                                   confidence_level=confidence_level)
+            bt_m = BootstrappedMetric(name=metric_name, mean=float(mean), lower=float(lower), upper=float(upper),
+                                      iterations=iterations, sample_size=sample_size, confidence_level=confidence_level)
+            bootstrapped_result.append(bt_m)
+        return bootstrapped_result
+
+    @staticmethod
     def bootstrap(protocol: Protocol, device,
                   bootstrapping_iterations: int,
                   metrics_calculator: MetricsCalculator,
