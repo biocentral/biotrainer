@@ -4,7 +4,7 @@ import hashlib
 
 from pathlib import Path
 from copy import deepcopy
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 
 
 def calculate_sequence_hash(sequence: str) -> str:
@@ -27,9 +27,13 @@ def hash_sequence_data(input_data: List) -> str:
     ).hexdigest()
 
 
-def hash_h5_file(file_path: Optional[Path]) -> str:
+def hash_h5_file(file_path: Optional[Union[str, Path]]) -> str:
     """Load all keys from the h5 file and hash them."""
-    if file_path is None or not file_path.exists():
+    if file_path is None:
+        return ""
+
+    file_path = Path(file_path)
+    if not file_path.exists():
         return ""
 
     with h5py.File(file_path, 'r') as f:
