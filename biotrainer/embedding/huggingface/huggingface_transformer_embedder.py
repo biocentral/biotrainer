@@ -50,6 +50,32 @@ class HuggingfaceTransformerEmbedder(EmbedderWithFallback):
             )
         return self._model.to("cpu")
 
+    def _ensure_attention_backend(self):
+        """
+        Ensure that the model uses an attention implementation that can return attention maps.
+
+        Some optimized attention implementations do not support output_attentions=True.
+        The eager backend is slower, so this is only enabled lazily for attention-map extraction.
+        """
+        config = getattr(self._model, "config", None)
+        current_backend = getattr(config, "_attn_implementation", None)
+
+        if current_backend == "eager":
+            return
+
+        if hasattr(self._model, "set_attn_implementation"):
+            self._model.set_attn_implementation("eager")
+            return
+
+        if config is not None and hasattr(config, "_attn_implementation"):
+            config._attn_implementation = "eager"
+            return
+
+        raise NotImplementedError(
+            f"Model {self.name} does not expose a supported way to switch to the eager attention backend. "
+            "Load this model with attn_implementation='eager' if attention maps are required."
+        )
+
     def _embed_single(self, sequence: str) -> torch.Tensor:
         [embedding] = self._embed_batch([sequence])
         return embedding
@@ -119,6 +145,7 @@ class HuggingfaceTransformerEmbedder(EmbedderWithFallback):
 
     # Adapted from https://github.com/chandar-lab/AMPLIFY/blob/main/examples/contact_prediction.ipynb
     def compute_attention_map(self, sequence: str):
+        self._ensure_attention_backend()
         with torch.no_grad(), torch.autocast(device_type=str(self._device), dtype=torch.float16, enabled=True):
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
