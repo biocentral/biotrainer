@@ -1,6 +1,6 @@
 from ...core import AutoEvalFramework, AutoEvalMode
 from .contact_config_bank import ContactConfigBank
-from .contact_data_handler import ZeroShotContactDataHandler
+from .contact_data_handler import ZeroShotContactDataHandler, SupervisedContactDataHandler
 
 
 class PBCZeroShotContactFramework(AutoEvalFramework):
@@ -29,7 +29,7 @@ class PBCSupervisedContactFramework(AutoEvalFramework):
         return AutoEvalMode.SUPERVISED_CONTACT_ATTENTION
 
     def get_data_handler(self):
-        return ZeroShotContactDataHandler()
+        return SupervisedContactDataHandler()
 
     def get_config_bank(self):
         return ContactConfigBank()

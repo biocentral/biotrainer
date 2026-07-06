@@ -11,14 +11,14 @@ from ...shared import get_device
 from ...bioengineer import BioEngineer
 
 
-def _run_contact_tasks(framework: AutoEvalFramework,
-                       embedder_name: str,
-                       zero_shot_method: ZeroShotMethod,
-                       autoeval_report: AutoEvalReport,
-                       output_dir: Path,
-                       autoeval_tasks: List[AutoEvalTask],
-                       bioengineer: Optional[BioEngineer] = None,
-                       device=None):
+def _run_zeroshot_contact_tasks(framework: AutoEvalFramework,
+                                embedder_name: str,
+                                zero_shot_method: ZeroShotMethod,
+                                autoeval_report: AutoEvalReport,
+                                output_dir: Path,
+                                autoeval_tasks: List[AutoEvalTask],
+                                bioengineer: Optional[BioEngineer] = None,
+                                device=None):
     if not bioengineer:
         bioengineer = BioEngineer.from_name(name=embedder_name, device=get_device(device))
 
@@ -55,10 +55,10 @@ def _run_contact_tasks(framework: AutoEvalFramework,
             dataset_dir_path = task.input_files[0]
             fasta_file_path = dataset_dir_path / "extracted_sequences.fasta"
             contacts_dir_path = dataset_dir_path / "contacts"
-            _, dataset_result = bioengineer.run_contact_dataset(dataset_name=current_task_name,
-                                                                fasta_file_path=fasta_file_path,
-                                                                contacts_dir_path=contacts_dir_path,
-                                                                method=zero_shot_method)
+            _, dataset_result = bioengineer.evaluate_contact_dataset(dataset_name=current_task_name,
+                                                                     fasta_file_path=fasta_file_path,
+                                                                     contacts_dir_path=contacts_dir_path,
+                                                                     method=zero_shot_method)
             zero_shot_contact_cached_results.update_and_sync(dataset_name=current_task_name, result=dataset_result,
                                                              output_dir=output_dir)
             zero_shot_contact_framework_report.update_result(task_name=current_task_name, dataset_result=dataset_result)
@@ -91,11 +91,11 @@ def autoeval_zeroshot_contact_pipeline(embedder_name: str,
                                     custom_storage_path=custom_storage_path,
                                     force_download=force_download)
     # Pipeline
-    yield from _run_contact_tasks(framework=framework,
-                                  embedder_name=embedder_name,
-                                  zero_shot_method=method,
-                                  autoeval_report=autoeval_report,
-                                  output_dir=output_dir,
-                                  autoeval_tasks=autoeval_tasks,
-                                  bioengineer=custom_bioengineer,
-                                  device=device)
+    yield from _run_zeroshot_contact_tasks(framework=framework,
+                                           embedder_name=embedder_name,
+                                           zero_shot_method=method,
+                                           autoeval_report=autoeval_report,
+                                           output_dir=output_dir,
+                                           autoeval_tasks=autoeval_tasks,
+                                           bioengineer=custom_bioengineer,
+                                           device=device)

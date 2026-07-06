@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Union, Optional, List, Tuple
 from biotrainer_core.data_classes import EmbeddingStats, ZeroShotMethod, RankingResult, ZeroShotContactSingleProtein, \
-    ZeroShotContactDatasetResult
+    ZeroShotContactDatasetResult, BiotrainerModelResult
 from .autoeval_plotting import plot_comparison, aggregate_dfs
 
 from ..core import AutoEvalTask
@@ -59,13 +59,13 @@ class FrameworkReport(ABC):
 class SupervisedFrameworkReport(BaseModel, FrameworkReport):
     min_seq_len: Optional[int] = Field(default=None, description="Minimum sequence length used during evaluation")
     max_seq_len: Optional[int] = Field(default=None, description="Maximum sequence length used during evaluation")
-    results: Dict[str, Dict[str, Any]] = Field(description="Supervised autoeval results")
+    results: Dict[str, BiotrainerModelResult] = Field(description="Supervised autoeval results")
 
     @classmethod
     def empty(cls, min_seq_len: Optional[int], max_seq_len: Optional[int]) -> SupervisedFrameworkReport:
         return cls(min_seq_len=min_seq_len, max_seq_len=max_seq_len, results={})
 
-    def update_result(self, combined_task_name: str, result: Dict[str, Any]):
+    def update_result(self, combined_task_name: str, result: BiotrainerModelResult):
         self.results[combined_task_name] = result
 
     @staticmethod
@@ -74,11 +74,10 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
         if not task_out_file_path.exists():
             return None
         try:
-            with (open(task_out_file_path, 'r') as output_file):
-                task_output = yaml.load(output_file, Loader=yaml.RoundTripLoader)
-                if task_output["config"]["embedder_name"] == embedder_name and "test_results" in task_output:
-                    return task_output
-                return None  # File does not seem to be valid
+            task_output = BiotrainerModelResult.from_file(task_out_file_path)
+            if task_output.config["embedder_name"] == embedder_name and len(task_output.test_results) > 0:
+                return task_output
+            return None  # File does not seem to be valid
         except Exception:
             return None
 
@@ -108,7 +107,7 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
 
     def extract_metrics(self, combined_task_name: str, development_mode: bool = False) -> list[dict]:
         """Extract metrics for a given task."""
-        framework_to_datasets = {"PBC": PBC_SUPERVISED_DATASETS, "FLIP": FLIP_DATASETS}
+        framework_to_datasets = {"PBC_SUPERVISED": PBC_SUPERVISED_DATASETS, "FLIP": FLIP_DATASETS}
 
         metrics = []
         try:
@@ -126,8 +125,7 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
 
     def _extract_metrics_val_set(self, combined_task_name: str, evaluation_metric: str,
                                  protocol: str) -> list[dict]:
-        val_results = self.results[combined_task_name]["training_results"]["hold_out"]["best_training_epoch_metrics"][
-            "validation"]
+        val_results = self.results[combined_task_name].training_results["hold_out"].best_epoch_metrics.validation
         metric_value = val_results[evaluation_metric]
 
         # TODO Bootstrapping for validation set on best training result
@@ -147,15 +145,15 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
 
     def _extract_metrics_test_set(self, combined_task_name: str, evaluation_metric: str, metrics: list[Any],
                                   protocol: str):
-        test_results = self.results[combined_task_name]["test_results"]
+        test_results = self.results[combined_task_name].test_results
 
         metrics = []
-        for test_set_name, test_set_dict in test_results.items():
-            bootstrapping = test_set_dict["bootstrapping"]["results"]
-            bootstrapping = {b_dict["name"]: b_dict for b_dict in bootstrapping}
-            metric_mean = round(bootstrapping[evaluation_metric]["mean"], 3)
-            metric_lower = round(bootstrapping[evaluation_metric]["lower"], 3)
-            metric_upper = round(bootstrapping[evaluation_metric]["upper"], 3)
+        for test_set_name, test_set_result in test_results.items():
+            bootstrapping = test_set_result.bootstrapped_metrics or []
+            bootstrapping = {b_res.name: b_res for b_res in bootstrapping}
+            metric_mean = round(bootstrapping[evaluation_metric].mean, 3)
+            metric_lower = round(bootstrapping[evaluation_metric].lower, 3)
+            metric_upper = round(bootstrapping[evaluation_metric].upper, 3)
 
             metrics.append({
                 "task_name": combined_task_name,

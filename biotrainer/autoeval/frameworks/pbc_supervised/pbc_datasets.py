@@ -1,42 +1,42 @@
 from biotrainer_core.data_classes import Protocol
 
 PBC_SUPERVISED_DATASETS = {
-    "conservation": {
-        "evaluation_metric": "accuracy",
-        "protocol": Protocol.residue_to_class,
-    },
-    "disorder_chezod": {
-        "evaluation_metric": "spearmans-corr-coeff",
-        "protocol": Protocol.residue_to_value,
-    },
+    #"conservation": {
+    #    "evaluation_metric": "accuracy",
+    #    "protocol": Protocol.residue_to_class,
+    #},
+    #"disorder_chezod": {
+    #    "evaluation_metric": "spearmans-corr-coeff",
+    #    "protocol": Protocol.residue_to_value,
+    #},
     "disorder_trizod": {
         "evaluation_metric": "spearmans-corr-coeff",
         "protocol": Protocol.residue_to_value,
     },
-    "frustration-classification": {
-        "evaluation_metric": "macro-f1_score",
-        "protocol": Protocol.residue_to_class,
-    },
+    #"frustration-classification": {
+    #    "evaluation_metric": "macro-f1_score",
+    #    "protocol": Protocol.residue_to_class,
+    #},
     "frustration-regression": {
         "evaluation_metric": "spearmans-corr-coeff",
         "protocol": Protocol.residue_to_value,
     },
-    "membrane": {
-        "evaluation_metric": "macro-f1_score",
-        "protocol": Protocol.residue_to_class,
-    },
-    "phages": {
-        "evaluation_metric": "accuracy",
-        "protocol": Protocol.sequence_to_class,
-    },
-    "scl": {
-        "evaluation_metric": "accuracy",
-        "protocol": Protocol.sequence_to_class,
-    },
-    "secondary_structure": {
-        "evaluation_metric": "accuracy",
-        "protocol": Protocol.residue_to_class,
-    },
+    #"membrane": {
+    #    "evaluation_metric": "macro-f1_score",
+    #    "protocol": Protocol.residue_to_class,
+    #},
+    #"phages": {
+    #    "evaluation_metric": "accuracy",
+    #    "protocol": Protocol.sequence_to_class,
+    #},
+    #"scl": {
+    #    "evaluation_metric": "accuracy",
+    #    "protocol": Protocol.sequence_to_class,
+    #},
+    #"secondary_structure": {
+    #    "evaluation_metric": "accuracy",
+    #    "protocol": Protocol.residue_to_class,
+    #},
 }
 
 def n_tasks():

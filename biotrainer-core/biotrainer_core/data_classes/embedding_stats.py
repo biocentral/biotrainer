@@ -12,8 +12,8 @@ class EmbeddingStats(BaseModel):
     max: float
 
     @staticmethod
-    def from_biotrainer_result(biotrainer_result: dict) -> Optional[EmbeddingStats]:
-        embd_stats = biotrainer_result["derived_values"].get("embedding_stats")
+    def from_biotrainer_result(biotrainer_result) -> Optional[EmbeddingStats]:
+        embd_stats = biotrainer_result.derived_values.embedding_stats
         if embd_stats is None:
             return None
         return EmbeddingStats.model_validate(embd_stats)

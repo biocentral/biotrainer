@@ -59,7 +59,7 @@ class BioEngineerContactTests(unittest.TestCase):
             self.assertIsNotNone(bio_engineer.model_wrapper, f"Model wrapper for baseline {baseline} is None!")
             if method not in bio_engineer.model_wrapper.supported_methods():
                 continue
-            results, aggregated_result = bio_engineer.run_contact_dataset(
+            results, aggregated_result = bio_engineer.evaluate_contact_dataset(
                 dataset_name=dataset_name,
                 fasta_file_path=dataset_path / "extracted_sequences.fasta",
                 contacts_dir_path=dataset_path / "contacts",
@@ -79,7 +79,7 @@ class BioEngineerContactTests(unittest.TestCase):
         bio_engineer = BioEngineer.from_name(name="facebook/esm2_t6_8M_UR50D")
         self.assertTrue(bio_engineer.model_wrapper is not None, f"Model wrapper for ESM2_8M_UR50D is None!")
         self.assertTrue(method in bio_engineer.model_wrapper.supported_methods(), f"Method {method} not supported by ESM2_8M_UR50D!")
-        results, aggregated_result = bio_engineer.run_contact_dataset(
+        results, aggregated_result = bio_engineer.evaluate_contact_dataset(
             dataset_name=dataset_name,
             fasta_file_path=dataset_path / "extracted_sequences.fasta",
             contacts_dir_path=dataset_path / "contacts",

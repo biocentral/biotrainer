@@ -1,3 +1,3 @@
-from .contact_framework import PBCZeroShotContactFramework
+from .contact_framework import PBCZeroShotContactFramework, PBCSupervisedContactFramework
 
-__all__ = ["PBCZeroShotContactFramework"] # SupervisedContactFramework to be added later if required!
+__all__ = ["PBCZeroShotContactFramework", "PBCSupervisedContactFramework"]

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import torch
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from pathlib import Path
 from typing import List, Optional, Dict, Union, Tuple
 from biotrainer_core.data_classes import Variant, VariantScore, RankingResult, ZeroShotMethod, \
     ZeroShotContactSingleProtein, ZeroShotContactDatasetResult
-from biotrainer_core.input_files import read_FASTA
+from biotrainer_core.input_files import read_FASTA, load_contact_map
 
 from .bioengineer_interfaces import BioEngineerModelWrapper
 from .bioengineer_models import ESM2Engineer, ProtBertEngineer, ProtGPT2Engineer
@@ -255,11 +255,11 @@ class BioEngineer:
         """
         return self.model_wrapper.zero_shot_contact_map(sequence, batch_size)
 
-    def run_contact_dataset(self,
-                            dataset_name: str,
-                            fasta_file_path: Union[str, Path],
-                            contacts_dir_path: Union[str, Path],
-                            method: ZeroShotMethod) -> Tuple[
+    def evaluate_contact_dataset(self,
+                                 dataset_name: str,
+                                 fasta_file_path: Union[str, Path],
+                                 contacts_dir_path: Union[str, Path],
+                                 method: ZeroShotMethod) -> Tuple[
         List[ZeroShotContactSingleProtein], ZeroShotContactDatasetResult]:
         """
         Given a dataset, computes and evaluates contact maps for all proteins in the dataset, using the categorical jacobian based zero-shot method.
@@ -305,14 +305,9 @@ class BioEngineer:
             sequence = record.seq
 
             ground_truth_contact_map_path = contacts_dir_path / f"{seq_id}.npy"
-            if not ground_truth_contact_map_path.exists():
-                raise ValueError(f"Contact map {ground_truth_contact_map_path} does not exist!")
-            ground_truth_contact_map = np.load(ground_truth_contact_map_path)
-            if ground_truth_contact_map.size == 0:
-                raise ValueError(f"Empty contact map for {seq_id}")
-            if ground_truth_contact_map.shape != (len(sequence), len(sequence)):
-                raise ValueError(
-                    f"Shape mismatch for {seq_id}: expected ({len(sequence)}, {len(sequence)}), got {ground_truth_contact_map.shape}")
+            ground_truth_contact_map = load_contact_map(path=ground_truth_contact_map_path,
+                                                        sequence=sequence,
+                                                        structure_id=seq_id)
 
             predicted_contact_map = None
             match method:

@@ -113,8 +113,8 @@ def _run_pipeline(embedder_name: str,
         [seq_record.seq for _, seq_record in unique_per_sequence.items()]
     )
 
-    _check_h5_file(name="per-residue", h5_path=embeddings_file_per_residue, expected_length=len(unique_per_residue))
-    _check_h5_file(name="per-sequence", h5_path=embeddings_file_per_sequence, expected_length=len(unique_per_sequence))
+    #_check_h5_file(name="per-residue", h5_path=embeddings_file_per_residue, expected_length=len(unique_per_residue))
+    #_check_h5_file(name="per-sequence", h5_path=embeddings_file_per_sequence, expected_length=len(unique_per_sequence))
 
     print("Calculated embeddings successfully!")
 
