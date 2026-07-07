@@ -1,5 +1,6 @@
 from biotrainer_core.data_classes import Protocol
 
+from .contact_maps import evaluate_contact_map, compute_contact_precision, evaluate_contact_dataset
 from .ndcg import NDCG
 from .metrics_calculator import MetricsCalculator, SimpleTorchMetricsCalculator, SimpleCustomMetricsCalculator, \
     ResidueClassificationMetricsCalculator, \
@@ -23,4 +24,7 @@ __all__ = [
     "SimpleTorchMetricsCalculator",
     "SimpleCustomMetricsCalculator",
     "get_mean_and_confidence_bounds",
+    "evaluate_contact_map",
+    "compute_contact_precision",
+    "evaluate_contact_dataset",
 ]

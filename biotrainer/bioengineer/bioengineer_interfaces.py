@@ -210,7 +210,7 @@ class BioEngineerModelWrapper(ABC, BiotrainerTokenizerMixin):
             results.append(variant_score)
         return results
 
-    def zero_shot_contact_map(self, sequence: str, batch_size: int = 32) -> np.ndarray:
+    def zero_shot_contact_map_jacobian(self, sequence: str, batch_size: int = 32) -> np.ndarray:
         """
         Derive contact map from categorical Jacobian.
 

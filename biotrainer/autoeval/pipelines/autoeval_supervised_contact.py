@@ -18,14 +18,14 @@ from biotrainer_core.data_classes import SequenceData, ContactSingleProteinResul
 from biotrainer_core.input_files import load_contact_map, read_FASTA
 
 from .autoeval_setup import setup_pipeline
-from .autoeval_report import ZeroShotContactCachedResults, ContactFrameworkReport, AutoEvalReport
+from .autoeval_report import ContactFrameworkReport, AutoEvalReport
 from .autoeval_progress import AutoEvalProgress
 from ..core import AutoEvalFramework, AutoEvalTask
 
 from ...shared import get_device, Bootstrapper
 from ...embedding import get_embedding_service
 from ...embedding.huggingface import HuggingfaceTransformerEmbedder
-from ...bioengineer.bioengineer_metrics import evaluate_contact_map
+from ...shared.metrics import evaluate_contact_map, evaluate_contact_dataset
 
 
 @dataclass
@@ -131,7 +131,7 @@ def _load_data_and_generate_attention_maps(dataset_map: dict, embedding_service)
         test_seqs = read_FASTA(test_fasta_file_path)
         contacts_dir_path = test_path / "contacts"
         test_datasets[test_name] = _generate_per_protein_dataset_input(test_seqs, embedding_service, contacts_dir_path)
-        break # TODO DEBUG
+        break  # TODO DEBUG
 
     return _InputDataset(x_train=x_train, y_train=y_train, val_dataset=val_dataset, test_datasets=test_datasets)
 
@@ -168,38 +168,25 @@ def _train_logistic_regression(input_dataset: _InputDataset) -> LogisticRegressi
 
 def _test_logistic_regression(clf: LogisticRegression, test_set_name: str,
                               per_protein_data: List[_PerProteinData]) -> ContactDatasetResult:
-    per_protein_results: List[ContactSingleProteinResult] = []
-    for data_point in per_protein_data:
-        protein_name = data_point.seq_id
-        x_test = data_point.attention_map
-        ground_truth_contact_map = data_point.ground_truth_contact_map
-        predicted_contact_map = (clf.predict_proba(x_test.reshape(-1,
-                                                                  x_test.shape[-1]))[:, 1].
-                                 reshape(ground_truth_contact_map.shape))
-        precision_scores = evaluate_contact_map(predicted_contact_map, ground_truth_contact_map)
-        single_protein_result = ContactSingleProteinResult(protein_name=protein_name,
-                                                           precision_scores=precision_scores)
-        per_protein_results.append(single_protein_result)
 
-    assert len(per_protein_results) > 0, "Empty per-protein results!"
+    def predict_function(data_point: _PerProteinData):
+        return (clf.predict_proba(data_point.attention_map.reshape(-1, data_point.attention_map.shape[-1]))[:, 1]
+                .reshape(data_point.ground_truth_contact_map.shape))
 
-    # Aggregate results
-    print(f"Aggregating results for {test_set_name}...")
+    def evaluate():
+        yield from evaluate_contact_dataset(dataset_name=test_set_name,
+                                            items=per_protein_data,
+                                            predict_func=predict_function,
+                                            get_ground_truth_func=lambda d: d.ground_truth_contact_map,
+                                            get_seq_id_func=lambda d: d.seq_id
+                                            )
 
-    seed = 42
-    metric_names = list(per_protein_results[0].precision_scores.keys())
-    n_proteins = len(per_protein_results)
-    values = {metric_name: torch.tensor([[p.precision_scores[metric_name]] for p in per_protein_results],
-                                        dtype=torch.float32) for metric_name in metric_names}
-    bt_res = Bootstrapper.direct_metrics_bootstrap(metrics=values,
-                                                   iterations=30,
-                                                   sample_size=n_proteins,
-                                                   seed=seed,
-                                                   confidence_level=0.05)
-    dataset_result = ContactDatasetResult(dataset_name=test_set_name,
-                                          aggregated_result=bt_res)
-    print(f"Result for {test_set_name}: {dataset_result}")
-    return dataset_result
+    for maybe_single_result, maybe_dataset_result in evaluate():
+        # No caching for supervised task, so only check for dataset result
+        if maybe_dataset_result is not None:
+            return maybe_dataset_result
+
+    assert False, "No dataset result returned!"
 
 
 def _run_supervised_contact_tasks(framework: AutoEvalFramework,

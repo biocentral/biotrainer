@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional, Union, List
 from biotrainer_core.data_classes import ZeroShotMethod
+from biotrainer_core.input_files import read_FASTA, load_contact_map
 
 from .autoeval_setup import setup_pipeline
 from .autoeval_report import ZeroShotContactCachedResults, ContactFrameworkReport, AutoEvalReport
@@ -9,6 +10,7 @@ from ..core import AutoEvalFramework, AutoEvalTask
 
 from ...shared import get_device
 from ...bioengineer import BioEngineer
+from ...shared.metrics import evaluate_contact_dataset
 
 
 def _run_zeroshot_contact_tasks(framework: AutoEvalFramework,
@@ -21,6 +23,8 @@ def _run_zeroshot_contact_tasks(framework: AutoEvalFramework,
                                 device=None):
     if not bioengineer:
         bioengineer = BioEngineer.from_name(name=embedder_name, device=get_device(device))
+
+    assert bioengineer is not None, f"BioEngineer could not be initialized for embedder {embedder_name}!"
 
     # Load cached results 
     zero_shot_contact_cached_results = ZeroShotContactCachedResults.loaded_or_empty(embedder_name=embedder_name,
@@ -48,20 +52,48 @@ def _run_zeroshot_contact_tasks(framework: AutoEvalFramework,
                                                              dataset_result=maybe_cached_result)
         else:
             # Cached result does not exist, run bioengineer
-            # TODO: review choice of input files/dirs in tandem with data handler!
             if len(task.input_files) != 1:
                 raise ValueError(
                     f"Empty/Multiple input files/dirs not supported for contact tasks! Task: {current_task_name}")
             dataset_dir_path = task.input_files[0]
             fasta_file_path = dataset_dir_path / "extracted_sequences.fasta"
             contacts_dir_path = dataset_dir_path / "contacts"
-            _, dataset_result = bioengineer.evaluate_contact_dataset(dataset_name=current_task_name,
-                                                                     fasta_file_path=fasta_file_path,
-                                                                     contacts_dir_path=contacts_dir_path,
-                                                                     method=zero_shot_method)
-            zero_shot_contact_cached_results.update_and_sync(dataset_name=current_task_name, result=dataset_result,
-                                                             output_dir=output_dir)
-            zero_shot_contact_framework_report.update_result(task_name=current_task_name, dataset_result=dataset_result)
+
+            # Read fasta file
+            seq_records = read_FASTA(fasta_file_path)
+            if len(seq_records) == 0:
+                raise ValueError(f"Fasta file {fasta_file_path} is empty!")
+
+            # Define loading of ground truth contact map
+            def load_gt_contact_map(seq_record):
+                seq = seq_record.seq
+                seq_id = seq_record.seq_id
+                ground_truth_contact_map_path = contacts_dir_path / f"{seq_id}.npy"
+                return load_contact_map(path=ground_truth_contact_map_path,
+                                        sequence=seq,
+                                        structure_id=seq_id)
+
+            def evaluate():
+                yield from evaluate_contact_dataset(dataset_name=current_task_name,
+                                         items=seq_records,
+                                         predict_func=lambda
+                                             seq_record: bioengineer.zero_shot_contact_map(
+                                             method=zero_shot_method,
+                                             sequence=seq_record.seq),
+                                         get_ground_truth_func=load_gt_contact_map,
+                                         get_seq_id_func=lambda d: d.seq_id
+                                         )
+
+            for maybe_single_result, maybe_dataset_result in evaluate():
+                if maybe_single_result is not None:
+                    #            zero_shot_contact_cached_results.update_and_sync(dataset_name=current_task_name, result=dataset_result,
+                    #                                         output_dir=output_dir)
+                    pass  # TODO Cache
+                if maybe_dataset_result is not None:
+                    zero_shot_contact_framework_report.update_result(task_name=current_task_name,
+                                                                     dataset_result=maybe_dataset_result)
+                    break
+
         completed_tasks += 1
         print(f"Finished task {current_task_name}!")
 
@@ -80,7 +112,7 @@ def autoeval_zeroshot_contact_pipeline(embedder_name: str,
                                        framework: AutoEvalFramework,
                                        method: ZeroShotMethod,
                                        autoeval_report: AutoEvalReport,
-                                       output_dir: Optional[Union[Path, str]] = "autoeval_output",
+                                       output_dir: Union[Path, str] = "autoeval_output",
                                        force_download: Optional[bool] = False,
                                        custom_storage_path: Optional[Union[Path, str]] = None,
                                        custom_bioengineer: Optional[BioEngineer] = None,
@@ -95,7 +127,7 @@ def autoeval_zeroshot_contact_pipeline(embedder_name: str,
                                            embedder_name=embedder_name,
                                            zero_shot_method=method,
                                            autoeval_report=autoeval_report,
-                                           output_dir=output_dir,
+                                           output_dir=Path(output_dir),
                                            autoeval_tasks=autoeval_tasks,
                                            bioengineer=custom_bioengineer,
                                            device=device)

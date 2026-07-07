@@ -6,15 +6,12 @@ import pandas as pd
 
 from pathlib import Path
 from typing import List, Optional, Dict, Union, Tuple
-from biotrainer_core.data_classes import Variant, VariantScore, RankingResult, ZeroShotMethod, \
-    ContactSingleProteinResult, ContactDatasetResult
-from biotrainer_core.input_files import read_FASTA, load_contact_map
+from biotrainer_core.data_classes import Variant, VariantScore, RankingResult, ZeroShotMethod
 
 from .bioengineer_interfaces import BioEngineerModelWrapper
 from .bioengineer_models import ESM2Engineer, ProtBertEngineer, ProtGPT2Engineer
 from .bioengineer_custom_model import CustomBioEngineerModel, CustomBioEngineerModelWrapper
 from .bioengineer_baselines import BioEngineerBaseline, ConstantEngineerBaseline, RandomEngineerBaseline
-from .bioengineer_metrics import evaluate_contact_map
 
 from ..shared import get_device, Bootstrapper
 from ..shared.metrics.metrics_calculator import SequenceRegressionMetricsCalculator
@@ -246,99 +243,15 @@ class BioEngineer:
     # Zero-shot contact task entry point
     # ============================================================================
 
-    def zero_shot_contact_map(self, sequence: str, batch_size: int = 32) -> np.ndarray:
+    def zero_shot_contact_map(self, method: ZeroShotMethod, sequence: str, batch_size: int = 32) -> np.ndarray:
         """
-        Derive contact map from categorical Jacobian.
+        Derive contact map (currently only supported: from categorical Jacobian).
 
         Returns:
-            np.ndarray: [L, L]
-        """
-        return self.model_wrapper.zero_shot_contact_map(sequence, batch_size)
-
-    def evaluate_contact_dataset(self,
-                                 dataset_name: str,
-                                 fasta_file_path: Union[str, Path],
-                                 contacts_dir_path: Union[str, Path],
-                                 method: ZeroShotMethod) -> Tuple[
-        List[ContactSingleProteinResult], ContactDatasetResult]:
-        """
-        Given a dataset, computes and evaluates contact maps for all proteins in the dataset, using the categorical jacobian based zero-shot method.
-        This function loads the dataset, including the ground truth contact maps, and evaluates the predicted contact map per protein.
-        The results (precision scores for topk predicted contacts) are aggregated over the dataset.
-
-        Args:
-            dataset_name: Name of the dataset.
-            fasta_file_path: Path to the fasta file containing the protein sequences.
-            contacts_dir_path: Path to the directory containing the ground truth contact maps.
-                               (expected naming format per protein: <protein_ID>.npy)
-            method: Zero-shot prediction method to be used for computing contact maps (JACOBIAN_CONTACT).
-
-        Returns:
-            Tuple[List[ContactSingleProteinResult], ContactDatasetResult]: List of per protein results and aggregated dataset result.
-
-        Raises:
-            ValueError: If the specified method is not supported by the wrapped model; or if the dataset files are empty or missing.
+            np.ndarray: [L, L] (L = sequence length)
         """
         if method not in self.model_wrapper.supported_methods():
             raise ValueError(f"Method {method} not supported by this model!")
-
-        if isinstance(fasta_file_path, str):
-            fasta_file_path = Path(fasta_file_path)
-
-        if not fasta_file_path.exists():
-            raise ValueError(f"Fasta file {fasta_file_path} does not exist!")
-
-        if isinstance(contacts_dir_path, str):
-            contacts_dir_path = Path(contacts_dir_path)
-
-        if not contacts_dir_path.exists():
-            raise ValueError(f"Contacts directory {contacts_dir_path} does not exist!")
-
-        # Read fasta file
-        seq_records = read_FASTA(fasta_file_path)
-        if len(seq_records) == 0:
-            raise ValueError(f"Fasta file {fasta_file_path} is empty!")
-
-        per_protein_results: List[ContactSingleProteinResult] = []
-        for record in seq_records:
-            seq_id = record.seq_id
-            sequence = record.seq
-
-            ground_truth_contact_map_path = contacts_dir_path / f"{seq_id}.npy"
-            ground_truth_contact_map = load_contact_map(path=ground_truth_contact_map_path,
-                                                        sequence=sequence,
-                                                        structure_id=seq_id)
-
-            predicted_contact_map = None
-            match method:
-                case ZeroShotMethod.JACOBIAN_CONTACT:
-                    predicted_contact_map = self.zero_shot_contact_map(
-                        sequence)  # TODO: let user specify batch size; for now, default=32!
-            assert predicted_contact_map is not None, "Zero-shot method returned no contact map!"
-
-            precision_scores = evaluate_contact_map(predicted_contact_map, ground_truth_contact_map)
-            single_protein_result = ContactSingleProteinResult(protein_name=seq_id, precision_scores=precision_scores)
-            per_protein_results.append(single_protein_result)
-            # TODO: review if explicit freeing up required or not in between proteins
-            # if is_device_cuda(self.model_wrapper._device):
-            #     torch.cuda.empty_cache()
-
-        assert len(per_protein_results) > 0, "Empty per-protein results!"
-
-        # Aggregate results
-        print(f"Aggregating results for {dataset_name}...")
-
-        seed = 42
-        metric_names = list(per_protein_results[0].precision_scores.keys())
-        n_proteins = len(per_protein_results)
-        values = {metric_name: torch.tensor([[p.precision_scores[metric_name]] for p in per_protein_results],
-                                            dtype=torch.float32) for metric_name in metric_names}
-        bt_res = Bootstrapper.direct_metrics_bootstrap(metrics=values,
-                                                       iterations=30,
-                                                       sample_size=n_proteins,
-                                                       seed=seed,
-                                                       confidence_level=0.05)
-        dataset_result = ContactDatasetResult(dataset_name=dataset_name,
-                                              aggregated_result=bt_res)
-        print(f"Result for {dataset_name}: {dataset_result}")
-        return per_protein_results, dataset_result
+        if method != ZeroShotMethod.JACOBIAN_CONTACT:
+            raise ValueError(f"Method {method} not supported for contact map computation!")
+        return self.model_wrapper.zero_shot_contact_map_jacobian(sequence, batch_size)
