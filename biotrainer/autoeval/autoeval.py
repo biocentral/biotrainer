@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import torch
 
 from pathlib import Path
@@ -13,6 +15,109 @@ from .autoeval_frameworks import AvailableFramework
 
 from ..bioengineer import BioEngineer
 from ..training.output_files import BiotrainerOutputObserver
+
+
+class AutoEval:
+    def __init__(self,
+                 embedder_name: str,
+                 output_dir: Union[Path, str] = "autoeval_output",
+                 force_download: bool = False,
+                 use_half_precision: bool = False,
+                 min_seq_length: int = 0,
+                 max_seq_length: int = 2000,
+                 custom_storage_path: Optional[Union[Path, str]] = None,
+                 ):
+        if force_download and custom_storage_path:
+            raise ValueError(f"Cannot force download and use custom storage path at the same time!"
+                             f"force_download only clears the cache directory, "
+                             f"so it is not necessary when using custom_storage_path, "
+                             f"just make sure that that is up-to-date.")
+
+        self.output_dir = Path(output_dir)
+        self.embedder_name = embedder_name
+        self.force_download = force_download
+        self.min_seq_length = min_seq_length
+        self.max_seq_length = max_seq_length
+        self.use_half_precision = use_half_precision
+        self.custom_storage_path = custom_storage_path
+
+        self._tasks = []
+        self._results = {}
+
+    def pbc_supervised(self,
+                       precomputed_per_residue_embeddings: Optional[Path] = None,
+                       precomputed_per_sequence_embeddings: Optional[Path] = None,
+                       custom_embedding_function_per_residue: Optional[
+                           Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
+                       custom_embedding_function_per_sequence: Optional[
+                           Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
+                       custom_output_observers: List[BiotrainerOutputObserver] = None,
+                       custom_tokenizer_config: Optional[dict] = None,
+                       ) -> AutoEval:
+        framework_obj: AutoEvalFramework = validate_input(AvailableFramework.PBC_SUPERVISED,
+                                                          zero_shot_method=None,
+                                                          min_seq_length=self.min_seq_length,
+                                                          max_seq_length=self.max_seq_length)
+
+        # Setup
+        output_dir = setup_output_dir(base_dir=self.output_dir,
+                                      embedder_name=self.embedder_name,
+                                      framework_name=framework_obj.get_name())
+        # Check if results already exist
+        autoeval_report = AutoEvalReport.loaded_or_empty(embedder_name=self.embedder_name,
+                                                         training_date=str(datetime.now().date().isoformat()),
+                                                         output_dir=output_dir.parent)
+        # Framework results already exist -> skip execution
+        maybe_framework_result = autoeval_report.maybe_framework_result(framework_name=framework_obj.get_name())
+        if maybe_framework_result:
+            print(f"Autoeval report for framework {framework_obj.get_name()} already exists, "
+                  f"execution will be skipped!")
+
+            self._results[framework_obj.get_name()] = maybe_framework_result
+            return self
+
+        self._tasks.append(
+            lambda device: autoeval_supervised_pipeline(embedder_name=self.embedder_name,
+                                                        framework=framework_obj,
+                                                        autoeval_report=autoeval_report,
+                                                        output_dir=output_dir,
+                                                        force_download=self.force_download,
+                                                        use_half_precision=self.use_half_precision,
+                                                        min_seq_length=self.min_seq_length,
+                                                        max_seq_length=self.max_seq_length,
+                                                        custom_tokenizer_config=custom_tokenizer_config,
+                                                        precomputed_per_residue_embeddings=precomputed_per_residue_embeddings,
+                                                        precomputed_per_sequence_embeddings=precomputed_per_sequence_embeddings,
+                                                        custom_embedding_function_per_residue=custom_embedding_function_per_residue,
+                                                        custom_embedding_function_per_sequence=custom_embedding_function_per_sequence,
+                                                        custom_storage_path=self.custom_storage_path,
+                                                        custom_output_observers=custom_output_observers,
+                                                        device=device)
+        )
+        return self
+
+    def flip(self,
+             precomputed_per_residue_embeddings: Optional[Path] = None,
+             precomputed_per_sequence_embeddings: Optional[Path] = None,
+             custom_embedding_function_per_residue: Optional[
+                 Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
+             custom_embedding_function_per_sequence: Optional[
+                 Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
+             custom_output_observers: List[BiotrainerOutputObserver] = None,
+             custom_tokenizer_config: Optional[dict] = None,
+             ) -> AutoEval:
+        return self.pbc_supervised(precomputed_per_residue_embeddings, precomputed_per_sequence_embeddings,
+                                   custom_embedding_function_per_residue, custom_embedding_function_per_sequence,
+                                   custom_output_observers, custom_tokenizer_config)
+
+    def run(self, device: Optional[Union[str, torch.device]] = None) -> AutoEvalReport:
+        for task in self._tasks:
+            yield from task(device)
+        # TODO Return AutoEval Report
+
+    def run_parallel(self, devices: Optional[List[Union[str, torch.device]]] = None) -> AutoEvalReport:
+        # TODO Parallelization
+        return self.run(device=devices[0] if devices else None)
 
 
 def autoeval_pipeline(embedder_name: str,

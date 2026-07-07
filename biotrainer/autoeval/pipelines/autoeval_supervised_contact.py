@@ -1,8 +1,12 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
 import torch
 import numpy as np
 
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict, Tuple
 from sklearn.linear_model import LogisticRegression
 
 from biotrainer_core.data_classes import SequenceData, ZeroShotContactSingleProtein, ZeroShotContactDatasetResult
@@ -18,12 +22,35 @@ from ...embedding import get_embedding_service
 from ...embedding.huggingface import HuggingfaceTransformerEmbedder
 from ...bioengineer.bioengineer_metrics import evaluate_contact_map
 
-# TODO: Logistic Regression Constants
-n_train_samples = 20
-thershold_c_alpha = 8
-l1_penalty = 0.15
-seed = 0
-min_sep = 6
+
+@dataclass
+class LogisticRegressionHyperParameters:
+    solver: str = "liblinear"
+    l1_ratio: float = 1
+    C: float = 1  # Permutated
+    seed: int = 0
+
+    @staticmethod
+    def all() -> List[LogisticRegressionHyperParameters]:
+        hps = []
+        for c in [0.5, 1, 1.5]:
+            hps.append(LogisticRegressionHyperParameters(C=c))
+        return hps
+
+
+@dataclass
+class _PerProteinData:
+    seq_id: str
+    attention_map: np.ndarray
+    ground_truth_contact_map: np.ndarray
+
+
+@dataclass
+class _InputDataset:
+    x_train: np.ndarray
+    y_train: np.ndarray
+    val_dataset: List[_PerProteinData]
+    test_datasets: Dict[str, List[_PerProteinData]]  # [(seq_id, attention_map, ground_truth_contact_map)]
 
 
 def _generate_flat_pairwise_dataset_input(seq_data: List[SequenceData], embedding_service, contacts_dir_path):
@@ -50,7 +77,9 @@ def _generate_flat_pairwise_dataset_input(seq_data: List[SequenceData], embeddin
     return x, y
 
 
-def _generate_per_protein_dataset_input(seq_data: List[SequenceData], embedding_service, contacts_dir_path):
+def _generate_per_protein_dataset_input(seq_data: List[SequenceData],
+                                        embedding_service,
+                                        contacts_dir_path) -> List[_PerProteinData]:
     protein_inputs = []
 
     for record in seq_data:
@@ -62,9 +91,108 @@ def _generate_per_protein_dataset_input(seq_data: List[SequenceData], embedding_
                                                     structure_id=seq_id)
 
         attention_map = embedding_service._embedder.compute_attention_map(sequence=sequence)
-        protein_inputs.append((seq_id, attention_map, ground_truth_contact_map))
+        per_protein_data = _PerProteinData(seq_id=seq_id,
+                                           attention_map=attention_map,
+                                           ground_truth_contact_map=ground_truth_contact_map)
+        protein_inputs.append(per_protein_data)
 
     return protein_inputs
+
+
+def _load_data_and_generate_attention_maps(dataset_map: dict, embedding_service) -> _InputDataset:
+    # Train
+    dataset_dir_path = dataset_map["train"]
+    fasta_file_path = dataset_dir_path / "extracted_sequences.fasta"
+    train_seqs = read_FASTA(fasta_file_path)
+
+    contacts_dir_path = dataset_dir_path / "contacts"
+    x_train, y_train = _generate_flat_pairwise_dataset_input(train_seqs, embedding_service, contacts_dir_path)
+
+    # Val
+    dataset_dir_path = dataset_map["val"]
+    fasta_file_path = dataset_dir_path / "extracted_sequences.fasta"
+    val_seqs = read_FASTA(fasta_file_path)
+
+    contacts_dir_path = dataset_dir_path / "contacts"
+    val_dataset = _generate_per_protein_dataset_input(val_seqs, embedding_service, contacts_dir_path)
+
+    # Test
+    test_datasets = {}
+    for test_path in dataset_map["test"]:
+        test_name = test_path.stem
+        test_fasta_file_path = test_path / "extracted_sequences.fasta"
+        test_seqs = read_FASTA(test_fasta_file_path)
+        contacts_dir_path = test_path / "contacts"
+        test_datasets[test_name] = _generate_per_protein_dataset_input(test_seqs, embedding_service, contacts_dir_path)
+        break  # TODO DEBUG
+
+    return _InputDataset(x_train=x_train, y_train=y_train, val_dataset=val_dataset, test_datasets=test_datasets)
+
+
+def _train_logistic_regression(input_dataset: _InputDataset) -> LogisticRegression:
+    x_train = input_dataset.x_train
+    y_train = input_dataset.y_train
+    val_dataset = input_dataset.val_dataset
+
+    hyper_params = LogisticRegressionHyperParameters.all()
+    best_clf = None
+    best_long_p_at_l_val = -np.inf
+    for idx, hp in enumerate(hyper_params):
+        # Train classifier on training data
+        # Logistic Regression (careful, liblinear does not support int64!)
+        clf = LogisticRegression(solver=hp.solver, l1_ratio=hp.l1_ratio, C=hp.C)
+        clf.fit(x_train, y_train)
+
+        # Test on Val dataset
+        val_dataset_result = _test_logistic_regression(clf=clf, test_set_name=f"Val-Clf{idx}",
+                                                       per_protein_data=val_dataset)
+        long_p_at_l_val = val_dataset_result.long_PatL()
+        print(f"long_P@L2 for hyperparameters {hp}: {long_p_at_l_val}")
+        if long_p_at_l_val is None:
+            raise ValueError(f"long_P@L2 not found in Val dataset result for hyperparameters: {hp}")
+        if long_p_at_l_val > best_long_p_at_l_val:
+            best_clf = clf
+            best_long_p_at_l_val = long_p_at_l_val
+    print(f"After {len(hyper_params)} hyper param combinations, "
+          f"found best long_P@L2: {best_long_p_at_l_val} for linear classifier!")
+    assert best_clf is not None, "Best classifier not found!"
+    return best_clf
+
+
+def _test_logistic_regression(clf: LogisticRegression, test_set_name: str,
+                              per_protein_data: List[_PerProteinData]) -> ZeroShotContactDatasetResult:
+    per_protein_results: List[ZeroShotContactSingleProtein] = []
+    for data_point in per_protein_data:
+        protein_name = data_point.seq_id
+        x_test = data_point.attention_map
+        ground_truth_contact_map = data_point.ground_truth_contact_map
+        predicted_contact_map = (clf.predict_proba(x_test.reshape(-1,
+                                                                  x_test.shape[-1]))[:, 1].
+                                 reshape(ground_truth_contact_map.shape))
+        precision_scores = evaluate_contact_map(predicted_contact_map, ground_truth_contact_map)
+        single_protein_result = ZeroShotContactSingleProtein(protein_name=protein_name,
+                                                             precision_scores=precision_scores)
+        per_protein_results.append(single_protein_result)
+
+    assert len(per_protein_results) > 0, "Empty per-protein results!"
+
+    # Aggregate results
+    print(f"Aggregating results for {test_set_name}...")
+
+    seed = 42
+    metric_names = list(per_protein_results[0].precision_scores.keys())
+    n_proteins = len(per_protein_results)
+    values = {metric_name: torch.tensor([[p.precision_scores[metric_name]] for p in per_protein_results],
+                                        dtype=torch.float32) for metric_name in metric_names}
+    bt_res = Bootstrapper.direct_metrics_bootstrap(metrics=values,
+                                                   iterations=30,
+                                                   sample_size=n_proteins,
+                                                   seed=seed,
+                                                   confidence_level=0.05)
+    dataset_result = ZeroShotContactDatasetResult(dataset_name=test_set_name,
+                                                  aggregated_result=bt_res)
+    print(f"Result for {test_set_name}: {dataset_result}")
+    return dataset_result
 
 
 def _run_supervised_contact_tasks(framework: AutoEvalFramework,
@@ -96,6 +224,7 @@ def _run_supervised_contact_tasks(framework: AutoEvalFramework,
                                current_framework_name=framework.get_name())
         # TODO: Check if cached result exists for this dataset
 
+        # (1) Set up dataset map from input files
         dataset_map = {"train": None,
                        "val": None,
                        "test": []
@@ -112,74 +241,19 @@ def _run_supervised_contact_tasks(framework: AutoEvalFramework,
         assert dataset_map["val"] is not None, f"Missing val dataset for task: {current_task_name}"
         assert len(dataset_map["test"]) > 0, f"Missing test datasets for task: {current_task_name}"
 
-        # Train
-        dataset_dir_path = dataset_map["train"]
-        fasta_file_path = dataset_dir_path / "extracted_sequences.fasta"
-        train_seqs = read_FASTA(fasta_file_path)
+        # (2) Data Collection
+        input_dataset = _load_data_and_generate_attention_maps(dataset_map=dataset_map,
+                                                               embedding_service=embedding_service)
 
-        contacts_dir_path = dataset_dir_path / "contacts"
-        x_train, y_train = _generate_flat_pairwise_dataset_input(train_seqs, embedding_service, contacts_dir_path)
+        # (3) Training
+        best_clf = _train_logistic_regression(input_dataset=input_dataset)
 
-        # Val (TODO)
-        dataset_dir_path = dataset_map["val"]
-        fasta_file_path = dataset_dir_path / "extracted_sequences.fasta"
-        val_seqs = read_FASTA(fasta_file_path)
-
-        contacts_dir_path = dataset_dir_path / "contacts"
-        x_val, y_val = _generate_flat_pairwise_dataset_input(val_seqs, embedding_service, contacts_dir_path)
-
-        # Test
-        test_datasets = {}
-        for test_path in dataset_map["test"]:
-            test_name = test_path.stem
-            test_fasta_file_path = test_path / "extracted_sequences.fasta"
-            test_seqs = read_FASTA(test_fasta_file_path)
-            contacts_dir_path = test_path / "contacts"
-            test_datasets[test_name] = _generate_per_protein_dataset_input(test_seqs, embedding_service, contacts_dir_path)
-            break  # TODO DEBUG
-
-        # Train classifier on training data
-        # Logistic Regression (careful, liblinear does not support int64!)
-        clf = LogisticRegression(solver="liblinear", l1_ratio=1, C=l1_penalty)
-        clf.fit(x_train, y_train)
-
-        # Test on test sets
+        # (4) Test
+        test_datasets = input_dataset.test_datasets
         for test_set_name, test_data in test_datasets.items():
-            per_protein_results: List[ZeroShotContactSingleProtein] = []
-            for protein_name, x_test, ground_truth_contact_map in test_data:
-                predicted_contact_map = (clf.predict_proba(x_test.reshape(-1,
-                                                                         x_test.shape[-1]))[:, 1].
-                                         reshape(ground_truth_contact_map.shape))
-                precision_scores = evaluate_contact_map(predicted_contact_map, ground_truth_contact_map)
-                single_protein_result = ZeroShotContactSingleProtein(protein_name=protein_name,
-                                                                     precision_scores=precision_scores)
-                per_protein_results.append(single_protein_result)
+            dataset_result = _test_logistic_regression(clf=best_clf, test_set_name=test_set_name,
+                                                       per_protein_data=test_data)
 
-            assert len(per_protein_results) > 0, "Empty per-protein results!"
-
-            # Aggregate results
-            print(f"Aggregating results for {test_set_name}...")
-
-            seed = 42
-            metric_names = list(per_protein_results[0].precision_scores.keys())
-            n_proteins = len(per_protein_results)
-            values = {metric_name: torch.tensor([[p.precision_scores[metric_name]] for p in per_protein_results],
-                                                dtype=torch.float32) for metric_name in metric_names}
-            bt_res = Bootstrapper.direct_metrics_bootstrap(metrics=values,
-                                                           iterations=30,
-                                                           sample_size=n_proteins,
-                                                           seed=seed,
-                                                           confidence_level=0.05)
-            dataset_result = ZeroShotContactDatasetResult(dataset_name=test_set_name,
-                                                          aggregated_result=bt_res)
-            print(f"Result for {test_set_name}: {dataset_result}")
-        # _, dataset_result = bioengineer.evaluate_contact_dataset(dataset_name=current_task_name,
-        #                                                         fasta_file_path=fasta_file_path,
-        #                                                         contacts_dir_path=contacts_dir_path,
-        #                                                         method=zero_shot_method)
-        # zero_shot_contact_cached_results.update_and_sync(dataset_name=current_task_name, result=dataset_result,
-        #                                                 output_dir=output_dir)
-        # zero_shot_contact_framework_report.update_result(task_name=current_task_name, dataset_result=dataset_result)
         completed_tasks += 1
         print(f"Finished task {current_task_name}!")
 
@@ -197,7 +271,7 @@ def _run_supervised_contact_tasks(framework: AutoEvalFramework,
 def autoeval_supervised_contact_pipeline(embedder_name: str,
                                          framework: AutoEvalFramework,
                                          autoeval_report: AutoEvalReport,
-                                         output_dir: Optional[Union[Path, str]] = "autoeval_output",
+                                         output_dir: Union[Path, str] = "autoeval_output",
                                          force_download: Optional[bool] = False,
                                          custom_storage_path: Optional[Union[Path, str]] = None,
                                          device=None,
@@ -210,6 +284,6 @@ def autoeval_supervised_contact_pipeline(embedder_name: str,
     yield from _run_supervised_contact_tasks(framework=framework,
                                              embedder_name=embedder_name,
                                              autoeval_report=autoeval_report,
-                                             output_dir=output_dir,
+                                             output_dir=Path(output_dir),
                                              autoeval_tasks=autoeval_tasks,
                                              device=device)

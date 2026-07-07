@@ -290,3 +290,9 @@ class ZeroShotContactDatasetResult(BaseModel):
         if not scores:
             return f"Dataset result [{self.dataset_name}] - No scores available"
         return f"Dataset result [{self.dataset_name}] - {scores}"
+
+    def long_PatL(self) -> Optional[float]:
+        long_p_at_l = [metric for metric in self.aggregated_result if metric.name == "long_P@L2"]
+        if len(long_p_at_l) == 0:
+            return None
+        return long_p_at_l[0].mean

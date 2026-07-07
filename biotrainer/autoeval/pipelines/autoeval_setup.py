@@ -1,7 +1,7 @@
 import os
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from ..core import AutoEvalDataHandler, AutoEvalTask
 
@@ -22,7 +22,7 @@ def setup_output_dir(base_dir: Path, embedder_name: str, framework_name: str) ->
 def setup_pipeline(data_handler: AutoEvalDataHandler,
                    min_seq_length: Optional[int] = None,
                    max_seq_length: Optional[int] = None,
-                   custom_storage_path: Optional[str] = None,
+                   custom_storage_path: Optional[Union[Path, str]] = None,
                    force_download: Optional[bool] = False,
                    ) -> List[AutoEvalTask]:
     framework_base_path = data_handler.get_framework_base_path(
