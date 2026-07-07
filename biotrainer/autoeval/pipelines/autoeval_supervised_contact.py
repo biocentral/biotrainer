@@ -11,7 +11,7 @@ import torch
 import numpy as np
 
 from pathlib import Path
-from typing import Optional, Union, List, Dict
+from typing import Optional, Union, List, Dict, Any
 from sklearn.linear_model import LogisticRegression
 
 from biotrainer_core.data_classes import SequenceData, ContactDatasetResult
@@ -47,8 +47,9 @@ class LogisticRegressionHyperParameters:
 @dataclass
 class _PerProteinData:
     seq_id: str
-    attention_map: np.ndarray
+    sequence: str
     ground_truth_contact_map: np.ndarray
+    attention_map: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -86,8 +87,10 @@ def _generate_flat_pairwise_dataset_input(seq_data: List[SequenceData], embeddin
 
 
 def _generate_per_protein_dataset_input(seq_data: List[SequenceData],
-                                        embedding_service,
-                                        contacts_dir_path) -> List[_PerProteinData]:
+                                        contacts_dir_path,
+                                        embedding_service: Optional = None ) -> List[_PerProteinData]:
+    """ Generate per protein dataset input (val/test). If embedding_service is None (test),
+        attention maps need to be computed lazily later """
     protein_inputs = []
 
     for record in seq_data:
@@ -97,11 +100,15 @@ def _generate_per_protein_dataset_input(seq_data: List[SequenceData],
         ground_truth_contact_map = load_contact_map(path=ground_truth_contact_map_path,
                                                     sequence=sequence,
                                                     structure_id=seq_id)
+        attention_map = None
+        if embedding_service is not None:
+            attention_map = embedding_service._embedder.compute_attention_map(sequence=sequence)
 
-        attention_map = embedding_service._embedder.compute_attention_map(sequence=sequence)
         per_protein_data = _PerProteinData(seq_id=seq_id,
+                                           sequence=sequence,
                                            attention_map=attention_map,
-                                           ground_truth_contact_map=ground_truth_contact_map)
+                                           ground_truth_contact_map=ground_truth_contact_map,
+                                           )
         protein_inputs.append(per_protein_data)
 
     return protein_inputs
@@ -122,7 +129,7 @@ def _load_data_and_generate_attention_maps(dataset_map: dict, embedding_service)
     val_seqs = read_FASTA(fasta_file_path)
 
     contacts_dir_path = dataset_dir_path / "contacts"
-    val_dataset = _generate_per_protein_dataset_input(val_seqs, embedding_service, contacts_dir_path)
+    val_dataset = _generate_per_protein_dataset_input(val_seqs, contacts_dir_path, embedding_service=embedding_service)
 
     # Test
     test_datasets = {}
@@ -131,8 +138,9 @@ def _load_data_and_generate_attention_maps(dataset_map: dict, embedding_service)
         test_fasta_file_path = test_path / "extracted_sequences.fasta"
         test_seqs = read_FASTA(test_fasta_file_path)
         contacts_dir_path = test_path / "contacts"
-        test_datasets[test_name] = _generate_per_protein_dataset_input(test_seqs, embedding_service, contacts_dir_path)
-        break  # TODO DEBUG
+        # Lazy compute attention maps later
+        test_datasets[test_name] = _generate_per_protein_dataset_input(test_seqs, contacts_dir_path,
+                                                                       embedding_service=None)
 
     return _InputDataset(x_train=x_train, y_train=y_train, val_dataset=val_dataset, test_datasets=test_datasets)
 
@@ -153,7 +161,8 @@ def _train_logistic_regression(input_dataset: _InputDataset) -> LogisticRegressi
 
         # Test on Val dataset
         val_dataset_result = _test_logistic_regression(clf=clf, test_set_name=f"Val-Clf{idx}",
-                                                       per_protein_data=val_dataset)
+                                                       per_protein_data=val_dataset,
+                                                       )
         long_p_at_l2_val = val_dataset_result.long_PatL2()
         print(f"long_P@L2 for hyperparameters {hp}: {long_p_at_l2_val}")
         if long_p_at_l2_val is None:
@@ -168,10 +177,17 @@ def _train_logistic_regression(input_dataset: _InputDataset) -> LogisticRegressi
 
 
 def _test_logistic_regression(clf: LogisticRegression, test_set_name: str,
-                              per_protein_data: List[_PerProteinData]) -> ContactDatasetResult:
+                              per_protein_data: List[_PerProteinData],
+                              embedding_service: Optional = None) -> ContactDatasetResult:
 
     def predict_function(data_point: _PerProteinData):
-        return (clf.predict_proba(data_point.attention_map.reshape(-1, data_point.attention_map.shape[-1]))[:, 1]
+        if data_point.attention_map is not None:
+            attention_map = data_point.attention_map
+        else:
+            assert embedding_service is not None, "Attention map not provided, but embedding service is None!"
+            attention_map = embedding_service._embedder.compute_attention_map(sequence=data_point.sequence)
+
+        return (clf.predict_proba(attention_map.reshape(-1, attention_map.shape[-1]))[:, 1]
                 .reshape(data_point.ground_truth_contact_map.shape))
 
     def evaluate():
@@ -244,7 +260,8 @@ def _run_supervised_contact_tasks(framework: AutoEvalFramework,
         test_datasets = input_dataset.test_datasets
         for test_set_name, test_data in test_datasets.items():
             dataset_result = _test_logistic_regression(clf=best_clf, test_set_name=test_set_name,
-                                                       per_protein_data=test_data)
+                                                       per_protein_data=test_data,
+                                                       embedding_service=embedding_service)
             supervised_contact_framework_report.update_result(task_name=test_set_name,
                                                               dataset_result=dataset_result)
         completed_tasks += 1

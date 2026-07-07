@@ -4,6 +4,8 @@ import torch
 from peft import PeftModel
 from typing import List, Generator, Any, Union, Optional
 
+from torch import Tensor
+
 from ..interfaces import EmbedderWithFallback
 
 
@@ -144,7 +146,7 @@ class HuggingfaceTransformerEmbedder(EmbedderWithFallback):
         return x + x.transpose(-1, -2)
 
     # Adapted from https://github.com/chandar-lab/AMPLIFY/blob/main/examples/contact_prediction.ipynb
-    def compute_attention_map(self, sequence: str):
+    def compute_attention_map(self, sequence: str) -> torch.Tensor:
         self._ensure_attention_backend()
         with torch.no_grad(), torch.autocast(device_type=str(self._device), dtype=torch.float16, enabled=True):
             torch.backends.cuda.matmul.allow_tf32 = True
