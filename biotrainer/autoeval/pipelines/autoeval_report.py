@@ -3,13 +3,12 @@ from __future__ import annotations
 import hashlib
 import pandas as pd
 
-from ruamel import yaml
 from pathlib import Path
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Union, Optional, List, Tuple
-from biotrainer_core.data_classes import EmbeddingStats, ZeroShotMethod, RankingResult, ZeroShotContactSingleProtein, \
-    ZeroShotContactDatasetResult, BiotrainerModelResult
+from biotrainer_core.data_classes import EmbeddingStats, ZeroShotMethod, RankingResult, \
+    ContactDatasetResult, BiotrainerModelResult
 from .autoeval_plotting import plot_comparison, aggregate_dfs
 
 from ..core import AutoEvalTask
@@ -372,28 +371,32 @@ class ZeroShotCachedResults(BaseModel):
             f.write(self.model_dump_json(indent=4))
 
 
-class ZeroShotContactFrameworkReport(BaseModel, FrameworkReport):
+class ContactFrameworkReport(BaseModel, FrameworkReport):
     model_config = {"use_enum_values": True}
 
-    method: ZeroShotMethod = Field(
-        description="Contact method used")  # Note - only one applicable zeroshot contact method as of now!
-    task_results: Dict[str, ZeroShotContactDatasetResult] = Field(description="Results per taks, i.e. per dataset")
+    method: Optional[ZeroShotMethod] = Field(default=None,
+                                             description="Contact method used. "
+                                                         "Only applicable for zero-shot contact prediction")
+    task_results: Dict[str, ContactDatasetResult] = Field(description="Results per tasks, i.e. per dataset")
 
     @model_validator(mode='after')
     def check_method(self):
         if isinstance(self.method, str):
             self.method = ZeroShotMethod(self.method)
+            if self.method != ZeroShotMethod.JACOBIAN_CONTACT:
+                raise ValueError(f"Invalid contact method: {self.method}")
         return self
 
     @classmethod
-    def empty(cls, method: ZeroShotMethod) -> ZeroShotContactFrameworkReport:
+    def empty(cls, method: Optional[ZeroShotMethod] = None) -> ContactFrameworkReport:
         return cls(method=method, task_results={})
 
-    def update_result(self, task_name: str, dataset_result: ZeroShotContactDatasetResult):
+    def update_result(self, task_name: str, dataset_result: ContactDatasetResult):
         self.task_results[task_name] = dataset_result
 
-    def summary(self):
-        print(f"Zero-shot contact method: {self.method.value}")
+    def summary(self, development_mode: bool = False):
+        if self.method is not None:
+            print(f"Zero-shot contact method: {self.method.value}")
         print(f"Total tasks: {len(self.task_results)}")
         print("Results:")
         for combined_task_name, result in self.task_results.items():
@@ -401,7 +404,7 @@ class ZeroShotContactFrameworkReport(BaseModel, FrameworkReport):
                   f"\t Results:  {result}")
             # TODO: add detailed print of metrics!!
 
-    def to_df(self, framework: Optional[str] = None) -> pd.DataFrame:
+    def to_df(self, framework: Optional[str] = None, development_mode: bool = False) -> pd.DataFrame:
         rows = []
         for task in self.get_task_names():
             framework_name, _, _ = AutoEvalTask.split_combined_name(task)
@@ -437,7 +440,7 @@ class ZeroShotContactCachedResults(BaseModel):
     embedder_name: str = Field(description="Name of the embedder")
     method: ZeroShotMethod = Field(
         description="Contact method used")  # Note - only one applicable zeroshot contact method as of now!
-    task_results: Dict[str, ZeroShotContactDatasetResult] = Field(description="Results per taks, i.e. per dataset")
+    task_results: Dict[str, ContactDatasetResult] = Field(description="Results per taks, i.e. per dataset")
 
     @staticmethod
     def get_file_name(method: ZeroShotMethod):
@@ -465,10 +468,10 @@ class ZeroShotContactCachedResults(BaseModel):
             return report
         return cls.empty(embedder_name, method)
 
-    def maybe_cached_result(self, dataset_name: str) -> Optional[ZeroShotContactDatasetResult]:
+    def maybe_cached_result(self, dataset_name: str) -> Optional[ContactDatasetResult]:
         return self.task_results.get(dataset_name, None)
 
-    def update_and_sync(self, dataset_name: str, result: ZeroShotContactDatasetResult, output_dir: Path):
+    def update_and_sync(self, dataset_name: str, result: ContactDatasetResult, output_dir: Path):
         self.task_results[dataset_name] = result
         self._write_to_file(output_dir=output_dir)
 
@@ -481,10 +484,14 @@ class ZeroShotContactCachedResults(BaseModel):
 class AutoEvalReport(BaseModel):
     embedder_name: str = Field(description="Name of the embedder")
     training_date: str = Field(description="Date of training")
+
+    # Results
     supervised_results: Dict[str, SupervisedFrameworkReport] = Field(description="Supervised autoeval results")
     zeroshot_results: Dict[str, ZeroShotFrameworkReport] = Field(description="Zero-Shot autoeval results")
-    zeroshot_contact_results: Dict[str, ZeroShotContactFrameworkReport] = Field(default_factory=dict,
-                                                                                description="Zero-Shot contact autoeval results")
+    zeroshot_contact_results: Dict[str, ContactFrameworkReport] = Field(default_factory=dict,
+                                                                        description="Zero-Shot contact autoeval results")
+    supervised_contact_results: Dict[str, ContactFrameworkReport] = Field(default_factory=dict,
+                                                                          description="Supervised contact autoeval results")
 
     @staticmethod
     def get_file_name(embedder_name):
@@ -515,13 +522,22 @@ class AutoEvalReport(BaseModel):
     def add_zeroshot_result(self, framework_name: str, report: ZeroShotFrameworkReport):
         self.zeroshot_results[framework_name] = report
 
-    def add_zeroshot_contact_result(self, framework_name: str, report: ZeroShotContactFrameworkReport):
+    def add_zeroshot_contact_result(self, framework_name: str, report: ContactFrameworkReport):
         self.zeroshot_contact_results[framework_name] = report
 
+    def add_supervised_contact_result(self, framework_name: str, report: ContactFrameworkReport):
+        self.supervised_contact_results[framework_name] = report
+
+    def _all_results(self):
+        return [self.supervised_results,
+                self.zeroshot_results,
+                self.zeroshot_contact_results,
+                self.supervised_contact_results]
     def maybe_framework_result(self, framework_name: str) -> Optional[FrameworkReport]:
-        return self.supervised_results.get(framework_name, self.zeroshot_results.get(framework_name,
-                                                                                     self.zeroshot_contact_results.get(
-                                                                                         framework_name, None)))
+        for results in self._all_results():
+            if framework_name in results:
+                return results[framework_name]
+        return None
 
     def write(self, output_dir: Path):
         report_name = output_dir / self.get_file_name(self.embedder_name)
@@ -534,9 +550,8 @@ class AutoEvalReport(BaseModel):
         h = hashlib.sha1()
         h.update(self.embedder_name.encode("utf-8"))
         h.update(self.training_date.encode("utf-8"))
-        h.update(str(len(self.supervised_results)).encode("utf-8"))
-        h.update(str(len(self.zeroshot_results)).encode("utf-8"))
-        h.update(str(len(self.zeroshot_contact_results)).encode("utf-8"))
+        for result in self._all_results():
+            h.update(str(len(result)).encode("utf-8"))
         return h.hexdigest()
 
     def summary(self, development_mode: bool = False):
@@ -550,6 +565,9 @@ class AutoEvalReport(BaseModel):
         for framework_name, report in self.zeroshot_contact_results.items():
             print(f"\n{framework_name} zero-shot contact results:")
             report.summary()
+        for framework_name, report in self.supervised_contact_results.items():
+            print(f"\n{framework_name} supervised contact results:")
+            report.summary()
 
     def embedding_stats(self):
         print(f"Embedding stats in autoeval report for {self.embedder_name} on {self.training_date}.")
@@ -557,7 +575,7 @@ class AutoEvalReport(BaseModel):
             print(f"\n{framework_name} - embedding stats:")
             print(report.accumulated_embedding_stats())
 
-    # TODO: Adapt below for contact results!
+    # TODO: Deprecate
     def compare(self, other_reports: list[AutoEvalReport],
                 plot: Optional[bool] = False,
                 save_path: Optional[Union[Path, str]] = None):
@@ -604,6 +622,7 @@ class AutoEvalReport(BaseModel):
             ZeroShotFrameworkReport.compare(all_zeroshot_reports, plot=plot,
                                             save_path=save_path_zeroshot)
 
+    # TODO Move to client
     def compare_with_public_leaderboard(self):
         """
         Compare this report to the public leaderboard. This implies uploading the report to the autoeval service
@@ -615,6 +634,7 @@ class AutoEvalReport(BaseModel):
             print(f"Report stored in the autoeval service with UID: {uid}\n"
                   f"Open https://autoeval.biocentral.cloud/?uid={uid} to compare.")
 
+    # TODO Move to client
     def publish(self, name: str, email: str, citation: Optional[str] = None):
         """
         Publish this report to the public autoeval dashboard.

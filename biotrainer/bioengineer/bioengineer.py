@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 from typing import List, Optional, Dict, Union, Tuple
 from biotrainer_core.data_classes import Variant, VariantScore, RankingResult, ZeroShotMethod, \
-    ZeroShotContactSingleProtein, ZeroShotContactDatasetResult
+    ContactSingleProteinResult, ContactDatasetResult
 from biotrainer_core.input_files import read_FASTA, load_contact_map
 
 from .bioengineer_interfaces import BioEngineerModelWrapper
@@ -260,7 +260,7 @@ class BioEngineer:
                                  fasta_file_path: Union[str, Path],
                                  contacts_dir_path: Union[str, Path],
                                  method: ZeroShotMethod) -> Tuple[
-        List[ZeroShotContactSingleProtein], ZeroShotContactDatasetResult]:
+        List[ContactSingleProteinResult], ContactDatasetResult]:
         """
         Given a dataset, computes and evaluates contact maps for all proteins in the dataset, using the categorical jacobian based zero-shot method.
         This function loads the dataset, including the ground truth contact maps, and evaluates the predicted contact map per protein.
@@ -274,7 +274,7 @@ class BioEngineer:
             method: Zero-shot prediction method to be used for computing contact maps (JACOBIAN_CONTACT).
 
         Returns:
-            Tuple[List[ZeroShotContactSingleProtein], ZeroShotContactDatasetResult]: List of per protein results and aggregated dataset result.
+            Tuple[List[ContactSingleProteinResult], ContactDatasetResult]: List of per protein results and aggregated dataset result.
 
         Raises:
             ValueError: If the specified method is not supported by the wrapped model; or if the dataset files are empty or missing.
@@ -299,7 +299,7 @@ class BioEngineer:
         if len(seq_records) == 0:
             raise ValueError(f"Fasta file {fasta_file_path} is empty!")
 
-        per_protein_results: List[ZeroShotContactSingleProtein] = []
+        per_protein_results: List[ContactSingleProteinResult] = []
         for record in seq_records:
             seq_id = record.seq_id
             sequence = record.seq
@@ -317,7 +317,7 @@ class BioEngineer:
             assert predicted_contact_map is not None, "Zero-shot method returned no contact map!"
 
             precision_scores = evaluate_contact_map(predicted_contact_map, ground_truth_contact_map)
-            single_protein_result = ZeroShotContactSingleProtein(protein_name=seq_id, precision_scores=precision_scores)
+            single_protein_result = ContactSingleProteinResult(protein_name=seq_id, precision_scores=precision_scores)
             per_protein_results.append(single_protein_result)
             # TODO: review if explicit freeing up required or not in between proteins
             # if is_device_cuda(self.model_wrapper._device):
@@ -338,7 +338,7 @@ class BioEngineer:
                                                        sample_size=n_proteins,
                                                        seed=seed,
                                                        confidence_level=0.05)
-        dataset_result = ZeroShotContactDatasetResult(dataset_name=dataset_name,
-                                                      aggregated_result=bt_res)
+        dataset_result = ContactDatasetResult(dataset_name=dataset_name,
+                                              aggregated_result=bt_res)
         print(f"Result for {dataset_name}: {dataset_result}")
         return per_protein_results, dataset_result

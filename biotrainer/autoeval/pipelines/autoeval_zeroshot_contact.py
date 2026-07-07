@@ -3,7 +3,7 @@ from typing import Optional, Union, List
 from biotrainer_core.data_classes import ZeroShotMethod
 
 from .autoeval_setup import setup_pipeline
-from .autoeval_report import ZeroShotContactCachedResults, ZeroShotContactFrameworkReport, AutoEvalReport
+from .autoeval_report import ZeroShotContactCachedResults, ContactFrameworkReport, AutoEvalReport
 from .autoeval_progress import AutoEvalProgress
 from ..core import AutoEvalFramework, AutoEvalTask
 
@@ -27,7 +27,7 @@ def _run_zeroshot_contact_tasks(framework: AutoEvalFramework,
                                                                                     method=zero_shot_method,
                                                                                     output_dir=output_dir)
     # Execute bioengineer
-    zero_shot_contact_framework_report = ZeroShotContactFrameworkReport.empty(method=zero_shot_method)
+    zero_shot_contact_framework_report = ContactFrameworkReport.empty(method=zero_shot_method)
     task_names = [task.combined_name() for task in autoeval_tasks]
     print(f"The following tasks will be executed in order: {task_names} (total {len(task_names)})")
     completed_tasks = 0

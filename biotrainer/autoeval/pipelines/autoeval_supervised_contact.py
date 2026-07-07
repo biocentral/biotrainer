@@ -1,3 +1,8 @@
+"""
+This module contains the implementation of the AutoEval pipeline for supervised contact prediction.
+Heavily inspired by: https://github.com/chandar-lab/AMPLIFY/blob/main/examples/contact_prediction.ipynb
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,11 +14,11 @@ from pathlib import Path
 from typing import Optional, Union, List, Dict, Tuple
 from sklearn.linear_model import LogisticRegression
 
-from biotrainer_core.data_classes import SequenceData, ZeroShotContactSingleProtein, ZeroShotContactDatasetResult
+from biotrainer_core.data_classes import SequenceData, ContactSingleProteinResult, ContactDatasetResult
 from biotrainer_core.input_files import load_contact_map, read_FASTA
 
 from .autoeval_setup import setup_pipeline
-from .autoeval_report import ZeroShotContactCachedResults, ZeroShotContactFrameworkReport, AutoEvalReport
+from .autoeval_report import ZeroShotContactCachedResults, ContactFrameworkReport, AutoEvalReport
 from .autoeval_progress import AutoEvalProgress
 from ..core import AutoEvalFramework, AutoEvalTask
 
@@ -54,6 +59,8 @@ class _InputDataset:
 
 
 def _generate_flat_pairwise_dataset_input(seq_data: List[SequenceData], embedding_service, contacts_dir_path):
+    min_sep = 6  # https://github.com/chandar-lab/AMPLIFY/blob/main/examples/contact_prediction.ipynb
+
     x = []
     y = []
     for record in seq_data:
@@ -124,7 +131,7 @@ def _load_data_and_generate_attention_maps(dataset_map: dict, embedding_service)
         test_seqs = read_FASTA(test_fasta_file_path)
         contacts_dir_path = test_path / "contacts"
         test_datasets[test_name] = _generate_per_protein_dataset_input(test_seqs, embedding_service, contacts_dir_path)
-        break  # TODO DEBUG
+        break # TODO DEBUG
 
     return _InputDataset(x_train=x_train, y_train=y_train, val_dataset=val_dataset, test_datasets=test_datasets)
 
@@ -146,13 +153,13 @@ def _train_logistic_regression(input_dataset: _InputDataset) -> LogisticRegressi
         # Test on Val dataset
         val_dataset_result = _test_logistic_regression(clf=clf, test_set_name=f"Val-Clf{idx}",
                                                        per_protein_data=val_dataset)
-        long_p_at_l_val = val_dataset_result.long_PatL()
-        print(f"long_P@L2 for hyperparameters {hp}: {long_p_at_l_val}")
-        if long_p_at_l_val is None:
+        long_p_at_l2_val = val_dataset_result.long_PatL2()
+        print(f"long_P@L2 for hyperparameters {hp}: {long_p_at_l2_val}")
+        if long_p_at_l2_val is None:
             raise ValueError(f"long_P@L2 not found in Val dataset result for hyperparameters: {hp}")
-        if long_p_at_l_val > best_long_p_at_l_val:
+        if long_p_at_l2_val > best_long_p_at_l_val:
             best_clf = clf
-            best_long_p_at_l_val = long_p_at_l_val
+            best_long_p_at_l_val = long_p_at_l2_val
     print(f"After {len(hyper_params)} hyper param combinations, "
           f"found best long_P@L2: {best_long_p_at_l_val} for linear classifier!")
     assert best_clf is not None, "Best classifier not found!"
@@ -160,8 +167,8 @@ def _train_logistic_regression(input_dataset: _InputDataset) -> LogisticRegressi
 
 
 def _test_logistic_regression(clf: LogisticRegression, test_set_name: str,
-                              per_protein_data: List[_PerProteinData]) -> ZeroShotContactDatasetResult:
-    per_protein_results: List[ZeroShotContactSingleProtein] = []
+                              per_protein_data: List[_PerProteinData]) -> ContactDatasetResult:
+    per_protein_results: List[ContactSingleProteinResult] = []
     for data_point in per_protein_data:
         protein_name = data_point.seq_id
         x_test = data_point.attention_map
@@ -170,8 +177,8 @@ def _test_logistic_regression(clf: LogisticRegression, test_set_name: str,
                                                                   x_test.shape[-1]))[:, 1].
                                  reshape(ground_truth_contact_map.shape))
         precision_scores = evaluate_contact_map(predicted_contact_map, ground_truth_contact_map)
-        single_protein_result = ZeroShotContactSingleProtein(protein_name=protein_name,
-                                                             precision_scores=precision_scores)
+        single_protein_result = ContactSingleProteinResult(protein_name=protein_name,
+                                                           precision_scores=precision_scores)
         per_protein_results.append(single_protein_result)
 
     assert len(per_protein_results) > 0, "Empty per-protein results!"
@@ -189,8 +196,8 @@ def _test_logistic_regression(clf: LogisticRegression, test_set_name: str,
                                                    sample_size=n_proteins,
                                                    seed=seed,
                                                    confidence_level=0.05)
-    dataset_result = ZeroShotContactDatasetResult(dataset_name=test_set_name,
-                                                  aggregated_result=bt_res)
+    dataset_result = ContactDatasetResult(dataset_name=test_set_name,
+                                          aggregated_result=bt_res)
     print(f"Result for {test_set_name}: {dataset_result}")
     return dataset_result
 
@@ -206,10 +213,8 @@ def _run_supervised_contact_tasks(framework: AutoEvalFramework,
     if not isinstance(embedding_service._embedder, HuggingfaceTransformerEmbedder):
         raise ValueError(f"Only HuggingfaceTransformers are supported for supervised contact tasks, "
                          f"but got {embedding_service._embedder}!")
-    # TODO Load cached results
 
-    # Execute bioengineer
-    # zero_shot_contact_framework_report = ZeroShotContactFrameworkReport.empty(method=zero_shot_method)
+    supervised_contact_framework_report = ContactFrameworkReport.empty()
     task_names = [task.combined_name() for task in autoeval_tasks]
     print(f"The following tasks will be executed in order: {task_names} (total {len(task_names)})")
     completed_tasks = 0
@@ -222,7 +227,6 @@ def _run_supervised_contact_tasks(framework: AutoEvalFramework,
                                total_tasks=total_tasks,
                                current_task_name=current_task_name,
                                current_framework_name=framework.get_name())
-        # TODO: Check if cached result exists for this dataset
 
         # (1) Set up dataset map from input files
         dataset_map = {"train": None,
@@ -239,7 +243,7 @@ def _run_supervised_contact_tasks(framework: AutoEvalFramework,
 
         assert dataset_map["train"] is not None, f"Missing train dataset for task: {current_task_name}"
         assert dataset_map["val"] is not None, f"Missing val dataset for task: {current_task_name}"
-        assert len(dataset_map["test"]) > 0, f"Missing test datasets for task: {current_task_name}"
+        assert len(dataset_map["test"] or []) > 0, f"Missing test datasets for task: {current_task_name}"
 
         # (2) Data Collection
         input_dataset = _load_data_and_generate_attention_maps(dataset_map=dataset_map,
@@ -253,15 +257,16 @@ def _run_supervised_contact_tasks(framework: AutoEvalFramework,
         for test_set_name, test_data in test_datasets.items():
             dataset_result = _test_logistic_regression(clf=best_clf, test_set_name=test_set_name,
                                                        per_protein_data=test_data)
-
+            supervised_contact_framework_report.update_result(task_name=test_set_name,
+                                                              dataset_result=dataset_result)
         completed_tasks += 1
         print(f"Finished task {current_task_name}!")
 
-    # autoeval_report.add_zeroshot_contact_result(framework_name=framework.get_name(),
-    #                                            report=zero_shot_contact_framework_report)
-    # autoeval_report.write(output_dir=output_dir.parent)
-    #
-    # print(f"Autoeval pipeline on framework {framework.get_name()} for {embedder_name} finished successfully!")
+    autoeval_report.add_supervised_contact_result(framework_name=framework.get_name(),
+                                                  report=supervised_contact_framework_report)
+    autoeval_report.write(output_dir=output_dir.parent)
+
+    print(f"Autoeval pipeline on framework {framework.get_name()} for {embedder_name} finished successfully!")
     yield AutoEvalProgress(completed_tasks=total_tasks, total_tasks=total_tasks,
                            current_task_name=current_task_name,
                            current_framework_name=framework.get_name(),
