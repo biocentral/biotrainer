@@ -1,6 +1,7 @@
 from typing import Dict, Any
+from biotrainer_core.data_classes.autoeval import AutoEvalTask
 
-from ...core import AutoEvalTask, AutoEvalConfigBank
+from ...core import AutoEvalConfigBank
 
 
 class PBCConfigBank(AutoEvalConfigBank):

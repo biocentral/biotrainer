@@ -7,14 +7,23 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Union, Optional, List, Tuple
-from biotrainer_core.data_classes import EmbeddingStats, ZeroShotMethod, RankingResult, \
-    ContactDatasetResult, BiotrainerModelResult
-from .autoeval_plotting import plot_comparison, aggregate_dfs
 
-from ..core import AutoEvalTask
-from ..frameworks.pbc_supervised.pbc_datasets import PBC_SUPERVISED_DATASETS
-from ..frameworks.flip.flip_datasets import FLIP_DATASETS
-from ..client.autoeval_service_client import AutoEvalServiceClient
+from .autoeval_task import AutoEvalTask
+from .autoeval_flip_datasets import all_flip_datasets
+from .autoeval_pbc_datasets import all_pbc_datasets
+from .. import ContactSingleProteinResult
+
+from ..contact import ContactDatasetResult
+from ..embedding_stats import EmbeddingStats
+from ..bioengineer_data_classes import ZeroShotMethod, RankingResult
+from ..biotrainer_model_result import BiotrainerModelResult
+
+
+def _aggregate_dfs(dfs: List[pd.DataFrame]) -> Optional[pd.DataFrame]:
+    try:
+        return pd.concat(dfs, ignore_index=True)
+    except ValueError:
+        return None
 
 
 def _maybe_metric_abs(metric_name: str, mean: float, lower: float, upper: float) -> Tuple[float, float, float]:
@@ -106,14 +115,14 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
 
     def extract_metrics(self, combined_task_name: str, development_mode: bool = False) -> list[dict]:
         """Extract metrics for a given task."""
-        framework_to_datasets = {"PBC_SUPERVISED": PBC_SUPERVISED_DATASETS, "FLIP": FLIP_DATASETS}
+        framework_to_datasets = {"PBC_SUPERVISED": all_pbc_datasets(), "FLIP": all_flip_datasets()}
 
         metrics = []
         try:
             framework_name, dataset_name, split_name = AutoEvalTask.split_combined_name(combined_task_name)
             datasets = framework_to_datasets[framework_name.upper()]
-            evaluation_metric = datasets[dataset_name]["evaluation_metric"]
-            protocol = datasets[dataset_name]["protocol"].name
+            evaluation_metric = datasets[dataset_name].evaluation_metric
+            protocol = datasets[dataset_name].protocol.name
             if development_mode:
                 metrics.extend(self._extract_metrics_val_set(combined_task_name, evaluation_metric, protocol))
             else:
@@ -195,36 +204,6 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
         df = pd.DataFrame(rows)
         return df
 
-    @staticmethod
-    def compare(all_reports: Tuple[str, SupervisedFrameworkReport],  # embedder_name -> SupervisedFrameworkReport,
-                plot: Optional[bool] = False,
-                save_path: Optional[Union[Path, str]] = None):
-
-        dfs = []
-        for embedder_name, report in all_reports:
-            report_df = report.to_df()
-            report_df['Model'] = embedder_name
-            dfs.append(report_df)
-
-        # Create DataFrame and pivot it
-        df = aggregate_dfs(dfs)
-        df_pivot = df.pivot_table(
-            index=['Task', 'Protocol', 'Test Set', 'Metric'],
-            columns='Model',
-            values='Mean',
-            aggfunc='first',
-            sort=False
-        ).reset_index()
-
-        print("\nComparison of reports:")
-        print(df_pivot.to_string(index=False))
-
-        if plot:
-            fig, _ = plot_comparison(df)
-            fig.show()
-            if save_path is not None:
-                fig.savefig(save_path, bbox_inches='tight')
-
     def number_tasks(self):
         return len(self.results.keys())
 
@@ -288,36 +267,6 @@ class ZeroShotFrameworkReport(BaseModel, FrameworkReport):
         rows = sorted(rows, key=lambda x: 'virus' in x['Task'], reverse=True)
         return pd.DataFrame(rows)
 
-    @staticmethod
-    def compare(all_reports: Tuple[str, ZeroShotFrameworkReport],  # embedder_name -> ZeroShotFrameworkReport
-                plot: Optional[bool] = False,
-                save_path: Optional[Path] = None):
-
-        dfs = []
-        for embedder_name, report in all_reports:
-            report_df = report.to_df()
-            report_df['Model'] = embedder_name
-            dfs.append(report_df)
-
-        # Create DataFrame and pivot it
-        df = aggregate_dfs(dfs)
-        df_pivot = df.pivot_table(
-            index=['Task', 'Metric'],
-            columns='Model',
-            values='Mean',
-            aggfunc='first',
-            sort=False
-        ).reset_index()
-
-        print("\nComparison of reports:")
-        print(df_pivot.to_string(index=False))
-
-        if plot:
-            fig, _ = plot_comparison(df)
-            fig.show()
-            if save_path is not None:
-                fig.savefig(save_path, bbox_inches='tight')
-
     def number_tasks(self):
         return len(self.aggregated_results)
 
@@ -350,7 +299,7 @@ class ZeroShotCachedResults(BaseModel):
     def loaded_or_empty(cls,
                         embedder_name: str,
                         method: ZeroShotMethod,
-                        output_dir: Path) -> Optional[ZeroShotCachedResults]:
+                        output_dir: Path) -> ZeroShotCachedResults:
         report_file_path = output_dir / cls.get_file_name(method)
         if report_file_path.exists():
             report = cls.from_json_file(report_file_path)
@@ -413,11 +362,11 @@ class ContactFrameworkReport(BaseModel, FrameworkReport):
             rr = self.task_results.get(task)
             if rr is None:
                 continue
-            for metric_key, metric_value in rr.aggregated_result.items():
-                name = metric_key
+            for metric in rr.aggregated_result:
+                name = metric.name
                 mean, lower, upper = _maybe_metric_abs(name,
-                                                       mean=metric_value.mean, lower=metric_value.lower,
-                                                       upper=metric_value.upper)
+                                                       mean=metric.mean, lower=metric.lower,
+                                                       upper=metric.upper)
                 rows.append({
                     "TaskLabel": f"{task}\n({name})",
                     "Task": task,
@@ -440,7 +389,9 @@ class ZeroShotContactCachedResults(BaseModel):
     embedder_name: str = Field(description="Name of the embedder")
     method: ZeroShotMethod = Field(
         description="Contact method used")  # Note - only one applicable zeroshot contact method as of now!
-    task_results: Dict[str, ContactDatasetResult] = Field(description="Results per taks, i.e. per dataset")
+    per_protein_results: Dict[str, ContactSingleProteinResult] = Field(
+        description="Cached per protein results, stacking"
+                    " up to the final dataset result (seq_id -> ContactSingleProteinResult)")
 
     @staticmethod
     def get_file_name(method: ZeroShotMethod):
@@ -454,13 +405,13 @@ class ZeroShotContactCachedResults(BaseModel):
 
     @classmethod
     def empty(cls, embedder_name: str, method: ZeroShotMethod) -> ZeroShotContactCachedResults:
-        return cls(embedder_name=embedder_name, method=method, task_results={})
+        return cls(embedder_name=embedder_name, method=method, per_protein_results={})
 
     @classmethod
     def loaded_or_empty(cls,
                         embedder_name: str,
                         method: ZeroShotMethod,
-                        output_dir: Path) -> Optional[ZeroShotContactCachedResults]:
+                        output_dir: Path) -> ZeroShotContactCachedResults:
         report_file_path = output_dir / cls.get_file_name(method)
         if report_file_path.exists():
             report = cls.from_json_file(report_file_path)
@@ -468,11 +419,11 @@ class ZeroShotContactCachedResults(BaseModel):
             return report
         return cls.empty(embedder_name, method)
 
-    def maybe_cached_result(self, dataset_name: str) -> Optional[ContactDatasetResult]:
-        return self.task_results.get(dataset_name, None)
+    def maybe_cached_result(self, seq_id: str) -> Optional[ContactSingleProteinResult]:
+        return self.per_protein_results.get(seq_id, None)
 
-    def update_and_sync(self, dataset_name: str, result: ContactDatasetResult, output_dir: Path):
-        self.task_results[dataset_name] = result
+    def update_and_sync(self, result: ContactSingleProteinResult, output_dir: Path):
+        self.per_protein_results[result.protein_name] = result
         self._write_to_file(output_dir=output_dir)
 
     def _write_to_file(self, output_dir: Union[Path, str]):
@@ -533,6 +484,7 @@ class AutoEvalReport(BaseModel):
                 self.zeroshot_results,
                 self.zeroshot_contact_results,
                 self.supervised_contact_results]
+
     def maybe_framework_result(self, framework_name: str) -> Optional[FrameworkReport]:
         for results in self._all_results():
             if framework_name in results:
@@ -575,73 +527,27 @@ class AutoEvalReport(BaseModel):
             print(f"\n{framework_name} - embedding stats:")
             print(report.accumulated_embedding_stats())
 
-    # TODO: Deprecate
-    def compare(self, other_reports: list[AutoEvalReport],
-                plot: Optional[bool] = False,
-                save_path: Optional[Union[Path, str]] = None):
-        """Compare this report with other reports on the same evaluation metrics.
-    
-        Args:
-            other_reports: List of AutoEvalReport objects to compare with
-            plot: Whether to plot the comparison
-            save_path: Directory to save the plot(s) to. If None, the plot is not saved.
-        """
-        pd.set_option('display.max_rows', None)
-        pd.set_option('display.max_columns', None)
-        pd.set_option('display.width', None)
-
-        save_path_supervised = None
-        save_path_zeroshot = None
-        if save_path is not None:
-            if isinstance(save_path, str):
-                save_path = Path(save_path)
-            save_path.mkdir(parents=True, exist_ok=True)
-            if not save_path.is_dir():
-                raise ValueError(f"save_path must be a directory, got {save_path}")
-            save_path_supervised = save_path / "comparison_supervised.png"
-            save_path_zeroshot = save_path / "comparison_zeroshot.png"
-
-        # Supervised
-        all_supervised_reports = []
-        for report in ([self] + other_reports):
-            for supervised_result in report.supervised_results.values():
-                all_supervised_reports.append((report.embedder_name, supervised_result))
-
-        if len(all_supervised_reports) > 0:
-            SupervisedFrameworkReport.compare(all_supervised_reports, plot=plot,
-                                              save_path=save_path_supervised)
-
-        # Zeroshot
-        # TODO Separate by method
-        all_zeroshot_reports = []
-        for report in ([self] + other_reports):
-            for zeroshot_result in report.zeroshot_results.values():
-                all_zeroshot_reports.append((report.embedder_name, zeroshot_result))
-
-        if len(all_zeroshot_reports) > 0:
-            ZeroShotFrameworkReport.compare(all_zeroshot_reports, plot=plot,
-                                            save_path=save_path_zeroshot)
-
-    # TODO Move to client
-    def compare_with_public_leaderboard(self):
-        """
-        Compare this report to the public leaderboard. This implies uploading the report to the autoeval service
-        temporarily. The report will automatically be deleted after one day.
-        """
-        client = AutoEvalServiceClient.default_service()
-        uid = client.store_comparison_report(report=self.model_dump())
-        if uid is not None:
-            print(f"Report stored in the autoeval service with UID: {uid}\n"
-                  f"Open https://autoeval.biocentral.cloud/?uid={uid} to compare.")
-
-    # TODO Move to client
-    def publish(self, name: str, email: str, citation: Optional[str] = None):
-        """
-        Publish this report to the public autoeval dashboard.
-
-        :param name: Name of the publisher
-        :param email: E-Mail of the publisher
-        :param citation: Optional citation for the report. Should have https://doi.org/... format.
-        """
-        client = AutoEvalServiceClient.default_service()
-        client.publish_report(report=self.model_dump(), name=name, email=email, citation=citation)
+    ## TODO Move to client
+    # def compare_with_public_leaderboard(self):
+    #    """
+    #    Compare this report to the public leaderboard. This implies uploading the report to the autoeval service
+    #    temporarily. The report will automatically be deleted after one day.
+    #    """
+    #    client = AutoEvalServiceClient.default_service()
+    #    uid = client.store_comparison_report(report=self.model_dump())
+    #    if uid is not None:
+    #        print(f"Report stored in the autoeval service with UID: {uid}\n"
+    #              f"Open https://autoeval.biocentral.cloud/?uid={uid} to compare.")
+#
+## TODO Move to client
+# def publish(self, name: str, email: str, citation: Optional[str] = None):
+#    """
+#    Publish this report to the public autoeval dashboard.
+#
+#    :param name: Name of the publisher
+#    :param email: E-Mail of the publisher
+#    :param citation: Optional citation for the report. Should have https://doi.org/... format.
+#    """
+#    client = AutoEvalServiceClient.default_service()
+#    client.publish_report(report=self.model_dump(), name=name, email=email, citation=citation)
+#

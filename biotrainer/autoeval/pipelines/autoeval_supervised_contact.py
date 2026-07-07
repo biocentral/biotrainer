@@ -11,21 +11,22 @@ import torch
 import numpy as np
 
 from pathlib import Path
-from typing import Optional, Union, List, Dict, Tuple
+from typing import Optional, Union, List, Dict
 from sklearn.linear_model import LogisticRegression
 
-from biotrainer_core.data_classes import SequenceData, ContactSingleProteinResult, ContactDatasetResult
+from biotrainer_core.data_classes import SequenceData, ContactDatasetResult
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, ContactFrameworkReport, AutoEvalReport
+
 from biotrainer_core.input_files import load_contact_map, read_FASTA
 
 from .autoeval_setup import setup_pipeline
-from .autoeval_report import ContactFrameworkReport, AutoEvalReport
-from .autoeval_progress import AutoEvalProgress
-from ..core import AutoEvalFramework, AutoEvalTask
 
-from ...shared import get_device, Bootstrapper
+from ..core import AutoEvalFramework
+
+from ...shared import get_device
 from ...embedding import get_embedding_service
+from ...shared.metrics import evaluate_contact_dataset
 from ...embedding.huggingface import HuggingfaceTransformerEmbedder
-from ...shared.metrics import evaluate_contact_map, evaluate_contact_dataset
 
 
 @dataclass

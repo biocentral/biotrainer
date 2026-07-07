@@ -2,8 +2,9 @@ import os
 
 from pathlib import Path
 from typing import List, Optional, Union
+from biotrainer_core.data_classes.autoeval import AutoEvalTask
 
-from ..core import AutoEvalDataHandler, AutoEvalTask
+from ..core import AutoEvalDataHandler
 
 
 def setup_output_dir(base_dir: Path, embedder_name: str, framework_name: str) -> Path:

@@ -10,8 +10,7 @@ from appdirs import user_cache_dir
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union
 from biotrainer_core.input_files import filter_FASTA
-
-from .autoeval_task import AutoEvalTask
+from biotrainer_core.data_classes.autoeval import AutoEvalTask
 
 
 class AutoEvalDataHandler(ABC):

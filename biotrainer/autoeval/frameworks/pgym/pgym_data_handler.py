@@ -1,10 +1,11 @@
 import os
 import pandas as pd
 
-from typing import List, Optional
 from pathlib import Path
+from typing import List, Optional
+from biotrainer_core.data_classes.autoeval import AutoEvalTask
 
-from ...core import AutoEvalDataHandler, AutoEvalTask
+from ...core import AutoEvalDataHandler
 
 
 class PGYMDataHandler(AutoEvalDataHandler):

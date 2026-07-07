@@ -1,10 +1,9 @@
 from tqdm import tqdm
-from typing import List, Optional
 from pathlib import Path
+from typing import List, Optional
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, all_pbc_datasets
 
-from .pbc_datasets import PBC_SUPERVISED_DATASETS
-
-from ...core import AutoEvalDataHandler, AutoEvalTask, AutoEvalMode
+from ...core import AutoEvalDataHandler
 
 
 class PBCDataHandler(AutoEvalDataHandler):
@@ -21,8 +20,8 @@ class PBCDataHandler(AutoEvalDataHandler):
     @staticmethod
     def _get_all_dataset_and_split_names():
         dataset_and_split_names = []
-        for dataset, dataset_info in PBC_SUPERVISED_DATASETS.items():
-            splits = dataset_info.get("splits", None)
+        for dataset, dataset_info in all_pbc_datasets().items():
+            splits = dataset_info.splits
             splits = [(dataset, subsplit) for subsplit in splits] if splits else [(dataset, None)]
             dataset_and_split_names.extend(splits)
         return dataset_and_split_names

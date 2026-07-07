@@ -1,8 +1,7 @@
 from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Union, Optional
-
-from .autoeval_task import AutoEvalTask
+from biotrainer_core.data_classes.autoeval import AutoEvalTask
 
 
 class AutoEvalConfigBank(ABC):
@@ -17,7 +16,7 @@ class AutoEvalConfigBank(ABC):
                                     input_file: Union[str, Path],
                                     output_dir: Union[str, Path],
                                     embeddings_file: Optional[Union[str, Path]] = None,
-                                    device = None,
+                                    device=None,
                                     ) -> Dict[str, Any]:
         config.update({"embedder_name": embedder_name,
                        "input_file": str(input_file),

@@ -1,10 +1,9 @@
 from tqdm import tqdm
 from typing import List, Optional
 from pathlib import Path
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, all_flip_datasets
 
-from .flip_datasets import FLIP_DATASETS
-
-from ...core import AutoEvalDataHandler, AutoEvalTask, AutoEvalMode
+from ...core import AutoEvalDataHandler
 
 
 class FLIPDataHandler(AutoEvalDataHandler):
@@ -22,11 +21,11 @@ class FLIPDataHandler(AutoEvalDataHandler):
 
     def preprocess(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> None:
         """ Filters all dataset splits for sequences that fulfill the length requirements """
-        for dataset, dataset_info in tqdm(FLIP_DATASETS.items(), desc="Preprocessing datasets"):
+        for dataset, dataset_info in tqdm(all_flip_datasets().items(), desc="Preprocessing datasets"):
             dataset_dir = base_path / dataset
 
             # Process all splits
-            for split in dataset_info["splits"]:
+            for split in dataset_info.splits or []:
                 if split in self.IGNORE_SPLITS:
                     continue
 
@@ -37,16 +36,17 @@ class FLIPDataHandler(AutoEvalDataHandler):
 
         print("FLIP data preprocessing completed!")
 
-    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> List[AutoEvalTask]:
+    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> List[
+        AutoEvalTask]:
         """Build tasks for all FLIP datasets"""
         print("WARNING: FLIP dataset support is currently deprecated in biotrainer - please refer to the PBC datasets "
               "instead!")
 
         tasks = []
 
-        for dataset, dataset_info in FLIP_DATASETS.items():
+        for dataset, dataset_info in all_flip_datasets().items():
             dataset_dir = base_path / dataset
-            for split_name in dataset_info["splits"]:
+            for split_name in dataset_info.splits or []:
                 if split_name in self.IGNORE_SPLITS:
                     continue
 

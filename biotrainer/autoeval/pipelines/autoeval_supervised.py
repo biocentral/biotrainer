@@ -5,14 +5,15 @@ import torch
 from pathlib import Path
 from biotrainer_core.input_files import read_FASTA
 from biotrainer_core.data_classes import Protocol, SequenceData
+from biotrainer_core.data_classes.autoeval import (AutoEvalTask, AutoEvalProgress, AutoEvalReport,
+                                                   SupervisedFrameworkReport)
+
 from typing import Optional, Callable, Dict, Tuple, List, Any, Union, Iterable, Generator
 
 from .autoeval_setup import setup_pipeline
 from .autoeval_validate import validate_input
-from .autoeval_progress import AutoEvalProgress
 from ..autoeval_frameworks import AvailableFramework
-from .autoeval_report import AutoEvalReport, SupervisedFrameworkReport
-from ..core import AutoEvalFramework, AutoEvalConfigBank, AutoEvalTask
+from ..core import AutoEvalFramework, AutoEvalConfigBank
 
 from ...shared import get_device
 from ...training.output_files import BiotrainerOutputObserver
@@ -175,7 +176,7 @@ def _run_pipeline(embedder_name: str,
 
 def _setup_embedding_functions(embedder_name,
                                output_dir,
-                               use_half_precision: Optional[bool] = False,
+                               use_half_precision: bool = False,
                                precomputed_per_residue_embeddings: Optional[Path] = None,
                                precomputed_per_sequence_embeddings: Optional[Path] = None,
                                custom_tokenizer_config: Optional[dict] = None,
@@ -278,7 +279,7 @@ def autoeval_supervised_pipeline(embedder_name: str,
                                  autoeval_report: AutoEvalReport,
                                  output_dir: Optional[Union[Path, str]] = "autoeval_output",
                                  force_download: Optional[bool] = False,
-                                 use_half_precision: Optional[bool] = False,
+                                 use_half_precision: bool = False,
                                  min_seq_length: Optional[int] = 0,
                                  max_seq_length: Optional[int] = 2000,
                                  custom_tokenizer_config: Optional[dict] = None,

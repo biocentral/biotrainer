@@ -6,11 +6,7 @@ from typing import List, Optional
 import pandas as pd
 
 
-def aggregate_dfs(dfs: List[pd.DataFrame]) -> Optional[pd.DataFrame]:
-    try:
-        return pd.concat(dfs, ignore_index=True)
-    except ValueError:
-        return None
+
 
 def _get_palette(n_models: int):
     try:

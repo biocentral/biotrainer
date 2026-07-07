@@ -1,11 +1,12 @@
 from pathlib import Path
 from typing import Optional, Union, List
 from biotrainer_core.data_classes import ZeroShotMethod
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, AutoEvalReport, \
+    ZeroShotFrameworkReport, ZeroShotCachedResults
 
 from .autoeval_setup import setup_pipeline
-from .autoeval_report import ZeroShotCachedResults, ZeroShotFrameworkReport, AutoEvalReport
-from .autoeval_progress import AutoEvalProgress
-from ..core import AutoEvalFramework, AutoEvalTask
+
+from ..core import AutoEvalFramework
 
 from ...shared import get_device
 from ...bioengineer import BioEngineer
@@ -77,7 +78,7 @@ def autoeval_zeroshot_pipeline(embedder_name: str,
                                framework: AutoEvalFramework,
                                method: ZeroShotMethod,
                                autoeval_report: AutoEvalReport,
-                               output_dir: Optional[Union[Path, str]] = "autoeval_output",
+                               output_dir: Union[Path, str] = "autoeval_output",
                                force_download: Optional[bool] = False,
                                custom_storage_path: Optional[Union[Path, str]] = None,
                                custom_bioengineer: Optional[BioEngineer] = None,
@@ -92,7 +93,7 @@ def autoeval_zeroshot_pipeline(embedder_name: str,
                           embedder_name=embedder_name,
                           zero_shot_method=method,
                           autoeval_report=autoeval_report,
-                          output_dir=output_dir,
+                          output_dir=Path(output_dir),
                           autoeval_tasks=autoeval_tasks,
                           bioengineer=custom_bioengineer,
                           device=device)

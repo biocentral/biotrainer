@@ -6,11 +6,12 @@ import tempfile
 from tqdm import tqdm
 from pathlib import Path
 from typing import Dict, Any
+from biotrainer_core.input_files import read_FASTA, write_FASTA
 from biotrainer_core.data_classes import Protocol
+from biotrainer_core.data_classes.autoeval import all_flip_datasets
 
-from .flip_datasets import FLIP_DATASETS
 
-from ....training.input_files import read_FASTA, write_FASTA, convert_deprecated_fastas
+# DEPRECATED from ....training.input_files import convert_deprecated_fastas
 
 IGNORE_SPLITS = ["mixed_vs_human_2"]
 
@@ -107,14 +108,14 @@ def ensure_preprocessed_file(dataset_dir: Path, name: str, min_seq_length: int, 
 
 def preprocess(base_path: Path, min_seq_length: int, max_seq_length: int) -> None:
     """Preprocess all dataset files"""
-    for dataset, dataset_info in tqdm(FLIP_DATASETS.items(), desc="Preprocessing datasets"):
+    for dataset, dataset_info in tqdm(all_flip_datasets().items(), desc="Preprocessing datasets"):
         dataset_dir = base_path / dataset
-        protocol = dataset_info["protocol"]
+        protocol = dataset_info.protocol
         if isinstance(protocol, str):
             protocol = Protocol.from_string(protocol)
 
         # Process all splits
-        for split in dataset_info["splits"]:
+        for split in dataset_info.splits or []:
             if split in IGNORE_SPLITS:
                 continue
 
@@ -137,13 +138,13 @@ def get_dataset_dict(base_path: Path) -> Dict[str, Any]:
     """Build path dictionary for all FLIP datasets"""
     result_dict = {}
 
-    for dataset, dataset_info in FLIP_DATASETS.items():
+    for dataset, dataset_info in all_flip_datasets().items():
         result_dict[dataset] = {}
         dataset_dir = base_path / dataset
-        protocol = dataset_info["protocol"]
+        protocol = dataset_info.protocol
 
         result_dict[dataset]["splits"] = []
-        for split in dataset_info["splits"]:
+        for split in dataset_info.splits or []:
             if split in IGNORE_SPLITS:
                 continue
 
@@ -220,10 +221,11 @@ def convert():
                 labels_file = split["labels_file"]
                 mask_file = split["mask_file"]
                 split_file_path = Path(f"{dataset_path}/{name}.fasta")
-                convert_deprecated_fastas(result_file=str(split_file_path),
-                                          sequence_file=seq_file,
-                                          labels_file=labels_file,
-                                          masks_file=mask_file,
-                                          skip_sequence_on_failed_merge=True)
+                # DEPRECATED
+                # convert_deprecated_fastas(result_file=str(split_file_path),
+                #                           sequence_file=seq_file,
+                #                           labels_file=labels_file,
+                #                           masks_file=mask_file,
+                #                           skip_sequence_on_failed_merge=True)
 
     print(f"FLIP data converted successfully, data is at {result_path}!")

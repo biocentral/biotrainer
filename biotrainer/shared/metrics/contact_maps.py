@@ -111,6 +111,7 @@ def evaluate_contact_dataset(
         predict_func: Callable[[Any], np.ndarray],
         get_ground_truth_func: Callable[[Any], np.ndarray],
         get_seq_id_func: Callable[[Any], str],
+        cached_results: Optional[List[ContactSingleProteinResult]] = None,
         iterations: int = 30,
         seed: int = 42,
         confidence_level: float = 0.05
@@ -118,6 +119,8 @@ def evaluate_contact_dataset(
     from ..bootstrapper import Bootstrapper
 
     per_protein_results: List[ContactSingleProteinResult] = []
+    if cached_results is not None and len(cached_results) > 0:
+        per_protein_results.extend(cached_results)
 
     for item in items:
         seq_id = get_seq_id_func(item)

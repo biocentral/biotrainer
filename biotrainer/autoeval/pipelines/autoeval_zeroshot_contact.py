@@ -1,12 +1,14 @@
 from pathlib import Path
 from typing import Optional, Union, List
-from biotrainer_core.data_classes import ZeroShotMethod
+from biotrainer_core.data_classes import ZeroShotMethod, ContactSingleProteinResult
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, AutoEvalReport, \
+    ContactFrameworkReport, ZeroShotContactCachedResults
+
 from biotrainer_core.input_files import read_FASTA, load_contact_map
 
 from .autoeval_setup import setup_pipeline
-from .autoeval_report import ZeroShotContactCachedResults, ContactFrameworkReport, AutoEvalReport
-from .autoeval_progress import AutoEvalProgress
-from ..core import AutoEvalFramework, AutoEvalTask
+
+from ..core import AutoEvalFramework
 
 from ...shared import get_device
 from ...bioengineer import BioEngineer
@@ -44,55 +46,58 @@ def _run_zeroshot_contact_tasks(framework: AutoEvalFramework,
                                total_tasks=total_tasks,
                                current_task_name=current_task_name,
                                current_framework_name=framework.get_name())
-        # Check if cached result exists for this dataset
-        maybe_cached_result = zero_shot_contact_cached_results.maybe_cached_result(dataset_name=current_task_name)
-        if maybe_cached_result is not None:
-            print(f"Skipping dataset {current_task_name} as cached result exists for {current_task_name}!")
-            zero_shot_contact_framework_report.update_result(task_name=current_task_name,
-                                                             dataset_result=maybe_cached_result)
-        else:
-            # Cached result does not exist, run bioengineer
-            if len(task.input_files) != 1:
-                raise ValueError(
-                    f"Empty/Multiple input files/dirs not supported for contact tasks! Task: {current_task_name}")
-            dataset_dir_path = task.input_files[0]
-            fasta_file_path = dataset_dir_path / "extracted_sequences.fasta"
-            contacts_dir_path = dataset_dir_path / "contacts"
 
-            # Read fasta file
-            seq_records = read_FASTA(fasta_file_path)
-            if len(seq_records) == 0:
-                raise ValueError(f"Fasta file {fasta_file_path} is empty!")
+        assert len(
+            task.input_files) == 1, f"Empty/Multiple input files/dirs not supported for contact tasks! Task: {current_task_name}"
 
-            # Define loading of ground truth contact map
-            def load_gt_contact_map(seq_record):
-                seq = seq_record.seq
-                seq_id = seq_record.seq_id
-                ground_truth_contact_map_path = contacts_dir_path / f"{seq_id}.npy"
-                return load_contact_map(path=ground_truth_contact_map_path,
-                                        sequence=seq,
-                                        structure_id=seq_id)
+        dataset_dir_path = task.input_files[0]
+        fasta_file_path = dataset_dir_path / "extracted_sequences.fasta"
+        contacts_dir_path = dataset_dir_path / "contacts"
 
-            def evaluate():
-                yield from evaluate_contact_dataset(dataset_name=current_task_name,
-                                         items=seq_records,
-                                         predict_func=lambda
-                                             seq_record: bioengineer.zero_shot_contact_map(
-                                             method=zero_shot_method,
-                                             sequence=seq_record.seq),
-                                         get_ground_truth_func=load_gt_contact_map,
-                                         get_seq_id_func=lambda d: d.seq_id
-                                         )
+        # Read fasta file
+        seq_records = read_FASTA(fasta_file_path)
+        if len(seq_records) == 0:
+            raise ValueError(f"Fasta file {fasta_file_path} is empty!")
 
-            for maybe_single_result, maybe_dataset_result in evaluate():
-                if maybe_single_result is not None:
-                    #            zero_shot_contact_cached_results.update_and_sync(dataset_name=current_task_name, result=dataset_result,
-                    #                                         output_dir=output_dir)
-                    pass  # TODO Cache
-                if maybe_dataset_result is not None:
-                    zero_shot_contact_framework_report.update_result(task_name=current_task_name,
-                                                                     dataset_result=maybe_dataset_result)
-                    break
+        # Check for cached results
+        cached_results: List[ContactSingleProteinResult] = []
+        for seq_record in seq_records:
+            seq_id = seq_record.seq_id
+            # Check if cached result exists for this dataset
+            maybe_cached_result = zero_shot_contact_cached_results.maybe_cached_result(seq_id=seq_id)
+            if maybe_cached_result is not None:
+                print(f"Skipping dataset {seq_id} as cached result exists for {seq_id}!")
+                cached_results.append(maybe_cached_result)
+
+        # Define loading of ground truth contact map
+        def load_gt_contact_map(seq_record):
+            seq = seq_record.seq
+            seq_id = seq_record.seq_id
+            ground_truth_contact_map_path = contacts_dir_path / f"{seq_id}.npy"
+            return load_contact_map(path=ground_truth_contact_map_path,
+                                    sequence=seq,
+                                    structure_id=seq_id)
+
+        def evaluate():
+            yield from evaluate_contact_dataset(dataset_name=current_task_name,
+                                                items=seq_records,
+                                                predict_func=lambda
+                                                    seq_record: bioengineer.zero_shot_contact_map(
+                                                    method=zero_shot_method,
+                                                    sequence=seq_record.seq),
+                                                get_ground_truth_func=load_gt_contact_map,
+                                                get_seq_id_func=lambda d: d.seq_id,
+                                                cached_results=cached_results,
+                                                )
+
+        for maybe_single_result, maybe_dataset_result in evaluate():
+            if maybe_single_result is not None:
+                zero_shot_contact_cached_results.update_and_sync(result=maybe_single_result,
+                                                                 output_dir=output_dir)
+            if maybe_dataset_result is not None:
+                zero_shot_contact_framework_report.update_result(task_name=current_task_name,
+                                                                 dataset_result=maybe_dataset_result)
+                break  # Done
 
         completed_tasks += 1
         print(f"Finished task {current_task_name}!")

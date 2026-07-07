@@ -2,10 +2,11 @@ import os
 from abc import ABC
 
 from pathlib import Path
-from typing import Optional, List, Union
 from appdirs import user_cache_dir
+from typing import Optional, List, Union
+from biotrainer_core.data_classes.autoeval import AutoEvalTask
 
-from ...core import AutoEvalDataHandler, AutoEvalTask
+from ...core import AutoEvalDataHandler
 
 
 class ContactDataHandler(AutoEvalDataHandler, ABC):
