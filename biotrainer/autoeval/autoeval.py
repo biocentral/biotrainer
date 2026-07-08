@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import torch
-import multiprocessing as mp
 
 from pathlib import Path
 from datetime import datetime
@@ -30,7 +29,6 @@ class _AutoEvalTaskRunnerParams:
     task_config_tuples: List[Tuple[AutoEvalTask, Dict[str, Any]]]
     embeddings_file_per_residue: Optional[Path]
     embeddings_file_per_sequence: Optional[Path]
-    bioengineer: Optional[BioEngineer]
     device: Optional[Any]
 
 
@@ -152,7 +150,6 @@ class AutoEval:
             runner_params = _AutoEvalTaskRunnerParams(task_config_tuples=task_config_tuples,
                                                       embeddings_file_per_residue=embeddings_file_per_residue,
                                                       embeddings_file_per_sequence=embeddings_file_per_sequence,
-                                                      bioengineer=self.bioengineer,
                                                       device=device)
             framework_to_params[framework_obj] = runner_params
 
@@ -360,15 +357,21 @@ class AutoEval:
         if maybe_framework_result:
             return self
 
-        self._frameworks_to_runners[framework_obj] = _AutoEvalTaskRunner(framework=framework_obj, runner=
-        lambda runner_params: autoeval_zeroshot_pipeline(
+        def runner_function(runner_params: _AutoEvalTaskRunnerParams):
+            bioengineer = self.bioengineer
+            if not bioengineer:
+                bioengineer = BioEngineer.from_name(name=self.embedder_name, device=runner_params.device)
+            return autoeval_zeroshot_pipeline(
             framework=framework_obj,
             embedder_name=self.embedder_name,
             autoeval_tasks=runner_params.task_config_tuples,
             zero_shot_method=zero_shot_method,
             output_dir=self.output_dir,
-            bioengineer=runner_params.bioengineer,
+            bioengineer=bioengineer,
             device=runner_params.device)
+
+        self._frameworks_to_runners[framework_obj] = _AutoEvalTaskRunner(framework=framework_obj,
+                                                                         runner=runner_function
                                                                          )
         return self
 
