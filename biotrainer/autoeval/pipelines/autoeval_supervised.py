@@ -3,10 +3,11 @@ import h5py
 import torch
 
 from pathlib import Path
+from abc import ABC, abstractmethod
 from biotrainer_core.input_files import read_FASTA
 from biotrainer_core.data_classes import Protocol, SequenceData
 from biotrainer_core.data_classes.autoeval import (AutoEvalTask, AutoEvalProgress, AutoEvalReport,
-                                                   SupervisedFrameworkReport)
+                                                   SupervisedFrameworkReport, AutoEvalMode)
 
 from typing import Optional, Callable, Dict, Tuple, List, Any, Union, Iterable, Generator
 
@@ -21,10 +22,107 @@ from ...embedding import EmbeddingService, get_embedding_service
 from ...training.utilities.executer import parse_config_file_and_execute_run
 
 
+class CustomEmbedder:
+    def per_residue(self, seqs: List[str]) -> Tuple[str, torch.Tensor]:
+        pass
+
+    def per_sequence(self, seqs: List[str]) -> Tuple[str, torch.Tensor]:
+        pass
+
+
+class _PipelineEmbedder(ABC):
+
+    @abstractmethod
+    def per_residue_path(self, seqs: List[str]) -> Path:
+        pass
+
+    @abstractmethod
+    def per_sequence_path(self, seqs: List[str]) -> Path:
+        pass
+
+
+class CustomEmbedderWrapper(_PipelineEmbedder):
+    def __init__(self, custom_embedder: CustomEmbedder, output_path_per_res: Path, output_path_per_seq: Path):
+        self.custom_embedder = custom_embedder
+        self.output_path_per_res = output_path_per_res
+        self.output_path_per_seq = output_path_per_seq
+
+    @staticmethod
+    def _wrap(embeddings_file_path: Path, sequences: List[str], custom_embedding_function: Callable):
+        with h5py.File(embeddings_file_path, "a") as embeddings_file:
+            idx = 0
+            for sequence, embedding in custom_embedding_function(sequences):
+                if len(embedding.shape) > 1 and embedding.shape[0] != len(sequence):
+                    raise Exception(f"Per-residue embedding shape does not match sequence length - "
+                                    f"Embedding Shape: {embedding.shape}, Sequence Length: {len(sequence)}!")
+                emb_record = SequenceData(seq_id=f"Seq{idx}", seq=sequence, embedding=embedding)
+                EmbeddingService.store_embedding(embeddings_file_handle=embeddings_file,
+                                                 emb_record=emb_record,
+                                                 store_by_hash=True)
+                idx += 1
+
+        return embeddings_file_path
+
+    def per_residue_path(self, seqs: List[str]) -> Path:
+        return self._wrap(embeddings_file_path=self.output_path_per_res, sequences=seqs,
+                          custom_embedding_function=self.custom_embedder.per_residue)
+
+    def per_sequence_path(self, seqs: List[str]) -> Path:
+        return self._wrap(embeddings_file_path=self.output_path_per_seq, sequences=seqs,
+                          custom_embedding_function=self.custom_embedder.per_sequence)
+
+
+class BuiltInEmbedder(_PipelineEmbedder):
+    def __init__(self, embedder_name: str, output_dir: Path, use_half_precision: bool = False, device=None):
+        self.embedder_name = embedder_name
+        self.output_dir = output_dir
+        self.use_half_precision = use_half_precision
+        self.device = get_device(device)
+        self.embedding_service: EmbeddingService = get_embedding_service(embedder_name=embedder_name,
+                                                                    custom_tokenizer_config=None,
+                                                                    use_half_precision=use_half_precision,
+                                                                    device=get_device(device)
+                                                                    )
+
+    def per_residue_path(self, seqs: List[str]) -> Path:
+        return Path(self.embedding_service.compute_embeddings(input_data=seqs,
+                                             output_dir=self.output_dir,
+                                             protocol=
+                                             Protocol.using_per_residue_embeddings()[
+                                                 0],
+                                             force_recomputing=False,
+                                             force_output_dir=True
+                                             ))
+
+    def per_sequence_path(self, seqs: List[str]) -> Path:
+        return Path(self.embedding_service.compute_embeddings(input_data=seqs,
+                                             output_dir=self.output_dir,
+                                             protocol=
+                                             Protocol.using_per_sequence_embeddings()[
+                                                 0],
+                                             force_recomputing=False,
+                                             force_output_dir=True
+                                             ))
+
+
+class PreComputedEmbedder(_PipelineEmbedder):
+    def __init__(self, per_residue_embeddings_path: Path, per_sequence_embeddings_path: Path):
+        self.per_residue_embeddings_path = per_residue_embeddings_path
+        self.per_sequence_embeddings_path = per_sequence_embeddings_path
+
+    def per_residue_path(self, seqs: List[str]) -> Path:
+        print(f"Using precomputed per-residue embeddings: {self.per_residue_embeddings_path}")
+        return self.per_residue_embeddings_path
+
+    def per_sequence_path(self, seqs: List[str]) -> Path:
+        print(f"Using precomputed per-sequence embeddings: {self.per_sequence_embeddings_path}")
+        return self.per_sequence_embeddings_path
+
+
 def get_unique_framework_sequences(framework: Union[str, AvailableFramework, AutoEvalFramework],
                                    min_seq_length: int,
                                    max_seq_length: int,
-                                   custom_storage_path: Optional[str] = None,
+                                   custom_storage_path: Optional[Union[Path, str]] = None,
                                    force_download: Optional[bool] = False
                                    ) -> Tuple[
     List[Tuple[AutoEvalTask, Dict[str, Any]]], Dict[str, SequenceData],
@@ -47,15 +145,14 @@ def get_unique_framework_sequences(framework: Union[str, AvailableFramework, Aut
     for task in auto_eval_tasks:
         config = config_bank.get_task_config(task=task)
         task_config_tuples.append((task, config))
-        input_files = task.input_files
-        if len(input_files) != 1:
-            # Only one input file per supervised task
-            raise AssertionError(f"Expected exactly one input file for task "
-                                 f"{task.combined_name()} but found {len(input_files)}!")
 
-    unique_per_residue, unique_per_sequence = _get_unique_sequences_for_all_tasks(
-        {str(t.input_files[0]): Protocol.from_string(c["protocol"]) for t, c in task_config_tuples}
-    )
+    # Get unique sequences for supervised tasks for pre-embedding
+    unique_per_residue = {}
+    unique_per_sequence = {}
+    if framework_obj.get_mode() == AutoEvalMode.SUPERVISED:
+        unique_per_residue, unique_per_sequence = _get_unique_sequences_for_all_tasks(
+            {str(t.input_files[0]): Protocol.from_string(c["protocol"]) for t, c in task_config_tuples}
+        )
     return task_config_tuples, unique_per_residue, unique_per_sequence
 
 
@@ -73,7 +170,7 @@ def _get_unique_sequences_for_all_tasks(tasks: Dict[str, Protocol]) -> Tuple[
     return unique_per_residue, unique_per_sequence
 
 
-def _check_h5_file(name: str, h5_path: Optional[Path], expected_length: int) -> None:
+def check_h5_file(name: str, h5_path: Optional[Path], expected_length: int) -> None:
     if h5_path is None:
         raise Exception(f"Did not find embeddings file for {name} after embedding calculation!")
     try:
@@ -85,40 +182,18 @@ def _check_h5_file(name: str, h5_path: Optional[Path], expected_length: int) -> 
         raise Exception(f"Could not read {name} h5 file: {str(e)}")
 
 
-def _run_pipeline(embedder_name: str,
-                  framework: AutoEvalFramework,
-                  autoeval_report: AutoEvalReport,
-                  embedding_function_per_residue: Optional[Callable[[Iterable[str]], Path]],
-                  embedding_function_per_sequence: Optional[Callable[[Iterable[str]], Path]],
-                  output_dir: Path,
-                  min_seq_length: int,
-                  max_seq_length: int,
-                  custom_storage_path: Optional[str] = None,
-                  custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
-                  force_download: Optional[bool] = False,
-                  device=None,
-                  ) -> Generator[AutoEvalProgress, None, None]:
-    task_config_tuples, unique_per_residue, unique_per_sequence = get_unique_framework_sequences(framework=framework,
-                                                                                                 min_seq_length=min_seq_length,
-                                                                                                 max_seq_length=max_seq_length,
-                                                                                                 custom_storage_path=custom_storage_path,
-                                                                                                 force_download=force_download)
-    # Embed if no custom pipeline provided - that must handle the embedding step independently
-    print(f"Embedding {len(unique_per_residue)} sequences per_residue")
-    embeddings_file_per_residue = embedding_function_per_residue(
-        [seq_record.seq for _, seq_record in unique_per_residue.items()]
-    )
-
-    print(f"Embedding {len(unique_per_sequence)} sequences per_sequence")
-    embeddings_file_per_sequence = embedding_function_per_sequence(
-        [seq_record.seq for _, seq_record in unique_per_sequence.items()]
-    )
-
-    #_check_h5_file(name="per-residue", h5_path=embeddings_file_per_residue, expected_length=len(unique_per_residue))
-    #_check_h5_file(name="per-sequence", h5_path=embeddings_file_per_sequence, expected_length=len(unique_per_sequence))
-
-    print("Calculated embeddings successfully!")
-
+def run_supervised_pipeline(embedder_name: str,
+                            framework: AutoEvalFramework,
+                            autoeval_report: AutoEvalReport,
+                            embeddings_file_per_sequence: Path,
+                            embeddings_file_per_residue: Path,
+                            task_config_tuples: List[Tuple[AutoEvalTask, Dict[str, Any]]],
+                            output_dir: Path,
+                            min_seq_length: int,
+                            max_seq_length: int,
+                            custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
+                            device=None,
+                            ) -> Generator[AutoEvalProgress, None, None]:
     # Framework results do not exist yet -> execute biotrainer
     supervised_framework_report = SupervisedFrameworkReport.empty(min_seq_len=min_seq_length,
                                                                   max_seq_len=max_seq_length)
@@ -164,94 +239,46 @@ def _run_pipeline(embedder_name: str,
         completed_tasks += 1
         print(f"Finished task execution for {current_task_name}!")
 
-    autoeval_report.add_supervised_result(framework_name=framework.get_name(), report=supervised_framework_report)
-    autoeval_report.write(output_dir=output_dir.parent)
-
-    print(f"Autoeval pipeline on framework {framework.get_name()} for {embedder_name} finished successfully!")
+    print(f"Autoeval supervised pipeline on framework {framework.get_name()} "
+          f"for {embedder_name} finished successfully!")
     yield AutoEvalProgress(completed_tasks=total_tasks, total_tasks=total_tasks,
                            current_task_name=current_task_name,
                            current_framework_name=framework.get_name(),
-                           final_report=autoeval_report)
+                           final_report=supervised_framework_report)
 
 
-def _setup_embedding_functions(embedder_name,
-                               output_dir,
-                               use_half_precision: bool = False,
-                               precomputed_per_residue_embeddings: Optional[Path] = None,
-                               precomputed_per_sequence_embeddings: Optional[Path] = None,
-                               custom_tokenizer_config: Optional[dict] = None,
-                               custom_embedding_function_per_residue: Optional[
-                                   Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
-                               custom_embedding_function_per_sequence: Optional[
-                                   Callable[
-                                       [Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
-                               device=None, ):
-    # Precomputed Embeddings -> Return paths
+def setup_embedder(embedder_name,
+                   output_dir,
+                   use_half_precision: bool = False,
+                   precomputed_per_residue_embeddings: Optional[Path] = None,
+                   precomputed_per_sequence_embeddings: Optional[Path] = None,
+                   custom_embedder: Optional[CustomEmbedder] = None,
+                   device=None, ) -> _PipelineEmbedder:
     assert (precomputed_per_residue_embeddings is None) == (precomputed_per_sequence_embeddings is None)
+    # Precomputed Embeddings -> Return paths
     if precomputed_per_residue_embeddings and precomputed_per_sequence_embeddings:
-        def precomputed_per_res(seqs):
-            print(f"Using precomputed per-residue embeddings: {precomputed_per_residue_embeddings}")
-            return precomputed_per_residue_embeddings
+        return PreComputedEmbedder(per_residue_embeddings_path=precomputed_per_residue_embeddings,
+                                   per_sequence_embeddings_path=precomputed_per_sequence_embeddings)
 
-        def precomputed_per_seq(seqs):
-            print(f"Using precomputed per-sequence embeddings: {precomputed_per_sequence_embeddings}")
-            return precomputed_per_sequence_embeddings
-
-        return precomputed_per_res, precomputed_per_seq
+    # Custom embedder
+    if custom_embedder:
+        embeddings_file_path_per_residue = output_dir / EmbeddingService.get_embeddings_file_name(
+            embedder_name=embedder_name,
+            use_half_precision=use_half_precision,
+            use_reduced_embeddings=False)
+        embeddings_file_path_per_sequence = output_dir / EmbeddingService.get_embeddings_file_name(
+            embedder_name=embedder_name,
+            use_half_precision=use_half_precision,
+            use_reduced_embeddings=True)
+        return CustomEmbedderWrapper(custom_embedder=custom_embedder,
+                                     output_path_per_res=embeddings_file_path_per_residue,
+                                     output_path_per_seq=embeddings_file_path_per_sequence)
 
     # No custom embedding functions -> Biotrainer Embedding Service
-    assert (custom_embedding_function_per_residue is None) == (custom_embedding_function_per_sequence is None)
-    if not custom_embedding_function_per_residue and not custom_embedding_function_per_sequence:
-        embedding_service: EmbeddingService = get_embedding_service(embedder_name=embedder_name,
-                                                                    custom_tokenizer_config=custom_tokenizer_config,
-                                                                    use_half_precision=use_half_precision,
-                                                                    device=get_device(device)
-                                                                    )
-        embedding_function_per_residue = lambda seqs: embedding_service.compute_embeddings(input_data=seqs,
-                                                                                           output_dir=output_dir,
-                                                                                           protocol=
-                                                                                           Protocol.using_per_residue_embeddings()[
-                                                                                               0],
-                                                                                           force_recomputing=False,
-                                                                                           force_output_dir=True
-                                                                                           )
-        embedding_function_per_sequence = lambda seqs: embedding_service.compute_embeddings(input_data=seqs,
-                                                                                            output_dir=output_dir,
-                                                                                            protocol=
-                                                                                            Protocol.using_per_sequence_embeddings()[
-                                                                                                0],
-                                                                                            force_recomputing=False,
-                                                                                            force_output_dir=True
-                                                                                            )
-        return embedding_function_per_residue, embedding_function_per_sequence
-
-    # Custom embedding functions -> Use wrapper
-    embeddings_file_path_per_residue = output_dir / EmbeddingService.get_embeddings_file_name(
-        embedder_name=embedder_name,
-        use_half_precision=use_half_precision,
-        use_reduced_embeddings=False)
-    if os.path.exists(embeddings_file_path_per_residue):
-        print("Using existing embeddings file per-residue!")
-        embedding_function_per_residue = lambda seqs: embeddings_file_path_per_residue
-    else:
-        embedding_function_per_residue = lambda seqs: _wrap_custom_embedding_function(
-            custom_embedding_function_per_residue,
-            embeddings_file_path_per_residue,
-            seqs)
-    embeddings_file_path_per_sequence = output_dir / EmbeddingService.get_embeddings_file_name(
-        embedder_name=embedder_name,
-        use_half_precision=use_half_precision,
-        use_reduced_embeddings=True)
-    if os.path.exists(embeddings_file_path_per_sequence):
-        print("Using existing embeddings file per-sequence!")
-        embedding_function_per_sequence = lambda seqs: embeddings_file_path_per_sequence
-    else:
-        embedding_function_per_sequence = lambda seqs: _wrap_custom_embedding_function(
-            custom_embedding_function_per_sequence,
-            embeddings_file_path_per_sequence,
-            seqs)
-
-    return embedding_function_per_residue, embedding_function_per_sequence
+    return BuiltInEmbedder(embedder_name=embedder_name,
+                           output_dir=output_dir,
+                           use_half_precision=use_half_precision,
+                           device=get_device(device))
 
 
 def _wrap_custom_embedding_function(
@@ -285,10 +312,7 @@ def autoeval_supervised_pipeline(embedder_name: str,
                                  custom_tokenizer_config: Optional[dict] = None,
                                  precomputed_per_residue_embeddings: Optional[Path] = None,
                                  precomputed_per_sequence_embeddings: Optional[Path] = None,
-                                 custom_embedding_function_per_residue: Optional[
-                                     Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
-                                 custom_embedding_function_per_sequence: Optional[
-                                     Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]]] = None,
+                                 custom_embedder: Optional[CustomEmbedder] = None,
                                  custom_storage_path: Optional[Union[Path, str]] = None,
                                  custom_output_observers: List[BiotrainerOutputObserver] = None,
                                  device=None,
@@ -298,11 +322,7 @@ def autoeval_supervised_pipeline(embedder_name: str,
                          f"or no precomputed path at all!")
     using_precomputed_embeddings = precomputed_per_residue_embeddings is not None and precomputed_per_sequence_embeddings is not None
 
-    if (custom_embedding_function_per_residue is None) ^ (custom_embedding_function_per_sequence is None):
-        raise ValueError(f"You must provide either a custom embedding function for per-sequence and per-residue or no "
-                         f"custom function at all!")
-
-    using_custom_embedding_functions = custom_embedding_function_per_residue is not None and custom_embedding_function_per_sequence is not None
+    using_custom_embedding_functions = custom_embedder is not None
 
     if using_precomputed_embeddings and using_custom_embedding_functions:
         raise ValueError(f"You must either provide precomputed embeddings or custom embedding functions, not both!")
@@ -320,16 +340,16 @@ def autoeval_supervised_pipeline(embedder_name: str,
         device=device)
 
     # Pipeline
-    yield from _run_pipeline(embedder_name=embedder_name,
-                             framework=framework,
-                             autoeval_report=autoeval_report,
-                             embedding_function_per_residue=embedding_function_per_residue,
-                             embedding_function_per_sequence=embedding_function_per_sequence,
-                             output_dir=output_dir,
-                             min_seq_length=min_seq_length,
-                             max_seq_length=max_seq_length,
-                             custom_storage_path=custom_storage_path,
-                             custom_output_observers=custom_output_observers,
-                             force_download=force_download,
-                             device=device,
-                             )
+    yield from run_supervised_pipeline(embedder_name=embedder_name,
+                                       framework=framework,
+                                       autoeval_report=autoeval_report,
+                                       embedding_function_per_residue=embedding_function_per_residue,
+                                       embedding_function_per_sequence=embedding_function_per_sequence,
+                                       output_dir=output_dir,
+                                       min_seq_length=min_seq_length,
+                                       max_seq_length=max_seq_length,
+                                       custom_storage_path=custom_storage_path,
+                                       custom_output_observers=custom_output_observers,
+                                       force_download=force_download,
+                                       device=device,
+                                       )

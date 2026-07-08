@@ -1,31 +1,25 @@
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Tuple, List, Dict
 from biotrainer_core.data_classes import ZeroShotMethod, ContactSingleProteinResult
 from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, AutoEvalReport, \
     ContactFrameworkReport, ZeroShotContactCachedResults
 
 from biotrainer_core.input_files import read_FASTA, load_contact_map
 
-from .autoeval_setup import setup_pipeline
-
 from ..core import AutoEvalFramework
 
-from ...shared import get_device
 from ...bioengineer import BioEngineer
 from ...shared.metrics import evaluate_contact_dataset
 
 
-def _run_zeroshot_contact_tasks(framework: AutoEvalFramework,
-                                embedder_name: str,
-                                zero_shot_method: ZeroShotMethod,
-                                autoeval_report: AutoEvalReport,
-                                output_dir: Path,
-                                autoeval_tasks: List[AutoEvalTask],
-                                bioengineer: Optional[BioEngineer] = None,
-                                device=None):
-    if not bioengineer:
-        bioengineer = BioEngineer.from_name(name=embedder_name, device=get_device(device))
-
+def autoeval_zeroshot_contact_pipeline(framework: AutoEvalFramework,
+                                       embedder_name: str,
+                                       zero_shot_method: ZeroShotMethod,
+                                       autoeval_report: AutoEvalReport,
+                                       output_dir: Path,
+                                       autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
+                                       bioengineer: BioEngineer,
+                                       ):
     assert bioengineer is not None, f"BioEngineer could not be initialized for embedder {embedder_name}!"
 
     # Load cached results 
@@ -34,6 +28,7 @@ def _run_zeroshot_contact_tasks(framework: AutoEvalFramework,
                                                                                     output_dir=output_dir)
     # Execute bioengineer
     zero_shot_contact_framework_report = ContactFrameworkReport.empty(method=zero_shot_method)
+    autoeval_tasks = [task for task, _ in autoeval_tasks]  # Ignore config for supervised contact
     task_names = [task.combined_name() for task in autoeval_tasks]
     print(f"The following tasks will be executed in order: {task_names} (total {len(task_names)})")
     completed_tasks = 0
@@ -102,37 +97,9 @@ def _run_zeroshot_contact_tasks(framework: AutoEvalFramework,
         completed_tasks += 1
         print(f"Finished task {current_task_name}!")
 
-    autoeval_report.add_zeroshot_contact_result(framework_name=framework.get_name(),
-                                                report=zero_shot_contact_framework_report)
-    autoeval_report.write(output_dir=output_dir.parent)
-
-    print(f"Autoeval pipeline on framework {framework.get_name()} for {embedder_name} finished successfully!")
+    print(f"Autoeval zeroshot contact pipeline on framework {framework.get_name()} "
+          f"for {embedder_name} finished successfully!")
     yield AutoEvalProgress(completed_tasks=total_tasks, total_tasks=total_tasks,
                            current_task_name=current_task_name,
                            current_framework_name=framework.get_name(),
-                           final_report=autoeval_report)
-
-
-def autoeval_zeroshot_contact_pipeline(embedder_name: str,
-                                       framework: AutoEvalFramework,
-                                       method: ZeroShotMethod,
-                                       autoeval_report: AutoEvalReport,
-                                       output_dir: Union[Path, str] = "autoeval_output",
-                                       force_download: Optional[bool] = False,
-                                       custom_storage_path: Optional[Union[Path, str]] = None,
-                                       custom_bioengineer: Optional[BioEngineer] = None,
-                                       device=None,
-                                       ):
-    # Setup
-    autoeval_tasks = setup_pipeline(data_handler=framework.get_data_handler(),
-                                    custom_storage_path=custom_storage_path,
-                                    force_download=force_download)
-    # Pipeline
-    yield from _run_zeroshot_contact_tasks(framework=framework,
-                                           embedder_name=embedder_name,
-                                           zero_shot_method=method,
-                                           autoeval_report=autoeval_report,
-                                           output_dir=Path(output_dir),
-                                           autoeval_tasks=autoeval_tasks,
-                                           bioengineer=custom_bioengineer,
-                                           device=device)
+                           final_report=zero_shot_contact_framework_report)

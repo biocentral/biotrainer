@@ -8,7 +8,7 @@ class AutoEvalConfigBank(ABC):
 
     @abstractmethod
     def get_task_config(self, task: AutoEvalTask) -> Dict[str, Any]:
-        raise NotImplementedError
+        return {}
 
     @staticmethod
     def add_custom_values_to_config(config: Dict[str, Any],

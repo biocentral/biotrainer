@@ -5,21 +5,19 @@ Heavily inspired by: https://github.com/chandar-lab/AMPLIFY/blob/main/examples/c
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 
 import torch
 import numpy as np
 
 from pathlib import Path
-from typing import Optional, Union, List, Dict, Any
+from dataclasses import dataclass
 from sklearn.linear_model import LogisticRegression
+from typing import Optional, List, Dict, Any, Tuple
 
 from biotrainer_core.data_classes import SequenceData, ContactDatasetResult
 from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, ContactFrameworkReport, AutoEvalReport
 
 from biotrainer_core.input_files import load_contact_map, read_FASTA
-
-from .autoeval_setup import setup_pipeline
 
 from ..core import AutoEvalFramework
 
@@ -206,11 +204,11 @@ def _test_logistic_regression(clf: LogisticRegression, test_set_name: str,
     assert False, "No dataset result returned!"
 
 
-def _run_supervised_contact_tasks(framework: AutoEvalFramework,
+def autoeval_supervised_contact_pipeline(framework: AutoEvalFramework,
                                   embedder_name: str,
                                   autoeval_report: AutoEvalReport,
                                   output_dir: Path,
-                                  autoeval_tasks: List[AutoEvalTask],
+                                  autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
                                   device=None):
     embedding_service = get_embedding_service(embedder_name=embedder_name, device=get_device(device),
                                               custom_tokenizer_config=None)
@@ -219,6 +217,7 @@ def _run_supervised_contact_tasks(framework: AutoEvalFramework,
                          f"but got {embedding_service._embedder}!")
 
     supervised_contact_framework_report = ContactFrameworkReport.empty()
+    autoeval_tasks = [task for task, _ in autoeval_tasks]  # Ignore config for supervised contact
     task_names = [task.combined_name() for task in autoeval_tasks]
     print(f"The following tasks will be executed in order: {task_names} (total {len(task_names)})")
     completed_tasks = 0
@@ -267,33 +266,9 @@ def _run_supervised_contact_tasks(framework: AutoEvalFramework,
         completed_tasks += 1
         print(f"Finished task {current_task_name}!")
 
-    autoeval_report.add_supervised_contact_result(framework_name=framework.get_name(),
-                                                  report=supervised_contact_framework_report)
-    autoeval_report.write(output_dir=output_dir.parent)
-
-    print(f"Autoeval pipeline on framework {framework.get_name()} for {embedder_name} finished successfully!")
+    print(f"Autoeval supervised contact pipeline on framework {framework.get_name()} "
+          f"for {embedder_name} finished successfully!")
     yield AutoEvalProgress(completed_tasks=total_tasks, total_tasks=total_tasks,
                            current_task_name=current_task_name,
                            current_framework_name=framework.get_name(),
-                           final_report=autoeval_report)
-
-
-def autoeval_supervised_contact_pipeline(embedder_name: str,
-                                         framework: AutoEvalFramework,
-                                         autoeval_report: AutoEvalReport,
-                                         output_dir: Union[Path, str] = "autoeval_output",
-                                         force_download: Optional[bool] = False,
-                                         custom_storage_path: Optional[Union[Path, str]] = None,
-                                         device=None,
-                                         ):
-    # Setup
-    autoeval_tasks = setup_pipeline(data_handler=framework.get_data_handler(),
-                                    custom_storage_path=custom_storage_path,
-                                    force_download=force_download)
-    # Pipeline
-    yield from _run_supervised_contact_tasks(framework=framework,
-                                             embedder_name=embedder_name,
-                                             autoeval_report=autoeval_report,
-                                             output_dir=Path(output_dir),
-                                             autoeval_tasks=autoeval_tasks,
-                                             device=device)
+                           final_report=supervised_contact_framework_report)
