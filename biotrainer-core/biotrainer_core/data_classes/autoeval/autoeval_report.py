@@ -10,7 +10,7 @@ from typing import Dict, Any, Union, Optional, List, Tuple
 
 from .autoeval_task import AutoEvalTask
 from .autoeval_flip_datasets import all_flip_datasets
-from .autoeval_pbc_datasets import all_pbc_datasets
+from .autoeval_pbc_datasets import all_pbc_supervised_datasets
 from .. import ContactSingleProteinResult
 
 from ..contact import ContactDatasetResult
@@ -115,7 +115,7 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
 
     def extract_metrics(self, combined_task_name: str, development_mode: bool = False) -> list[dict]:
         """Extract metrics for a given task."""
-        framework_to_datasets = {"PBC_SUPERVISED": all_pbc_datasets(), "FLIP": all_flip_datasets()}
+        framework_to_datasets = {"PBC_SUPERVISED": all_pbc_supervised_datasets(), "FLIP": all_flip_datasets()}
 
         metrics = []
         try:
