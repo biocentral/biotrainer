@@ -62,7 +62,8 @@ class SetupStep(PipelineStep[BiotrainerPipelineContext]):
         # Calculate model hash
         model_hash = calculate_model_hash(config=context.config,
                                           input_data=context.input_data,
-                                          custom_trainer=context.custom_pipeline
+                                          custom_trainer=context.custom_pipeline,
+                                          version=__version__,
                                           )
         context.model_hash = model_hash
 

@@ -45,6 +45,7 @@ def calculate_model_hash(
         config: Dict[Any, Any],
         input_data: List,
         custom_trainer: bool,
+        version: str = "",
 ) -> str:
     """
     Create a deterministic hash representing dataset files and model configuration.
@@ -53,6 +54,7 @@ def calculate_model_hash(
         config: Dictionary containing model configuration
         input_data: List of SequenceData objects
         custom_trainer: If true, a custom trainer is used
+        version: (Biotrainer) version of the model training pipeline
 
     Returns:
         A hex string hash uniquely identifying this model setup
@@ -74,12 +76,16 @@ def calculate_model_hash(
     config_normalized = json.dumps({str(k): str(v) for k, v in config.items()}, sort_keys=True)
     config_hash = hashlib.sha256(config_normalized.encode()).hexdigest()
 
+    # 4. Calculate version hash
+    version_hash = hashlib.sha256(version.encode()).hexdigest()
+
     # 4. Combine all hashes
     combined = {
         'embeddings_file_hash': embeddings_file_hash,
         'config_hash': config_hash,
         'sequence_data_hash': sequence_data_hash,
-        'custom_trainer': str(custom_trainer)
+        'custom_trainer': str(custom_trainer),
+        'version_hash': version_hash,
     }
 
     # 5. Create final hash
