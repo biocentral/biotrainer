@@ -268,9 +268,10 @@ class AutoEval:
         print("Calculated parallel embeddings successfully!")
         return embeddings_file_per_residue, embeddings_file_per_sequence
 
-    def _general_task_setup(self, available_framework: AvailableFramework) -> Optional:
+    def _general_task_setup(self, available_framework: AvailableFramework,
+                            zero_shot_method: Optional[ZeroShotMethod] = None) -> Optional:
         framework_obj: AutoEvalFramework = validate_input(available_framework,
-                                                          zero_shot_method=None,
+                                                          zero_shot_method=zero_shot_method,
                                                           min_seq_length=self.min_seq_length,
                                                           max_seq_length=self.max_seq_length)
 
@@ -354,7 +355,8 @@ class AutoEval:
             (e.g., ZeroShotMethod.WT_MARGINALS, ZeroShotMethod.MASKED_MARGINALS).
         :return: The AutoEval instance for method chaining.
         """
-        framework_obj, maybe_framework_result = self._general_task_setup(AvailableFramework.PGYM)
+        framework_obj, maybe_framework_result = self._general_task_setup(AvailableFramework.PGYM,
+                                                                         zero_shot_method=zero_shot_method)
         if maybe_framework_result:
             return self
 
@@ -378,7 +380,8 @@ class AutoEval:
             Defaults to ZeroShotMethod.JACOBIAN_CONTACT.
         :return: The AutoEval instance for method chaining.
         """
-        framework_obj, maybe_framework_result = self._general_task_setup(AvailableFramework.PBC_ZEROSHOT_CONTACT)
+        framework_obj, maybe_framework_result = self._general_task_setup(AvailableFramework.PBC_ZEROSHOT_CONTACT,
+                                                                         zero_shot_method=zero_shot_method)
         if maybe_framework_result:
             return self
         self._frameworks_to_runners[framework_obj] = _AutoEvalTaskRunner(framework=framework_obj,
