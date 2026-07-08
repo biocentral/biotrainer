@@ -1,12 +1,13 @@
 import os
 
 from pathlib import Path
-from typing import List, Optional, Union
-from biotrainer_core.data_classes import ZeroShotMethod
+from biotrainer_core.input_files import read_FASTA
+from typing import List, Optional, Union, Any, Dict, Tuple
 from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalMode
+from biotrainer_core.data_classes import ZeroShotMethod, SequenceData, Protocol
 
-from ..autoeval_frameworks import framework_factory
 from ..core import AutoEvalDataHandler, AutoEvalFramework
+from ..autoeval_frameworks import framework_factory, AvailableFramework
 
 
 def setup_output_dir(base_dir: Path, embedder_name: str, framework_name: str) -> Path:
@@ -55,6 +56,56 @@ def validate_input(framework,
                     "Only zero-shot method JACOBIAN_CONTACT currently supported in mode ZERO_SHOT_CONTACT!")
 
     return framework_obj
+
+def get_unique_framework_sequences(framework: Union[str, AvailableFramework, AutoEvalFramework],
+                                   min_seq_length: int,
+                                   max_seq_length: int,
+                                   custom_storage_path: Optional[Union[Path, str]] = None,
+                                   force_download: Optional[bool] = False
+                                   ) -> Tuple[
+    List[Tuple[AutoEvalTask, Dict[str, Any]]], Dict[str, SequenceData],
+    Dict[str, SequenceData]]:
+    framework_obj = framework
+    if not isinstance(framework_obj, AutoEvalFramework):
+        framework_obj = validate_input(framework,
+                                       zero_shot_method=None,
+                                       min_seq_length=min_seq_length,
+                                       max_seq_length=max_seq_length)
+
+    data_handler = framework_obj.get_data_handler()
+    config_bank = framework_obj.get_config_bank()
+    auto_eval_tasks = setup_pipeline(data_handler=data_handler,
+                                     min_seq_length=min_seq_length,
+                                     max_seq_length=max_seq_length,
+                                     custom_storage_path=custom_storage_path,
+                                     force_download=force_download)
+    task_config_tuples = []
+    for task in auto_eval_tasks:
+        config = config_bank.get_task_config(task=task)
+        task_config_tuples.append((task, config))
+
+    # Get unique sequences for supervised tasks for pre-embedding
+    unique_per_residue = {}
+    unique_per_sequence = {}
+    if framework_obj.get_mode() == AutoEvalMode.SUPERVISED:
+        unique_per_residue, unique_per_sequence = _get_unique_sequences_for_all_tasks(
+            {str(t.input_files[0]): Protocol.from_string(c["protocol"]) for t, c in task_config_tuples}
+        )
+    return task_config_tuples, unique_per_residue, unique_per_sequence
+
+
+def _get_unique_sequences_for_all_tasks(tasks: Dict[str, Protocol]) -> Tuple[
+    Dict[str, SequenceData], Dict[str, SequenceData]]:
+    unique_per_residue = {}
+    unique_per_sequence = {}
+    for task_input, protocol in tasks.items():
+        seq_records = read_FASTA(task_input)
+        for seq_record in seq_records:
+            if protocol in Protocol.using_per_sequence_embeddings():
+                unique_per_sequence[seq_record.get_hash()] = seq_record
+            else:
+                unique_per_residue[seq_record.get_hash()] = seq_record
+    return unique_per_residue, unique_per_sequence
 
 
 def setup_pipeline(data_handler: AutoEvalDataHandler,

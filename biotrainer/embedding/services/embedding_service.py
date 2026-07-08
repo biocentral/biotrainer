@@ -215,11 +215,15 @@ class EmbeddingService:
     @staticmethod
     def _process_input_data(input_data) -> List[SequenceData]:
         """
-        Process various input formats into a list of BiotrainerSequenceRecord
+        Process various input formats into a list of SequenceData
         """
         if isinstance(input_data, (str, Path)):
             return [seq_record for seq_record in read_FASTA(input_data)]
         elif isinstance(input_data, list):
+            if len(input_data) == 0:
+                raise ValueError(
+                    "Input data is an empty list. Please provide a non-empty list of sequences."
+                )
             if isinstance(input_data[0], SequenceData):
                 return input_data
             elif isinstance(input_data[0], str):

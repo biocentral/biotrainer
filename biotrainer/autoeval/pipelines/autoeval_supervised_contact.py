@@ -15,7 +15,7 @@ from sklearn.linear_model import LogisticRegression
 from typing import Optional, List, Dict, Any, Tuple
 
 from biotrainer_core.data_classes import SequenceData, ContactDatasetResult
-from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, ContactFrameworkReport, AutoEvalReport
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, ContactFrameworkReport
 
 from biotrainer_core.input_files import load_contact_map, read_FASTA
 
@@ -206,7 +206,6 @@ def _test_logistic_regression(clf: LogisticRegression, test_set_name: str,
 
 def autoeval_supervised_contact_pipeline(framework: AutoEvalFramework,
                                   embedder_name: str,
-                                  autoeval_report: AutoEvalReport,
                                   output_dir: Path,
                                   autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
                                   device=None):

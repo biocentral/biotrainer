@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Any, Optional
 from biotrainer_core.data_classes import ZeroShotMethod, ContactSingleProteinResult
-from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, AutoEvalReport, \
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, \
     ContactFrameworkReport, ZeroShotContactCachedResults
 
 from biotrainer_core.input_files import read_FASTA, load_contact_map
@@ -15,10 +15,10 @@ from ...shared.metrics import evaluate_contact_dataset
 def autoeval_zeroshot_contact_pipeline(framework: AutoEvalFramework,
                                        embedder_name: str,
                                        zero_shot_method: ZeroShotMethod,
-                                       autoeval_report: AutoEvalReport,
                                        output_dir: Path,
                                        autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
-                                       bioengineer: BioEngineer,
+                                       bioengineer: Optional[BioEngineer],
+                                       device=None,
                                        ):
     assert bioengineer is not None, f"BioEngineer could not be initialized for embedder {embedder_name}!"
 

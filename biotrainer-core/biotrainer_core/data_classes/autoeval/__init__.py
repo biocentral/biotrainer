@@ -3,7 +3,7 @@ from .autoeval_pbc_datasets import all_pbc_supervised_datasets, PBCSupervisedDat
 from .autoeval_progress import AutoEvalProgress
 from .autoeval_report import (AutoEvalReport, SupervisedFrameworkReport, ContactFrameworkReport,
                               ZeroShotFrameworkReport,
-                              ZeroShotCachedResults, ZeroShotContactCachedResults)
+                              ZeroShotCachedResults, ZeroShotContactCachedResults, FrameworkReport)
 from .autoeval_supervised_dataset import AutoEvalSupervisedDataset
 from .autoeval_task import AutoEvalTask
 from .autoeval_mode import AutoEvalMode
@@ -12,5 +12,6 @@ __all__ = [
     "AutoEvalProgress", "AutoEvalReport", "SupervisedFrameworkReport", "ContactFrameworkReport",
     "ZeroShotFrameworkReport",
     "ZeroShotCachedResults", "AutoEvalSupervisedDataset", "AutoEvalTask", "FLIPDatasetName", "all_flip_datasets",
-    "PBCSupervisedDatasetName", "all_pbc_supervised_datasets", "AutoEvalMode", "ZeroShotContactCachedResults"
+    "PBCSupervisedDatasetName", "all_pbc_supervised_datasets", "AutoEvalMode", "ZeroShotContactCachedResults",
+    "FrameworkReport"
 ]

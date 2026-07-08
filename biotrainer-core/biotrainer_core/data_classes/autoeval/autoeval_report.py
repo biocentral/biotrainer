@@ -8,13 +8,13 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field, model_validator
 from typing import Dict, Any, Union, Optional, List, Tuple
 
+from .autoeval_mode import AutoEvalMode
 from .autoeval_task import AutoEvalTask
 from .autoeval_flip_datasets import all_flip_datasets
 from .autoeval_pbc_datasets import all_pbc_supervised_datasets
-from .. import ContactSingleProteinResult
 
-from ..contact import ContactDatasetResult
 from ..embedding_stats import EmbeddingStats
+from ..contact import ContactDatasetResult, ContactSingleProteinResult
 from ..bioengineer_data_classes import ZeroShotMethod, RankingResult
 from ..biotrainer_model_result import BiotrainerModelResult
 
@@ -45,7 +45,7 @@ def _maybe_metric_abs(metric_name: str, mean: float, lower: float, upper: float)
     return mean, lower, upper
 
 
-class FrameworkReport(ABC):
+class FrameworkReport(ABC, BaseModel):
     @abstractmethod
     def summary(self, development_mode: bool = False):
         raise NotImplementedError
@@ -64,7 +64,7 @@ class FrameworkReport(ABC):
         raise NotImplementedError
 
 
-class SupervisedFrameworkReport(BaseModel, FrameworkReport):
+class SupervisedFrameworkReport(FrameworkReport):
     min_seq_len: Optional[int] = Field(default=None, description="Minimum sequence length used during evaluation")
     max_seq_len: Optional[int] = Field(default=None, description="Maximum sequence length used during evaluation")
     results: Dict[str, BiotrainerModelResult] = Field(description="Supervised autoeval results")
@@ -211,7 +211,7 @@ class SupervisedFrameworkReport(BaseModel, FrameworkReport):
         return list(self.results.keys())
 
 
-class ZeroShotFrameworkReport(BaseModel, FrameworkReport):
+class ZeroShotFrameworkReport(FrameworkReport):
     model_config = {"use_enum_values": True}
 
     method: ZeroShotMethod = Field(description="Scoring method used")
@@ -320,7 +320,7 @@ class ZeroShotCachedResults(BaseModel):
             f.write(self.model_dump_json(indent=4))
 
 
-class ContactFrameworkReport(BaseModel, FrameworkReport):
+class ContactFrameworkReport(FrameworkReport):
     model_config = {"use_enum_values": True}
 
     method: Optional[ZeroShotMethod] = Field(default=None,
@@ -467,17 +467,24 @@ class AutoEvalReport(BaseModel):
         with open(file_path, 'r') as f:
             return cls.model_validate_json(f.read())
 
-    def add_supervised_result(self, framework_name: str, report: SupervisedFrameworkReport):
-        self.supervised_results[framework_name] = report
-
-    def add_zeroshot_result(self, framework_name: str, report: ZeroShotFrameworkReport):
-        self.zeroshot_results[framework_name] = report
-
-    def add_zeroshot_contact_result(self, framework_name: str, report: ContactFrameworkReport):
-        self.zeroshot_contact_results[framework_name] = report
-
-    def add_supervised_contact_result(self, framework_name: str, report: ContactFrameworkReport):
-        self.supervised_contact_results[framework_name] = report
+    def add_framework_report(self, framework_name: str,
+                             framework_mode: AutoEvalMode,
+                             report: FrameworkReport):
+        match framework_mode:
+            case AutoEvalMode.SUPERVISED:
+                assert isinstance(report, SupervisedFrameworkReport)
+                self.supervised_results[framework_name] = report
+            case AutoEvalMode.ZERO_SHOT:
+                assert isinstance(report, ZeroShotFrameworkReport)
+                self.zeroshot_results[framework_name] = report
+            case AutoEvalMode.ZERO_SHOT_CONTACT:
+                assert isinstance(report, ContactFrameworkReport)
+                self.zeroshot_contact_results[framework_name] = report
+            case AutoEvalMode.SUPERVISED_CONTACT_ATTENTION:
+                assert isinstance(report, ContactFrameworkReport)
+                self.supervised_contact_results[framework_name] = report
+            case _:
+                raise ValueError(f"Invalid framework mode: {framework_mode}")
 
     def _all_results(self):
         return [self.supervised_results,

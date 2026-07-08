@@ -1,10 +1,8 @@
 from pathlib import Path
-from typing import Optional, Union, List, Tuple, Dict, Any
+from typing import Optional, List, Tuple, Dict, Any
 from biotrainer_core.data_classes import ZeroShotMethod
-from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, AutoEvalReport, \
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, \
     ZeroShotFrameworkReport, ZeroShotCachedResults
-
-from .autoeval_setup import setup_pipeline
 
 from ..core import AutoEvalFramework
 
@@ -15,7 +13,6 @@ from ...bioengineer import BioEngineer
 def autoeval_zeroshot_pipeline(framework: AutoEvalFramework,
                embedder_name: str,
                zero_shot_method: ZeroShotMethod,
-               autoeval_report: AutoEvalReport,
                output_dir: Path,
                autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
                bioengineer: Optional[BioEngineer] = None,

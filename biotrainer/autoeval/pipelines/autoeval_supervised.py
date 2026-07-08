@@ -1,33 +1,18 @@
-import os
 import h5py
-import torch
 
 from pathlib import Path
 from abc import ABC, abstractmethod
-from biotrainer_core.input_files import read_FASTA
 from biotrainer_core.data_classes import Protocol, SequenceData
-from biotrainer_core.data_classes.autoeval import (AutoEvalTask, AutoEvalProgress, AutoEvalReport,
-                                                   SupervisedFrameworkReport, AutoEvalMode)
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, SupervisedFrameworkReport
 
-from typing import Optional, Callable, Dict, Tuple, List, Any, Union, Iterable, Generator
+from typing import Optional, Callable, Dict, Tuple, List, Any, Generator
 
-from .autoeval_setup import setup_pipeline
-from .autoeval_validate import validate_input
-from ..autoeval_frameworks import AvailableFramework
 from ..core import AutoEvalFramework, AutoEvalConfigBank
 
 from ...shared import get_device
 from ...training.output_files import BiotrainerOutputObserver
-from ...embedding import EmbeddingService, get_embedding_service
 from ...training.utilities.executer import parse_config_file_and_execute_run
-
-
-class CustomEmbedder:
-    def per_residue(self, seqs: List[str]) -> Tuple[str, torch.Tensor]:
-        pass
-
-    def per_sequence(self, seqs: List[str]) -> Tuple[str, torch.Tensor]:
-        pass
+from ...embedding import EmbeddingService, get_embedding_service, CustomEmbedder
 
 
 class _PipelineEmbedder(ABC):
@@ -79,30 +64,30 @@ class BuiltInEmbedder(_PipelineEmbedder):
         self.use_half_precision = use_half_precision
         self.device = get_device(device)
         self.embedding_service: EmbeddingService = get_embedding_service(embedder_name=embedder_name,
-                                                                    custom_tokenizer_config=None,
-                                                                    use_half_precision=use_half_precision,
-                                                                    device=get_device(device)
-                                                                    )
+                                                                         custom_tokenizer_config=None,
+                                                                         use_half_precision=use_half_precision,
+                                                                         device=get_device(device)
+                                                                         )
 
     def per_residue_path(self, seqs: List[str]) -> Path:
         return Path(self.embedding_service.compute_embeddings(input_data=seqs,
-                                             output_dir=self.output_dir,
-                                             protocol=
-                                             Protocol.using_per_residue_embeddings()[
-                                                 0],
-                                             force_recomputing=False,
-                                             force_output_dir=True
-                                             ))
+                                                              output_dir=self.output_dir,
+                                                              protocol=
+                                                              Protocol.using_per_residue_embeddings()[
+                                                                  0],
+                                                              force_recomputing=False,
+                                                              force_output_dir=True
+                                                              ))
 
     def per_sequence_path(self, seqs: List[str]) -> Path:
         return Path(self.embedding_service.compute_embeddings(input_data=seqs,
-                                             output_dir=self.output_dir,
-                                             protocol=
-                                             Protocol.using_per_sequence_embeddings()[
-                                                 0],
-                                             force_recomputing=False,
-                                             force_output_dir=True
-                                             ))
+                                                              output_dir=self.output_dir,
+                                                              protocol=
+                                                              Protocol.using_per_sequence_embeddings()[
+                                                                  0],
+                                                              force_recomputing=False,
+                                                              force_output_dir=True
+                                                              ))
 
 
 class PreComputedEmbedder(_PipelineEmbedder):
@@ -119,57 +104,6 @@ class PreComputedEmbedder(_PipelineEmbedder):
         return self.per_sequence_embeddings_path
 
 
-def get_unique_framework_sequences(framework: Union[str, AvailableFramework, AutoEvalFramework],
-                                   min_seq_length: int,
-                                   max_seq_length: int,
-                                   custom_storage_path: Optional[Union[Path, str]] = None,
-                                   force_download: Optional[bool] = False
-                                   ) -> Tuple[
-    List[Tuple[AutoEvalTask, Dict[str, Any]]], Dict[str, SequenceData],
-    Dict[str, SequenceData]]:
-    framework_obj = framework
-    if not isinstance(framework_obj, AutoEvalFramework):
-        framework_obj = validate_input(framework,
-                                       zero_shot_method=None,
-                                       min_seq_length=min_seq_length,
-                                       max_seq_length=max_seq_length)
-
-    data_handler = framework_obj.get_data_handler()
-    config_bank = framework_obj.get_config_bank()
-    auto_eval_tasks = setup_pipeline(data_handler=data_handler,
-                                     min_seq_length=min_seq_length,
-                                     max_seq_length=max_seq_length,
-                                     custom_storage_path=custom_storage_path,
-                                     force_download=force_download)
-    task_config_tuples = []
-    for task in auto_eval_tasks:
-        config = config_bank.get_task_config(task=task)
-        task_config_tuples.append((task, config))
-
-    # Get unique sequences for supervised tasks for pre-embedding
-    unique_per_residue = {}
-    unique_per_sequence = {}
-    if framework_obj.get_mode() == AutoEvalMode.SUPERVISED:
-        unique_per_residue, unique_per_sequence = _get_unique_sequences_for_all_tasks(
-            {str(t.input_files[0]): Protocol.from_string(c["protocol"]) for t, c in task_config_tuples}
-        )
-    return task_config_tuples, unique_per_residue, unique_per_sequence
-
-
-def _get_unique_sequences_for_all_tasks(tasks: Dict[str, Protocol]) -> Tuple[
-    Dict[str, SequenceData], Dict[str, SequenceData]]:
-    unique_per_residue = {}
-    unique_per_sequence = {}
-    for task_input, protocol in tasks.items():
-        seq_records = read_FASTA(task_input)
-        for seq_record in seq_records:
-            if protocol in Protocol.using_per_sequence_embeddings():
-                unique_per_sequence[seq_record.get_hash()] = seq_record
-            else:
-                unique_per_residue[seq_record.get_hash()] = seq_record
-    return unique_per_residue, unique_per_sequence
-
-
 def check_h5_file(name: str, h5_path: Optional[Path], expected_length: int) -> None:
     if h5_path is None:
         raise Exception(f"Did not find embeddings file for {name} after embedding calculation!")
@@ -182,18 +116,51 @@ def check_h5_file(name: str, h5_path: Optional[Path], expected_length: int) -> N
         raise Exception(f"Could not read {name} h5 file: {str(e)}")
 
 
-def run_supervised_pipeline(embedder_name: str,
-                            framework: AutoEvalFramework,
-                            autoeval_report: AutoEvalReport,
-                            embeddings_file_per_sequence: Path,
-                            embeddings_file_per_residue: Path,
-                            task_config_tuples: List[Tuple[AutoEvalTask, Dict[str, Any]]],
-                            output_dir: Path,
-                            min_seq_length: int,
-                            max_seq_length: int,
-                            custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
-                            device=None,
-                            ) -> Generator[AutoEvalProgress, None, None]:
+def setup_embedder(embedder_name,
+                   output_dir,
+                   use_half_precision: bool = False,
+                   precomputed_per_residue_embeddings: Optional[Path] = None,
+                   precomputed_per_sequence_embeddings: Optional[Path] = None,
+                   custom_embedder: Optional[CustomEmbedder] = None,
+                   device=None, ) -> _PipelineEmbedder:
+    assert (precomputed_per_residue_embeddings is None) == (precomputed_per_sequence_embeddings is None)
+    # Precomputed Embeddings -> Return paths
+    if precomputed_per_residue_embeddings and precomputed_per_sequence_embeddings:
+        return PreComputedEmbedder(per_residue_embeddings_path=precomputed_per_residue_embeddings,
+                                   per_sequence_embeddings_path=precomputed_per_sequence_embeddings)
+
+    # Custom embedder
+    if custom_embedder:
+        embeddings_file_path_per_residue = output_dir / EmbeddingService.get_embeddings_file_name(
+            embedder_name=embedder_name,
+            use_half_precision=use_half_precision,
+            use_reduced_embeddings=False)
+        embeddings_file_path_per_sequence = output_dir / EmbeddingService.get_embeddings_file_name(
+            embedder_name=embedder_name,
+            use_half_precision=use_half_precision,
+            use_reduced_embeddings=True)
+        return CustomEmbedderWrapper(custom_embedder=custom_embedder,
+                                     output_path_per_res=embeddings_file_path_per_residue,
+                                     output_path_per_seq=embeddings_file_path_per_sequence)
+
+    # No custom embedding functions -> Biotrainer Embedding Service
+    return BuiltInEmbedder(embedder_name=embedder_name,
+                           output_dir=output_dir,
+                           use_half_precision=use_half_precision,
+                           device=get_device(device))
+
+
+def autoeval_supervised_pipeline(embedder_name: str,
+                                 framework: AutoEvalFramework,
+                                 embeddings_file_per_sequence: Optional[Path],
+                                 embeddings_file_per_residue: Optional[Path],
+                                 task_config_tuples: List[Tuple[AutoEvalTask, Dict[str, Any]]],
+                                 output_dir: Path,
+                                 min_seq_length: int,
+                                 max_seq_length: int,
+                                 custom_output_observers: Optional[List[BiotrainerOutputObserver]] = None,
+                                 device=None,
+                                 ) -> Generator[AutoEvalProgress, None, None]:
     # Framework results do not exist yet -> execute biotrainer
     supervised_framework_report = SupervisedFrameworkReport.empty(min_seq_len=min_seq_length,
                                                                   max_seq_len=max_seq_length)
@@ -245,111 +212,3 @@ def run_supervised_pipeline(embedder_name: str,
                            current_task_name=current_task_name,
                            current_framework_name=framework.get_name(),
                            final_report=supervised_framework_report)
-
-
-def setup_embedder(embedder_name,
-                   output_dir,
-                   use_half_precision: bool = False,
-                   precomputed_per_residue_embeddings: Optional[Path] = None,
-                   precomputed_per_sequence_embeddings: Optional[Path] = None,
-                   custom_embedder: Optional[CustomEmbedder] = None,
-                   device=None, ) -> _PipelineEmbedder:
-    assert (precomputed_per_residue_embeddings is None) == (precomputed_per_sequence_embeddings is None)
-    # Precomputed Embeddings -> Return paths
-    if precomputed_per_residue_embeddings and precomputed_per_sequence_embeddings:
-        return PreComputedEmbedder(per_residue_embeddings_path=precomputed_per_residue_embeddings,
-                                   per_sequence_embeddings_path=precomputed_per_sequence_embeddings)
-
-    # Custom embedder
-    if custom_embedder:
-        embeddings_file_path_per_residue = output_dir / EmbeddingService.get_embeddings_file_name(
-            embedder_name=embedder_name,
-            use_half_precision=use_half_precision,
-            use_reduced_embeddings=False)
-        embeddings_file_path_per_sequence = output_dir / EmbeddingService.get_embeddings_file_name(
-            embedder_name=embedder_name,
-            use_half_precision=use_half_precision,
-            use_reduced_embeddings=True)
-        return CustomEmbedderWrapper(custom_embedder=custom_embedder,
-                                     output_path_per_res=embeddings_file_path_per_residue,
-                                     output_path_per_seq=embeddings_file_path_per_sequence)
-
-    # No custom embedding functions -> Biotrainer Embedding Service
-    return BuiltInEmbedder(embedder_name=embedder_name,
-                           output_dir=output_dir,
-                           use_half_precision=use_half_precision,
-                           device=get_device(device))
-
-
-def _wrap_custom_embedding_function(
-        custom_embedding_function: Callable[[Iterable[str]], Generator[Tuple[str, torch.Tensor], None, None]],
-        embeddings_file_path: Path,
-        sequences: Iterable[str],
-):
-    with h5py.File(embeddings_file_path, "a") as embeddings_file:
-        idx = 0
-        for sequence, embedding in custom_embedding_function(sequences):
-            if len(embedding.shape) > 1 and embedding.shape[0] != len(sequence):
-                raise Exception(f"Per-residue embedding shape does not match sequence length - "
-                                f"Embedding Shape: {embedding.shape}, Sequence Length: {len(sequence)}!")
-            emb_record = SequenceData(seq_id=f"Seq{idx}", seq=sequence, embedding=embedding)
-            EmbeddingService.store_embedding(embeddings_file_handle=embeddings_file,
-                                             emb_record=emb_record,
-                                             store_by_hash=True)
-            idx += 1
-
-    return embeddings_file_path
-
-
-def autoeval_supervised_pipeline(embedder_name: str,
-                                 framework: AutoEvalFramework,
-                                 autoeval_report: AutoEvalReport,
-                                 output_dir: Optional[Union[Path, str]] = "autoeval_output",
-                                 force_download: Optional[bool] = False,
-                                 use_half_precision: bool = False,
-                                 min_seq_length: Optional[int] = 0,
-                                 max_seq_length: Optional[int] = 2000,
-                                 custom_tokenizer_config: Optional[dict] = None,
-                                 precomputed_per_residue_embeddings: Optional[Path] = None,
-                                 precomputed_per_sequence_embeddings: Optional[Path] = None,
-                                 custom_embedder: Optional[CustomEmbedder] = None,
-                                 custom_storage_path: Optional[Union[Path, str]] = None,
-                                 custom_output_observers: List[BiotrainerOutputObserver] = None,
-                                 device=None,
-                                 ) -> Generator[AutoEvalProgress, None, None]:
-    if (precomputed_per_residue_embeddings is None) ^ (precomputed_per_sequence_embeddings is None):
-        raise ValueError(f"You must provide either paths to both precomputed per-sequence and per-residue embeddings "
-                         f"or no precomputed path at all!")
-    using_precomputed_embeddings = precomputed_per_residue_embeddings is not None and precomputed_per_sequence_embeddings is not None
-
-    using_custom_embedding_functions = custom_embedder is not None
-
-    if using_precomputed_embeddings and using_custom_embedding_functions:
-        raise ValueError(f"You must either provide precomputed embeddings or custom embedding functions, not both!")
-
-    # Setup
-    embedding_function_per_residue, embedding_function_per_sequence = _setup_embedding_functions(
-        embedder_name=embedder_name,
-        output_dir=output_dir,
-        use_half_precision=use_half_precision,
-        custom_tokenizer_config=custom_tokenizer_config,
-        precomputed_per_residue_embeddings=precomputed_per_residue_embeddings,
-        precomputed_per_sequence_embeddings=precomputed_per_sequence_embeddings,
-        custom_embedding_function_per_residue=custom_embedding_function_per_residue,
-        custom_embedding_function_per_sequence=custom_embedding_function_per_sequence,
-        device=device)
-
-    # Pipeline
-    yield from run_supervised_pipeline(embedder_name=embedder_name,
-                                       framework=framework,
-                                       autoeval_report=autoeval_report,
-                                       embedding_function_per_residue=embedding_function_per_residue,
-                                       embedding_function_per_sequence=embedding_function_per_sequence,
-                                       output_dir=output_dir,
-                                       min_seq_length=min_seq_length,
-                                       max_seq_length=max_seq_length,
-                                       custom_storage_path=custom_storage_path,
-                                       custom_output_observers=custom_output_observers,
-                                       force_download=force_download,
-                                       device=device,
-                                       )

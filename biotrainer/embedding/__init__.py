@@ -3,7 +3,7 @@ from typing import List
 from .onnx import OnnxEmbedder
 from .embedding_api import EmbeddingAPI
 from .stats import EmbeddingStatsTracker, EmbeddingStats
-from .interfaces import EmbedderInterface, CustomTokenizer
+from .interfaces import EmbedderInterface, CustomTokenizer, CustomEmbedder
 from .services import EmbeddingService, PeftEmbeddingService, get_embedding_service
 from .huggingface import HuggingfaceTransformerEmbedder, ProtT5, ProstT5, ESM2
 from .baseline_embedders import RandomEmbedder, AAOntologyEmbedder, OneHotEncodingEmbedder, Blosum62Embedder, BASELINE_EMBEDDERS
@@ -23,5 +23,6 @@ __all__ = [
     "RandomEmbedder",
     "AAOntologyEmbedder",
     "get_embedding_service",
-    "get_predefined_embedder_names"
+    "get_predefined_embedder_names",
+    "CustomEmbedder",
 ]

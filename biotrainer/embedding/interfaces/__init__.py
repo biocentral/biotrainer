@@ -1,4 +1,5 @@
 from .bioopt_embedder import BioOptEmbedder
+from .custom_embedder import CustomEmbedder
 from .custom_tokenizer import CustomTokenizer
 from .baseline_embedder import BaselineEmbedder
 from .embedder_interfaces import EmbedderInterface, EmbedderWithFallback
@@ -15,4 +16,5 @@ __all__ = ["EmbedderInterface",
            "BioOptEmbedder",
            "BiotrainerTokenizerMixin",
            "BaselineEmbedder",
+           "CustomEmbedder",
            ]
