@@ -22,6 +22,7 @@ class PBCConfigBank(AutoEvalConfigBank):
             "shuffle": True,
             "patience": 5,
             "epsilon": 1e-3,
+            "external_writer": "none",
         }
 
         # Task-specific configurations that override or extend base config
