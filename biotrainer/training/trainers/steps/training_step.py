@@ -261,7 +261,7 @@ class TrainingStep(PipelineStep[BiotrainerPipelineContext]):
 
         # CREATE SPLITS: (TODO Might be possible to refactor this to get all splits before training)
         cross_validation_config = context.config["cross_validation_config"]
-        cross_validation_splitter = CrossValidationSplitter(context.config["protocol"],
+        cross_validation_splitter = CrossValidationSplitter(context.protocol,
                                                             cross_validation_config)
         splits = cross_validation_splitter.split(train_dataset=context.train_dataset,
                                                  val_dataset=context.val_dataset)

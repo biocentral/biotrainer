@@ -41,7 +41,7 @@ class DatasetCreationStep(PipelineStep[BiotrainerPipelineContext]):
     @staticmethod
     def _get_class_weights(context: BiotrainerPipelineContext, target_manager: TargetManager) -> Union[
         None, torch.FloatTensor]:
-        protocol = context.config["protocol"]
+        protocol = context.protocol
         # Get x_to_class specific logs and weights
         class_weights = None
         if protocol in Protocol.classification_protocols():

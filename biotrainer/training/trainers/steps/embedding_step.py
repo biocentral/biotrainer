@@ -50,7 +50,7 @@ class EmbeddingStep(PipelineStep[BiotrainerPipelineContext]):
         if not embeddings_file:
             # Search for embeddings file at default place if no custom file was provided directly
             embeddings_file = EmbeddingService.get_embeddings_file_path(output_dir=context.config["output_dir"],
-                                                                        protocol=context.config["protocol"],
+                                                                        protocol=context.protocol,
                                                                         embedder_name=context.config["embedder_name"],
                                                                         use_half_precision=context.config.get(
                                                                             "use_half_precision"),
@@ -65,7 +65,7 @@ class EmbeddingStep(PipelineStep[BiotrainerPipelineContext]):
             )
             embeddings_file = embedding_service.compute_embeddings(
                 input_data=context.input_data,
-                protocol=context.config["protocol"],
+                protocol=context.protocol,
                 output_dir=context.config["output_dir"],
                 embedding_stats_tracker=embedding_stats_tracker,
             )
@@ -83,7 +83,7 @@ class EmbeddingStep(PipelineStep[BiotrainerPipelineContext]):
         id2emb = EmbeddingService.load_embeddings(embeddings_file_path=str(embeddings_file),
                                                   ids_to_load=ids_to_load)
 
-        if embedding_stats is None and context.config["protocol"] in Protocol.using_per_residue_embeddings():
+        if embedding_stats is None and context.protocol in Protocol.using_per_residue_embeddings():
             assert embedding_stats_tracker.n_tracked == 0, "Embedding stats should be empty!"
             embedding_stats_tracker.track_entire_dataset(id2emb.values())
             embedding_stats = embedding_stats_tracker.get_stats()

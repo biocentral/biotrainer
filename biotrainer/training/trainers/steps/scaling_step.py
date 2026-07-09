@@ -42,7 +42,7 @@ class ScalingStep(PipelineStep[BiotrainerPipelineContext]):
             other_embs = {seq_id: embd for seq_id, embd in id2emb.items() if seq_id not in training_ids}
 
             # Fit on training embeddings
-            feature_scaler = FeatureScaler(method=scaling_method, protocol=context.config["protocol"])
+            feature_scaler = FeatureScaler(method=scaling_method, protocol=context.protocol)
             feature_scaler = feature_scaler.fit(training_embs, context.target_manager._id2target)
 
             # Transform all embeddings

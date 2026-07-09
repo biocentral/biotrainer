@@ -34,7 +34,7 @@ class ProjectionStep(PipelineStep[BiotrainerPipelineContext]):
     @staticmethod
     def _is_dimension_reduction_possible(context: BiotrainerPipelineContext, dimension_reduction_method, n_reduced_components,
                                          id2emb: Dict[str, Any]) -> bool:
-        protocol: Protocol = context.config["protocol"]
+        protocol: Protocol = context.protocol
 
         min_number_embeddings = 3
         min_number_dimensions = 3

@@ -25,8 +25,7 @@ class InputValidationStep(PipelineStep[BiotrainerPipelineContext]):
         assert context.input_data is not None, "input_file or input_data must be provided in the config!"
 
         # Validate input
-        protocol = context.config["protocol"]
-        input_validator = InputValidator(protocol=protocol)
+        input_validator = InputValidator(protocol=context.protocol)
         validated_input_data = input_validator.validate(context.input_data)
         # No errors - set validated input data as input data
         context.input_data = validated_input_data

@@ -31,7 +31,7 @@ class DataLoadingStep(PipelineStep[BiotrainerPipelineContext]):
 
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # Load TARGETS and SETS from input data
-        target_manager = TargetManager(protocol=context.config["protocol"],
+        target_manager = TargetManager(protocol=context.protocol,
                                        input_data=context.input_data,
                                        ignore_file_inconsistencies=context.config["ignore_file_inconsistencies"],
                                        cross_validation_method=context.config["cross_validation_config"]["method"],

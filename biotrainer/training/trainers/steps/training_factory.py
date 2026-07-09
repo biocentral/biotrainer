@@ -44,7 +44,7 @@ class TrainingFactory:
             collate_fn = lambda batch: (
                 [x[0] for x in batch], [x[1] for x in batch], [x[2] for x in batch], [len(x[1]) for x in batch])
         else:
-            collate_fn = get_embeddings_collate_function(context.config["protocol"])
+            collate_fn = get_embeddings_collate_function(context.protocol)
         return DataLoader(
             dataset=dataset, batch_size=hyper_params["batch_size"], shuffle=hyper_params["shuffle"], drop_last=False,
             collate_fn=collate_fn
@@ -53,7 +53,7 @@ class TrainingFactory:
     @staticmethod
     def create_solver(context: BiotrainerPipelineContext, split_name: str, model, loss_function, optimizer,
                       hyper_params: Dict) -> Solver:
-        return get_solver(protocol=context.config["protocol"], name=split_name, network=model, optimizer=optimizer,
+        return get_solver(protocol=context.protocol, name=split_name, network=model, optimizer=optimizer,
                           loss_function=loss_function,
                           output_manager=context.output_manager,
                           device=context.config["device"],
@@ -72,8 +72,8 @@ class TrainingFactory:
         if "finetuning_config" in context.config:
             model = FineTuningModel(embedding_service=context.embedding_service,
                                     downstream_model=model,
-                                    collate_fn=get_embeddings_collate_function(context.config["protocol"]),
-                                    protocol=context.config["protocol"],
+                                    collate_fn=get_embeddings_collate_function(context.protocol),
+                                    protocol=context.protocol,
                                     device=context.config["device"], )
 
         # Initialize loss function

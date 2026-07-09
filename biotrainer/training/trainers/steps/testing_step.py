@@ -39,7 +39,7 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
         test_results = solver.inference(test_loader, calculate_test_metrics=True)
 
         if context.config.get("save_split_ids", False):
-            test_results_to_log = test_results.revert_mappings(protocol=context.config["protocol"],
+            test_results_to_log = test_results.revert_mappings(protocol=context.protocol,
                                                                class_int2str=context.target_manager.class_int2str)
             context.output_manager.add_test_result(test_set_id=test_set_id,
                                                    inference_result=test_results_to_log)
@@ -53,7 +53,7 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
 
     @staticmethod
     def _do_and_log_prediction(context: BiotrainerPipelineContext, solver, pred_loader):
-        protocol = context.config["protocol"]
+        protocol = context.protocol
         class_int2str = context.target_manager.class_int2str
         # re-initialize the model to avoid any undesired information leakage and only load checkpoint weights
         solver.load_checkpoint(resume_training=False)
@@ -86,7 +86,7 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
                                              test_results: BiotrainerInferenceResult,
                                              test_loader, test_set_id: str):
         logger.info(f'Running bootstrapping evaluation on the best model for test set ({test_set_id})')
-        bootstrapped_metrics = Bootstrapper.bootstrap(protocol=context.config["protocol"],
+        bootstrapped_metrics = Bootstrapper.bootstrap(protocol=context.protocol,
                                                       device=context.config["device"],
                                                       bootstrapping_iterations=context.config[
                                                           "bootstrapping_iterations"],
@@ -120,7 +120,7 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
                                                        test_set_id=test_set_id)
 
             # ADDITIONAL EVALUATION
-            metrics_calculator = get_metrics_calculator(protocol=context.config["protocol"],
+            metrics_calculator = get_metrics_calculator(protocol=context.protocol,
                                                         device=context.config["device"],
                                                         n_classes=context.n_classes)
             # BOOTSTRAPPING

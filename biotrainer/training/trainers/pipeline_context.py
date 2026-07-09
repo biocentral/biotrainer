@@ -1,7 +1,7 @@
 from pathlib import Path
 from junban import PipelineContext
 from typing import Dict, Any, Union, List, Optional
-from biotrainer_core.data_classes import SequenceData
+from biotrainer_core.data_classes import SequenceData, Protocol
 
 from .target_manager import TargetManager
 
@@ -16,6 +16,7 @@ class BiotrainerPipelineContext(PipelineContext):
     def __init__(self, config: Dict[str, Any], output_manager: OutputManager, custom_pipeline: bool):
         # Values set prior to pipeline execution
         self.config = config
+        self.protocol: Protocol = Protocol.from_string(config["protocol"])  # Convenience access to protocol config
         self.output_manager = output_manager
         self.custom_pipeline = custom_pipeline
 
