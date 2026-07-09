@@ -220,9 +220,10 @@ class AutoEval:
         seq_seqs = [seq_record.seq for _, seq_record in all_unique_per_sequence.items()]
 
         final_paths = []
-        for protocol, seqs, name, expected_len in [("per_residue", res_seqs, "per-residue", len(all_unique_per_residue)),
-                                                   ("per_sequence", seq_seqs, "per-sequence",
-                                                    len(all_unique_per_sequence))]:
+        for protocol, seqs, name, expected_len in [
+            ("per_residue", res_seqs, "per-residue", len(all_unique_per_residue)),
+            ("per_sequence", seq_seqs, "per-sequence",
+             len(all_unique_per_sequence))]:
             if expected_len == 0:
                 final_paths.append(None)
                 continue
@@ -293,12 +294,12 @@ class AutoEval:
 
             self._results[framework_obj] = maybe_framework_result
 
-        return framework_obj, maybe_framework_result
+        return framework_obj, maybe_framework_result, output_dir
 
     def _supervised_task(self,
                          available_framework: AvailableFramework,
                          custom_output_observers: List[BiotrainerOutputObserver] = None, ):
-        framework_obj, maybe_framework_result = self._general_task_setup(available_framework)
+        framework_obj, maybe_framework_result, output_dir = self._general_task_setup(available_framework)
         if maybe_framework_result:
             return self
 
@@ -310,7 +311,7 @@ class AutoEval:
                                                                              framework=framework_obj,
                                                                              embeddings_file_per_residue=runner_params.embeddings_file_per_residue,
                                                                              embeddings_file_per_sequence=runner_params.embeddings_file_per_sequence,
-                                                                             output_dir=self.output_dir,
+                                                                             output_dir=output_dir,
                                                                              task_config_tuples=runner_params.task_config_tuples,
                                                                              min_seq_length=self.min_seq_length,
                                                                              max_seq_length=self.max_seq_length,
@@ -352,7 +353,7 @@ class AutoEval:
             (e.g., ZeroShotMethod.WT_MARGINALS, ZeroShotMethod.MASKED_MARGINALS).
         :return: The AutoEval instance for method chaining.
         """
-        framework_obj, maybe_framework_result = self._general_task_setup(AvailableFramework.PGYM,
+        framework_obj, maybe_framework_result, output_dir = self._general_task_setup(AvailableFramework.PGYM,
                                                                          zero_shot_method=zero_shot_method)
         if maybe_framework_result:
             return self
@@ -362,13 +363,13 @@ class AutoEval:
             if not bioengineer:
                 bioengineer = BioEngineer.from_name(name=self.embedder_name, device=runner_params.device)
             return autoeval_zeroshot_pipeline(
-            framework=framework_obj,
-            embedder_name=self.embedder_name,
-            autoeval_tasks=runner_params.task_config_tuples,
-            zero_shot_method=zero_shot_method,
-            output_dir=self.output_dir,
-            bioengineer=bioengineer,
-            device=runner_params.device)
+                framework=framework_obj,
+                embedder_name=self.embedder_name,
+                autoeval_tasks=runner_params.task_config_tuples,
+                zero_shot_method=zero_shot_method,
+                output_dir=output_dir,
+                bioengineer=bioengineer,
+                device=runner_params.device)
 
         self._frameworks_to_runners[framework_obj] = _AutoEvalTaskRunner(framework=framework_obj,
                                                                          runner=runner_function
@@ -383,21 +384,27 @@ class AutoEval:
             Defaults to ZeroShotMethod.JACOBIAN_CONTACT.
         :return: The AutoEval instance for method chaining.
         """
-        framework_obj, maybe_framework_result = self._general_task_setup(AvailableFramework.PBC_ZEROSHOT_CONTACT,
+        framework_obj, maybe_framework_result, output_dir = self._general_task_setup(AvailableFramework.PBC_ZEROSHOT_CONTACT,
                                                                          zero_shot_method=zero_shot_method)
         if maybe_framework_result:
             return self
+
+        def runner_function(runner_params: _AutoEvalTaskRunnerParams):
+            bioengineer = self.bioengineer
+            if not bioengineer:
+                bioengineer = BioEngineer.from_name(name=self.embedder_name, device=runner_params.device)
+            return autoeval_zeroshot_contact_pipeline(
+                framework=framework_obj,
+                embedder_name=self.embedder_name,
+                zero_shot_method=zero_shot_method,
+                autoeval_tasks=runner_params.task_config_tuples,
+                output_dir=output_dir,
+                bioengineer=bioengineer,
+                device=runner_params.device
+            )
+
         self._frameworks_to_runners[framework_obj] = _AutoEvalTaskRunner(framework=framework_obj,
-                                                                         runner=
-                                                                         lambda
-                                                                             runner_params: autoeval_zeroshot_contact_pipeline(
-                                                                             framework=framework_obj,
-                                                                             embedder_name=self.embedder_name,
-                                                                             zero_shot_method=zero_shot_method,
-                                                                             autoeval_tasks=runner_params.task_config_tuples,
-                                                                             output_dir=self.output_dir,
-                                                                             bioengineer=runner_params.bioengineer,
-                                                                             device=runner_params.device)
+                                                                         runner=runner_function
                                                                          )
 
         return self
@@ -408,7 +415,7 @@ class AutoEval:
 
         :return: The AutoEval instance for method chaining.
         """
-        framework_obj, maybe_framework_result = self._general_task_setup(AvailableFramework.PBC_SUPERVISED_CONTACT)
+        framework_obj, maybe_framework_result, output_dir = self._general_task_setup(AvailableFramework.PBC_SUPERVISED_CONTACT)
         if maybe_framework_result:
             return self
         self._frameworks_to_runners[framework_obj] = _AutoEvalTaskRunner(framework=framework_obj, runner=
@@ -416,9 +423,9 @@ class AutoEval:
             framework=framework_obj,
             embedder_name=self.embedder_name,
             autoeval_tasks=task_params.task_config_tuples,
-            output_dir=self.output_dir,
+            output_dir=output_dir,
             device=task_params.device)
-        )
+                                                                         )
         return self
 
     def run(self, device: Optional[Union[str, torch.device]] = None) -> AutoEvalReport:
@@ -490,7 +497,8 @@ class AutoEval:
                 try:
                     framework, final_report = future.result()
                     if final_report is None:
-                        raise RuntimeError(f"No final report was returned from autoeval task for {framework.get_name()}!")
+                        raise RuntimeError(
+                            f"No final report was returned from autoeval task for {framework.get_name()}!")
                     self._results[framework] = final_report
                     print(f"Finished task for framework {framework.get_name()}")
                 except Exception as e:
