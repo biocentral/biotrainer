@@ -55,14 +55,14 @@ def autoeval_zeroshot_contact_pipeline(framework: AutoEvalFramework,
             raise ValueError(f"Fasta file {fasta_file_path} is empty!")
 
         # Check for cached results
-        cached_results: List[ContactSingleProteinResult] = []
+        cached_results: Dict[str, ContactSingleProteinResult] = {}
         for seq_record in seq_records:
             seq_id = seq_record.seq_id
             # Check if cached result exists for this dataset
             maybe_cached_result = zero_shot_contact_cached_results.maybe_cached_result(seq_id=seq_id)
             if maybe_cached_result is not None:
                 print(f"Skipping dataset {seq_id} as cached result exists for {seq_id}!")
-                cached_results.append(maybe_cached_result)
+                cached_results[seq_id] = maybe_cached_result
 
         # Define loading of ground truth contact map
         def load_gt_contact_map(seq_record):
