@@ -24,5 +24,5 @@ class AutoEvalConfigBank(ABC):
         if embeddings_file is not None:
             config.update({"embeddings_file": str(embeddings_file)})
         if device is not None:
-            config.update({"device": device})
+            config.update({"device": str(device)})
         return config
