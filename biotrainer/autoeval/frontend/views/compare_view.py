@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from typing import List
+from biotrainer_core.data_classes.autoeval import AutoEvalReport
 
-from ... import AutoEvalReport
+from biotrainer_core.data_classes.autoeval.autoeval_report import _aggregate_dfs
 
 try:
     import streamlit as st
@@ -14,7 +15,6 @@ from ..state import AutoevalSessionState
 from ...pipelines.autoeval_plotting import (
     plot_comparison,
     plot_delta_comparison,
-    aggregate_dfs,
     fig_to_png_bytes,
     fig_to_pdf_bytes,
 )
@@ -47,7 +47,7 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
 
     # Supervised comparison
     st.markdown("#### Supervised (PBC)")
-    df_sup = aggregate_dfs([
+    df_sup = _aggregate_dfs([
         report.supervised_results["PBC"].to_df(framework="PBC", development_mode=dev_mode).assign(
             Model=report.embedder_name)
         for report in chosen_reports if "PBC" in report.supervised_results
@@ -103,7 +103,7 @@ def render_compare(state: AutoevalSessionState, active: List[AutoEvalReport]):
 
     # Zeroshot comparison
     st.markdown("#### Zero-Shot (PGYM)")
-    df_zero = aggregate_dfs([
+    df_zero = _aggregate_dfs([
         report.zeroshot_results["PGYM"].to_df(framework="PGYM", development_mode=dev_mode).assign(
             Model=report.embedder_name)
         for report in chosen_reports if "PGYM" in report.zeroshot_results

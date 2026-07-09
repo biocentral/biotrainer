@@ -1,18 +1,14 @@
 from __future__ import annotations
 
 import pandas as pd
+import streamlit as st
 
-from typing import List, Tuple
-
-try:
-    import streamlit as st
-except Exception:  # pragma: no cover - runtime import guard
-    raise
+from typing import List, Tuple, Optional
+from biotrainer_core.data_classes import BiotrainerModelResult
+from biotrainer_core.data_classes.autoeval import AutoEvalReport, SupervisedFrameworkReport, ZeroShotFrameworkReport
 
 from ..state import AutoevalSessionState
 from ..utils import utils as frontend_utils
-
-from ...pipelines.autoeval_report import AutoEvalReport, SupervisedFrameworkReport, ZeroShotFrameworkReport
 
 _BIN_METRICS_01 = {"accuracy", "acc", "f1", "f1_score", "auc", "auroc", "mcc"}
 
@@ -23,7 +19,7 @@ def _scale_supervised_metric_df(df_task: pd.DataFrame) -> pd.DataFrame:
     df = df_task.copy()
     # Normalize Spearman (absolute values, 0..1)
     mask_scc = df["evaluation_metric"].str.lower().str.contains("spearman") | (
-        df["evaluation_metric"].str.lower() == "scc"
+            df["evaluation_metric"].str.lower() == "scc"
     ) | df["evaluation_metric"].str.lower().str.contains("spearmans-corr-coeff")
     for col in ["mean", "lower", "upper"]:
         df.loc[mask_scc, col] = df.loc[mask_scc, col].abs()
@@ -188,8 +184,11 @@ def render_detailed(state: AutoevalSessionState, active: list[AutoEvalReport]):
                         pass
 
                 # Loss curves if present
-                result_dict = srep.results.get(task)
-                tr, va, epochs, best_epoch = frontend_utils.get_training_validation_curves(result_dict)
+                model_result: Optional[BiotrainerModelResult] = srep.results.get(task)
+                if not model_result:
+                    st.warning("No model result available for this task!")
+                    continue
+                tr, va, epochs, best_epoch = frontend_utils.get_training_validation_curves(model_result)
                 if tr or va:
                     st.markdown("#### Training / Validation Loss")
                     plot_df = pd.DataFrame({"epoch": epochs})

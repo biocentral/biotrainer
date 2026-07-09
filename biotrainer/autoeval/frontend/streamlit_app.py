@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Optional, Dict
+from biotrainer_core.data_classes.autoeval import AutoEvalReport
 
 try:
     import streamlit as st
@@ -21,7 +22,6 @@ from .views.detailed_view import render_detailed
 from .views.evaluate_view import render_evaluate_view
 from .views.leaderboard_view import render_leaderboard
 
-from ..pipelines import AutoEvalReport
 from ..client import AutoEvalServiceClient
 
 # Global CSS to widen content area and reduce top/bottom padding
@@ -36,6 +36,7 @@ st.markdown(
 
 
 def _download_public_reports():
+    return []  # DEBUG
     client = AutoEvalServiceClient.default_service()
     try:
         response_json = client.get_public_reports()

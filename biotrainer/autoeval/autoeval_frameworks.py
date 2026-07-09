@@ -13,6 +13,22 @@ class AvailableFramework(Enum):
     PBC_ZEROSHOT_CONTACT = "PBC_ZEROSHOT_CONTACT"
     PBC_SUPERVISED_CONTACT = "PBC_SUPERVISED_CONTACT"
 
+    @staticmethod
+    def all():
+        return [AvailableFramework.PBC_SUPERVISED,
+                AvailableFramework.PGYM,
+                AvailableFramework.PBC_ZEROSHOT_CONTACT,
+                AvailableFramework.PBC_SUPERVISED_CONTACT,
+                AvailableFramework.FLIP]
+
+    @staticmethod
+    def dashboard_frameworks():
+        return [AvailableFramework.PBC_SUPERVISED,
+                AvailableFramework.PGYM,
+                AvailableFramework.PBC_ZEROSHOT_CONTACT,
+                AvailableFramework.PBC_SUPERVISED_CONTACT,
+                ]
+
 
 available_frameworks = {AvailableFramework.FLIP: FLIPFramework(),
                         AvailableFramework.PBC_SUPERVISED: PBCSupervisedFramework(),

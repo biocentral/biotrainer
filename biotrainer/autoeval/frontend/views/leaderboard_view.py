@@ -1,26 +1,22 @@
 from __future__ import annotations
 
+import streamlit as st
+
 from typing import Dict, List, Tuple
+from biotrainer_core.functions.ranking import Ranking
+from biotrainer_core.data_classes.autoeval import AutoEvalReport
+from biotrainer_core.data_classes.autoeval.autoeval_report import _aggregate_dfs
 
-from ... import AutoEvalReport
-
-try:
-    import streamlit as st
-except Exception:  # pragma: no cover - runtime import guard
-    raise
 
 from ..state import AutoevalSessionState
-from ..utils import constants as frontend_constants
+
+from ...autoeval_frameworks import AvailableFramework
 
 from ...pipelines.autoeval_plotting import (
     plot_comparison,
     fig_to_png_bytes,
     fig_to_pdf_bytes,
-    aggregate_dfs,
 )
-
-from ....utilities.ranking import Ranking
-
 
 # =========================
 # Helper functions
@@ -52,12 +48,13 @@ def _build_framework_selector(state: AutoevalSessionState) -> str:
         st.markdown("**Framework**")
     with cols[1]:
         currently_selected = state.get_lb_framework()
+        all_frameworks = list(map(lambda fw: fw.value.upper(), AvailableFramework.dashboard_frameworks()))
         selected_framework = st.selectbox(
                 label="Framework",
                 label_visibility="collapsed",
-                options=frontend_constants.SUPPORTED_FRAMEWORKS,
-                index=max(0, list(map(str.upper, frontend_constants.SUPPORTED_FRAMEWORKS)).index(currently_selected))
-                if currently_selected in list(map(str.upper, frontend_constants.SUPPORTED_FRAMEWORKS)) else 0,
+                options=all_frameworks,
+                index=max(0, all_frameworks.index(currently_selected))
+                if currently_selected in all_frameworks else 0,
             )
         state.select_lb_framework(str(selected_framework).upper())
     return state.get_lb_framework()
@@ -221,7 +218,7 @@ def render_leaderboard(state: AutoevalSessionState,
                 if fw in report.supervised_results and report.embedder_name.lower() in best_n_models
             ]
             dfs = sorted(dfs, key=lambda df: best_n_models.index(df["Model"].str.lower().iloc[0]), reverse=True)
-            df_plot = aggregate_dfs(dfs)
+            df_plot = _aggregate_dfs(dfs)
         else:
             dfs = [
                 report.zeroshot_results[fw].to_df(framework=fw, development_mode=development_mode).assign(
@@ -230,7 +227,7 @@ def render_leaderboard(state: AutoevalSessionState,
                 if fw in report.zeroshot_results and report.embedder_name.lower() in best_n_models
             ]
             dfs = sorted(dfs, key=lambda df: best_n_models.index(df["Model"].str.lower().iloc[0]), reverse=True)
-            df_plot = aggregate_dfs(dfs)
+            df_plot = _aggregate_dfs(dfs)
 
         if df_plot is None or df_plot.empty:
             st.caption("No overlapping tasks available for a comparison plot.")

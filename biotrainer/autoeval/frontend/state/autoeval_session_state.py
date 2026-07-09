@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, List
+from biotrainer_core.data_classes.autoeval import AutoEvalReport
 
 from ..utils.types import ViewMode
-from ..utils.constants import SUPPORTED_FRAMEWORKS
 
-from ...pipelines import AutoEvalReport
+from ...autoeval_frameworks import AvailableFramework
 
 try:
     import streamlit as st
@@ -29,7 +29,7 @@ class AutoevalSessionState:
         self._development_mode: bool = False
 
         # Leaderboard
-        self._lb_selected_framework: str = str(SUPPORTED_FRAMEWORKS[0]).upper()
+        self._lb_selected_framework: str = str(AvailableFramework.dashboard_frameworks()[0]).upper()
         self._lb_selected_ranking_category: str = "global"
         self._lb_weights: Dict = {}
 
@@ -156,4 +156,3 @@ class AutoevalSessionState:
 
     def set_compare_selected_reports(self, reports: List[AutoEvalReport]) -> None:
         self._compare_selected_reports = reports
-

@@ -1,13 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple
-
-import pandas as pd
-
-try:
-    import streamlit as st
-except Exception:  # pragma: no cover - runtime import guard
-    raise
+import streamlit as st
 
 from ..state import AutoevalSessionState
 

@@ -1,18 +1,14 @@
 from __future__ import annotations
 
+import streamlit as st
+
 from pathlib import Path
 from typing import List, Optional, Dict
-
-try:
-    import streamlit as st
-except Exception:  # pragma: no cover - runtime import guard
-    raise
+from biotrainer_core.data_classes.autoeval import AutoEvalReport
 
 from ..state import AutoevalSessionState
 from ..utils.types import ViewMode
 from ..utils import utils as frontend_utils
-
-from ...pipelines import AutoEvalReport
 
 
 def render_sidebar(state: AutoevalSessionState, start_path: Optional[Path],

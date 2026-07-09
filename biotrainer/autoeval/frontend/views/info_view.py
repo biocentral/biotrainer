@@ -1,12 +1,8 @@
 from __future__ import annotations
 
+import streamlit as st
+
 from ..state import AutoevalSessionState
-
-
-try:
-    import streamlit as st
-except Exception:  # pragma: no cover - runtime import guard
-    raise
 
 
 def render_info_view(state: AutoevalSessionState):
