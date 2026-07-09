@@ -41,7 +41,7 @@ def all_pbc_supervised_datasets() -> Dict[str, AutoEvalSupervisedDataset]:
                                           evaluation_metric="accuracy",
                                           protocol=Protocol.sequence_to_class),
                 AutoEvalSupervisedDataset(name=PBCSupervisedDatasetName.SCL,
-                                          evaluation_metric="accuracy",
+                                          evaluation_metric="balanced-accuracy",
                                           protocol=Protocol.sequence_to_class),
                 AutoEvalSupervisedDataset(name=PBCSupervisedDatasetName.SECONDARY_STRUCTURE,
                                           evaluation_metric="accuracy",
