@@ -59,7 +59,7 @@ class ZeroShotContactDataHandler(ContactDataHandler):
     def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> List[
         AutoEvalTask]:
         """Build tasks for all contact datasets"""
-        base_path = self._get_supervised_base_path(base_path)
+        base_path = self._get_zero_shot_base_path(base_path)
         if not base_path.is_dir():
             raise FileNotFoundError(f"Missing zeroshot contact datasets at {base_path}")
 
