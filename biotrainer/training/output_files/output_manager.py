@@ -156,6 +156,22 @@ class OutputManager:
         """Read-only access to the underlying model result."""
         return self._model_result
 
+    def maybe_load_existing_result(self, output_dir: Path, model_hash: str) -> bool:
+        if output_dir.exists():
+            try:
+                file_path = output_dir / "out.yml"
+                if file_path.exists():
+                    loaded_result = BiotrainerModelResult.from_file(file_path)
+                    if loaded_result.derived_values.model_hash != model_hash:
+                        raise AssertionError(f"Model hash mismatch: "
+                                             f"{loaded_result.derived_values.model_hash} != {model_hash},"
+                                             f"this should have been caught earlier in the pipeline!")
+                    self._model_result = loaded_result
+                    return True
+            except Exception as e:
+                logger.error(f"Error while loading existing output file: {output_dir / 'out.yml'}: {str(e)}")
+        return False
+
     def write_to_file(self, output_dir: Path) -> None:
         """Write results to YAML file."""
         output_dict = self._model_result.model_dump(exclude_none=True)

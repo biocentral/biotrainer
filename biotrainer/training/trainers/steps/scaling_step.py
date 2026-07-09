@@ -27,6 +27,9 @@ class ScalingStep(PipelineStep[BiotrainerPipelineContext]):
     def get_end_message(self) -> str:
         return "Feature scaling complete!"
 
+    def _skip(self, context: BiotrainerPipelineContext) -> bool:
+        return context.skip_signal
+
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         id2emb = context.id2emb
         target_manager = context.target_manager

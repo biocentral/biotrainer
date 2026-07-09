@@ -55,6 +55,11 @@ class SetupStep(PipelineStep[BiotrainerPipelineContext]):
         device = get_device(context.config["device"] if "device" in context.config.keys() else None)
         context.config["device"] = device
 
+    @staticmethod
+    def _check_result_exists(context: BiotrainerPipelineContext) -> bool:
+        return context.output_manager.maybe_load_existing_result(Path(context.config["log_dir"]),
+                                                                 context.model_hash)
+
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         context.pipeline_start_time = time.perf_counter()
         pipeline_start_time_abs = str(datetime.datetime.now().isoformat())
@@ -67,7 +72,14 @@ class SetupStep(PipelineStep[BiotrainerPipelineContext]):
                                           )
         context.model_hash = model_hash
 
+        # Postprocess config
         self._post_process_config(context)
+
+        # Check if result exists
+        if self._check_result_exists(context):
+            context.skip_signal = True
+            logger.info("Result already exists, skipping training!")
+            return context
 
         # Log version
         logger.info(f"** Running biotrainer (v{__version__}) training routine **")

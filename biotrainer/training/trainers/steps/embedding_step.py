@@ -3,6 +3,9 @@ import torch
 
 from pathlib import Path
 from typing import Dict, Optional
+
+from junban.pipeline_context import C
+
 from biotrainer_core.data_classes import Protocol, SequenceData
 
 from junban import PipelineStep
@@ -31,6 +34,9 @@ class EmbeddingStep(PipelineStep[BiotrainerPipelineContext]):
 
     def get_end_message(self) -> str:
         return "Embedding done!"
+
+    def _skip(self, context: BiotrainerPipelineContext) -> bool:
+        return context.skip_signal
 
     @staticmethod
     def _do_embed(context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:

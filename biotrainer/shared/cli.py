@@ -6,7 +6,6 @@ from biotrainer_core.data_classes import BiotrainerModelResult, Protocol
 
 from ..embedding import EmbeddingAPI
 from ..training import BiotrainerModel
-from ..autoeval import autoeval_pipeline
 
 app = cyclopts.App()
 
@@ -46,21 +45,6 @@ def embed(embedder_name: str,
     protocol = Protocol.using_per_sequence_embeddings()[0] if reduce else Protocol.using_per_residue_embeddings()[0]
     result_path = embedding_api.compute_embeddings(input_data=input_file, output_dir=output_dir, protocol=protocol)
     return result_path
-
-@app.command
-def autoeval(embedder_name: str,
-             framework: str,
-             min_seq_length: Optional[int] = 0,
-             max_seq_length: Optional[int] = 2000,
-             use_half_precision: Optional[bool] = False,
-             ):
-    for progress in autoeval_pipeline(embedder_name=embedder_name,
-                                      framework=framework,
-                                      min_seq_length=min_seq_length,
-                                      max_seq_length=max_seq_length,
-                                      use_half_precision=use_half_precision,
-                                      ):
-        print(progress)
 
 
 if __name__ == "__main__":

@@ -58,6 +58,9 @@ class DatasetCreationStep(PipelineStep[BiotrainerPipelineContext]):
                 context.output_manager.update_derived_values(computed_class_weights=computed_class_weights)
         return class_weights
 
+    def _skip(self, context: BiotrainerPipelineContext) -> bool:
+        return context.skip_signal
+
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # TARGETS => DATASETS
         target_manager = context.target_manager

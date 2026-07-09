@@ -26,6 +26,9 @@ class DataLoadingStep(PipelineStep[BiotrainerPipelineContext]):
     def get_end_message(self) -> str:
         return "Data loaded!"
 
+    def _skip(self, context: BiotrainerPipelineContext) -> bool:
+        return context.skip_signal
+
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # Load TARGETS and SETS from input data
         target_manager = TargetManager(protocol=context.config["protocol"],

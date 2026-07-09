@@ -50,6 +50,9 @@ class PostProcessStep(PipelineStep[BiotrainerPipelineContext]):
 
         logger.info(f"Extensive output information can be found at {context.config['output_dir']}/out.yml")
 
+    def _skip(self, context: BiotrainerPipelineContext) -> bool:
+        return context.skip_signal
+
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # SAVE BEST SPLIT AS ONNX
         self._onnx_export(context)

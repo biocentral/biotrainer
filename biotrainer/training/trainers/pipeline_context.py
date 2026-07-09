@@ -24,6 +24,7 @@ class BiotrainerPipelineContext(PipelineContext):
         self.pipeline_start_time = None
         self.model_hash = None
         self.hp_manager = None
+        self.skip_signal = False  # If True, existing model result has been loaded so all subsequent steps are skipped
         # Input Data
         self.input_data: Optional[Union[Path, List[SequenceData]]] = None
         self.hash2id = None  # Dict to Map from sequence hash to sequence id

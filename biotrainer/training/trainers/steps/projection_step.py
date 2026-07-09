@@ -59,6 +59,9 @@ class ProjectionStep(PipelineStep[BiotrainerPipelineContext]):
                                 the embeddings are not per-sequence embeddings")
             return False
 
+    def _skip(self, context: BiotrainerPipelineContext) -> bool:
+        return context.skip_signal
+
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         id2emb = context.id2emb
         target_manager = context.target_manager

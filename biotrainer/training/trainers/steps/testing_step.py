@@ -97,6 +97,9 @@ class TestingStep(PipelineStep[BiotrainerPipelineContext]):
                                                bootstrapped_metrics=bootstrapped_metrics)
         logger.info(f'Bootstrapping results for test set ({test_set_id}): {bootstrapped_metrics}')
 
+    def _skip(self, context: BiotrainerPipelineContext) -> bool:
+        return context.skip_signal
+
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         # TESTING
         test_datasets = context.test_datasets

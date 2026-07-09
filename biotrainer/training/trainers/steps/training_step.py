@@ -252,6 +252,9 @@ class TrainingStep(PipelineStep[BiotrainerPipelineContext]):
             logger.info(f"Average split results (validation): {average_dict_validation}")
             context.output_manager.update_training_result("average", best_epoch_metrics=average_epoch_metrics)
 
+    def _skip(self, context: BiotrainerPipelineContext) -> bool:
+        return context.skip_signal
+
     def _execute(self, context: BiotrainerPipelineContext) -> BiotrainerPipelineContext:
         del context.id2emb  # No longer required and should not be used later in the routine
         context.id2emb = None
