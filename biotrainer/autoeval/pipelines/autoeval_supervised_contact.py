@@ -5,7 +5,6 @@ Heavily inspired by: https://github.com/chandar-lab/AMPLIFY/blob/main/examples/c
 
 from __future__ import annotations
 
-
 import torch
 import numpy as np
 
@@ -86,7 +85,7 @@ def _generate_flat_pairwise_dataset_input(seq_data: List[SequenceData], embeddin
 
 def _generate_per_protein_dataset_input(seq_data: List[SequenceData],
                                         contacts_dir_path,
-                                        embedding_service: Optional = None ) -> List[_PerProteinData]:
+                                        embedding_service: Optional = None) -> List[_PerProteinData]:
     """ Generate per protein dataset input (val/test). If embedding_service is None (test),
         attention maps need to be computed lazily later """
     protein_inputs = []
@@ -143,7 +142,7 @@ def _load_data_and_generate_attention_maps(dataset_map: dict, embedding_service)
     return _InputDataset(x_train=x_train, y_train=y_train, val_dataset=val_dataset, test_datasets=test_datasets)
 
 
-def _train_logistic_regression(input_dataset: _InputDataset) -> LogisticRegression:
+def _train_logistic_regression(current_task_name: str, input_dataset: _InputDataset) -> LogisticRegression:
     x_train = input_dataset.x_train
     y_train = input_dataset.y_train
     val_dataset = input_dataset.val_dataset
@@ -152,6 +151,7 @@ def _train_logistic_regression(input_dataset: _InputDataset) -> LogisticRegressi
     best_clf = None
     best_long_p_at_l_val = -np.inf
     for idx, hp in enumerate(hyper_params):
+        print(f"{current_task_name}: Training classifier {idx} (Total: {len(hyper_params)})")
         # Train classifier on training data
         # Logistic Regression (careful, liblinear does not support int64!)
         clf = LogisticRegression(solver=hp.solver, l1_ratio=hp.l1_ratio, C=hp.C)
@@ -162,13 +162,13 @@ def _train_logistic_regression(input_dataset: _InputDataset) -> LogisticRegressi
                                                        per_protein_data=val_dataset,
                                                        )
         long_p_at_l2_val = val_dataset_result.long_PatL2()
-        print(f"long_P@L2 for hyperparameters {hp}: {long_p_at_l2_val}")
+        print(f"{current_task_name}: long_P@L2 for hyperparameters {hp}: {long_p_at_l2_val}")
         if long_p_at_l2_val is None:
             raise ValueError(f"long_P@L2 not found in Val dataset result for hyperparameters: {hp}")
         if long_p_at_l2_val > best_long_p_at_l_val:
             best_clf = clf
             best_long_p_at_l_val = long_p_at_l2_val
-    print(f"After {len(hyper_params)} hyper param combinations, "
+    print(f"{current_task_name}: After {len(hyper_params)} hyper param combinations, "
           f"found best long_P@L2: {best_long_p_at_l_val} for linear classifier!")
     assert best_clf is not None, "Best classifier not found!"
     return best_clf
@@ -177,7 +177,6 @@ def _train_logistic_regression(input_dataset: _InputDataset) -> LogisticRegressi
 def _test_logistic_regression(clf: LogisticRegression, test_set_name: str,
                               per_protein_data: List[_PerProteinData],
                               embedding_service: Optional = None) -> ContactDatasetResult:
-
     def predict_function(data_point: _PerProteinData):
         if data_point.attention_map is not None:
             attention_map = data_point.attention_map
@@ -205,10 +204,10 @@ def _test_logistic_regression(clf: LogisticRegression, test_set_name: str,
 
 
 def autoeval_supervised_contact_pipeline(framework: AutoEvalFramework,
-                                  embedder_name: str,
-                                  output_dir: Path,
-                                  autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
-                                  device=None):
+                                         embedder_name: str,
+                                         output_dir: Path,
+                                         autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
+                                         device=None):
     embedding_service = get_embedding_service(embedder_name=embedder_name, device=get_device(device),
                                               custom_tokenizer_config=None)
     if not isinstance(embedding_service._embedder, HuggingfaceTransformerEmbedder):
@@ -231,6 +230,7 @@ def autoeval_supervised_contact_pipeline(framework: AutoEvalFramework,
                                current_framework_name=framework.get_name())
 
         # (1) Set up dataset map from input files
+        print(f"{current_task_name}: Loading data..")
         dataset_map = {"train": None,
                        "val": None,
                        "test": []
@@ -252,7 +252,8 @@ def autoeval_supervised_contact_pipeline(framework: AutoEvalFramework,
                                                                embedding_service=embedding_service)
 
         # (3) Training
-        best_clf = _train_logistic_regression(input_dataset=input_dataset)
+        print(f"{current_task_name}: Training classifiers..")
+        best_clf = _train_logistic_regression(current_task_name=current_task_name, input_dataset=input_dataset)
 
         # (4) Test
         test_datasets = input_dataset.test_datasets

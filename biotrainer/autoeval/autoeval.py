@@ -284,7 +284,7 @@ class AutoEval:
         if not self.autoeval_report:
             self.autoeval_report = AutoEvalReport.loaded_or_empty(embedder_name=self.embedder_name,
                                                                   training_date=str(datetime.now().date().isoformat()),
-                                                                  output_dir=output_dir.parent)
+                                                                  output_dir=self.output_dir)
         # Framework results already exist -> skip execution
         assert self.autoeval_report is not None
         maybe_framework_result = self.autoeval_report.maybe_framework_result(framework_name=framework_obj.get_name())
@@ -436,9 +436,19 @@ class AutoEval:
             (e.g., 'cuda:0', 'cuda:1', 'cpu'). If not specified, the default device is used.
         :return: An AutoEvalReport containing the evaluation results for all frameworks.
         :raises RuntimeError: If no progress or final report is returned from a task.
-        :raises AssertionError: If the autoeval report is None after task execution.
+        :raises AssertionError: If the autoeval report is None before task execution.
         """
         framework_to_params = self._setup_runner_params(devices=[device] if device else None)
+
+        # Make sure that autoeval report exists and all existing results are added and synced to disk
+        assert self.autoeval_report is not None, f"Autoeval report is None before task execution!"
+        for framework, existing_results in self._results.items():
+            self.autoeval_report.add_framework_report(framework_name=framework.get_name(),
+                                                      framework_mode=framework.get_mode(),
+                                                      report=existing_results)
+        self.autoeval_report.write(self.output_dir)
+
+        # Execute tasks
         for framework, params in framework_to_params.items():
             task_runner = self._frameworks_to_runners[framework]
             assert task_runner is not None, f"Runner for framework {framework.get_name()} is None!"
@@ -451,13 +461,11 @@ class AutoEval:
             final_report = current_progress.final_report
             if final_report is None:
                 raise RuntimeError("No final report was returned from autoeval task!")
-            self._results[framework] = final_report
-
-        assert self.autoeval_report is not None, f"Autoeval report is None after task execution!"
-        for framework, report in self._results.items():
             self.autoeval_report.add_framework_report(framework_name=framework.get_name(),
                                                       framework_mode=framework.get_mode(),
-                                                      report=report)
+                                                      report=final_report)
+            self.autoeval_report.write(self.output_dir)
+
         return self.autoeval_report
 
     def run_parallel(self, devices: Optional[List[Union[str, torch.device]]] = None) -> AutoEvalReport:
