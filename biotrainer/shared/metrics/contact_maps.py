@@ -1,7 +1,8 @@
 import torch
 import numpy as np
 
-from typing import List, Tuple, Dict, Iterable, Any, Callable, Optional, Generator
+from tqdm import tqdm
+from typing import Tuple, Dict, Iterable, Any, Callable, Optional, Generator
 from biotrainer_core.data_classes import ContactSingleProteinResult, ContactDatasetResult
 
 
@@ -122,7 +123,7 @@ def evaluate_contact_dataset(
     if cached_results is not None and len(cached_results) > 0:
         per_protein_results.update(cached_results)
 
-    for item in items:
+    for item in tqdm(items, desc=f"Evaluating {dataset_name} contact dataset..", unit="protein"):
         seq_id = get_seq_id_func(item)
         if seq_id in per_protein_results:
             continue  # Cached result exists

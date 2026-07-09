@@ -73,6 +73,7 @@ def autoeval_zeroshot_contact_pipeline(framework: AutoEvalFramework,
                                     sequence=seq,
                                     structure_id=seq_id)
 
+        # Define evaluation function
         def evaluate():
             yield from evaluate_contact_dataset(dataset_name=current_task_name,
                                                 items=seq_records,
@@ -85,6 +86,7 @@ def autoeval_zeroshot_contact_pipeline(framework: AutoEvalFramework,
                                                 cached_results=cached_results,
                                                 )
 
+        # Run Evaluation of zero-shot contact maps
         for maybe_single_result, maybe_dataset_result in evaluate():
             if maybe_single_result is not None:
                 zero_shot_contact_cached_results.update_and_sync(result=maybe_single_result,
