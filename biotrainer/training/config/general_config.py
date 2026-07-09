@@ -101,4 +101,13 @@ def general_config(protocol: Protocol) -> Tuple[ConfigKey, List[ConfigOption]]:
                          gte=0
                      ),
                      ),
+        ConfigOption(name="force_execution",
+                     description="Force pipeline execution even if a model result already exists",
+                     category=general_category,
+                     required=False,
+                     default=False,
+                     constraints=ConfigConstraints(
+                         type=bool,
+                     ),
+                     )
     ]

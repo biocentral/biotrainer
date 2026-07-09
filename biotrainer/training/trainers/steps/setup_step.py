@@ -2,6 +2,7 @@ import time
 import datetime
 
 from pathlib import Path
+from copy import deepcopy
 from junban import PipelineStep
 
 from biotrainer_core.data_classes import Protocol
@@ -65,7 +66,9 @@ class SetupStep(PipelineStep[BiotrainerPipelineContext]):
         pipeline_start_time_abs = str(datetime.datetime.now().isoformat())
 
         # Calculate model hash
-        model_hash = calculate_model_hash(config=context.config,
+        config_for_hashing = deepcopy(context.config)
+        config_for_hashing.pop("force_execution", None)  # Ignore as this does not affect the model
+        model_hash = calculate_model_hash(config=config_for_hashing,
                                           input_data=context.input_data,
                                           custom_trainer=context.custom_pipeline,
                                           version=__version__,
@@ -76,7 +79,8 @@ class SetupStep(PipelineStep[BiotrainerPipelineContext]):
         self._post_process_config(context)
 
         # Check if result exists
-        if self._check_result_exists(context):
+        force_execution = context.config["force_execution"]
+        if not force_execution and self._check_result_exists(context):
             context.skip_signal = True
             logger.info("Result already exists, skipping training!")
             return context
