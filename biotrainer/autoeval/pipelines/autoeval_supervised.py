@@ -110,7 +110,7 @@ def check_h5_file(name: str, h5_path: Optional[Path], expected_length: int) -> N
     try:
         with h5py.File(h5_path, "r") as h5_file:
             actual_length = len(h5_file.keys())
-            if actual_length != expected_length:
+            if actual_length < expected_length:
                 raise ValueError(f"Expected {expected_length} entries in {name} h5 file but found {actual_length}!")
     except (OSError, IOError) as e:
         raise Exception(f"Could not read {name} h5 file: {str(e)}")
