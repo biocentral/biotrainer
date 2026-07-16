@@ -1,25 +1,22 @@
 from __future__ import annotations
 
+import streamlit as st
+
 from typing import Dict, List, Tuple
+from biotrainer_core.functions.ranking import Ranking
+from biotrainer_core.data_classes.autoeval import AutoEvalReport
+from biotrainer_core.data_classes.autoeval.autoeval_report import _aggregate_dfs
 
-from ... import AutoEvalReport
 
-try:
-    import streamlit as st
-except Exception:  # pragma: no cover - runtime import guard
-    raise
+from ..state import AutoevalSessionState
 
-from ..utils import constants as frontend_constants
+from ...autoeval_frameworks import AvailableFramework
 
 from ...pipelines.autoeval_plotting import (
     plot_comparison,
     fig_to_png_bytes,
     fig_to_pdf_bytes,
-    aggregate_dfs,
 )
-
-from ....utilities.ranking import Ranking
-
 
 # =========================
 # Helper functions
@@ -45,23 +42,22 @@ def _badge(place: int) -> str:
     """
 
 
-def _build_framework_selector() -> str:
+def _build_framework_selector(state: AutoevalSessionState) -> str:
     cols = st.columns([1, 2])
     with cols[0]:
         st.markdown("**Framework**")
     with cols[1]:
-        currently_selected = st.session_state.state.get_lb_framework()
-        selected_framework = str(
-            st.selectbox(
+        currently_selected = state.get_lb_framework()
+        all_frameworks = list(map(lambda fw: fw.value.upper(), AvailableFramework.dashboard_frameworks()))
+        selected_framework = st.selectbox(
                 label="Framework",
                 label_visibility="collapsed",
-                options=frontend_constants.SUPPORTED_FRAMEWORKS,
-                index=max(0, list(map(str.upper, frontend_constants.SUPPORTED_FRAMEWORKS)).index(currently_selected))
-                if currently_selected in list(map(str.upper, frontend_constants.SUPPORTED_FRAMEWORKS)) else 0,
+                options=all_frameworks,
+                index=max(0, all_frameworks.index(currently_selected))
+                if currently_selected in all_frameworks else 0,
             )
-        ).upper()
-        st.session_state.state.select_lb_framework(selected_framework)
-    return st.session_state.state.get_lb_framework()
+        state.select_lb_framework(str(selected_framework).upper())
+    return state.get_lb_framework()
 
 
 def _build_information(ranking: Ranking):
@@ -75,33 +71,34 @@ def _build_information(ranking: Ranking):
             st.caption(cat)
 
 
-def _build_ranking_category_selection(ranking: Ranking) -> str:
+def _build_ranking_category_selection(state: AutoevalSessionState, ranking: Ranking) -> str:
     options = ["global"] + list(sorted(ranking.raw_categories | ranking.ranking_categories))
-    currently_selected = st.session_state.state.get_lb_ranking_category()
+    currently_selected = state.get_lb_ranking_category()
     idx = options.index(currently_selected) if currently_selected in options else 0
     selected_ranking_category = st.selectbox(
         "Select ranking category",
         options=options,
         index=idx,
     )
-    st.session_state.state.select_lb_ranking_category(selected_ranking_category)
+    state.select_lb_ranking_category(selected_ranking_category)
     return selected_ranking_category
 
 
-def _build_weights_selection(ranking: Ranking):
+def _build_weights_selection(state: AutoevalSessionState, ranking: Ranking):
     with st.expander("Change weights", expanded=False):
         cols = st.columns(2)
         for i, cat in enumerate(sorted(ranking.ranking_categories)):
             with cols[i % 2]:
-                current = st.session_state.state.get_lb_weight(cat)
+                current = state.get_lb_weight(cat)
                 st.write(
                     f"Weight for {cat}: {current}"
                 )
                 new_val = st.number_input(
                     f"{cat}", min_value=0, max_value=10, step=1, value=int(current), key=f"w_{cat}"
                 )
-                st.session_state.state.set_lb_weight(cat, int(new_val))
-                st.caption(f"{Ranking.get_score_multiplier(int(new_val)):.1f}x counted")
+                new_val = int(str(new_val))
+                state.set_lb_weight(cat, new_val)
+                st.caption(f"{Ranking.get_score_multiplier(new_val):.1f}x counted")
 
 
 def _group_by_place(ranking_list: List[Tuple[int, object, float]]):
@@ -169,22 +166,26 @@ def _copy_ranking_controls(ranking: Ranking):
 # Public entry point
 # =========================
 
-def render_leaderboard(ranking_pbc: Ranking, ranking_pgym: Ranking, active: List[AutoEvalReport]):
+def render_leaderboard(state: AutoevalSessionState,
+                       ranking_pbc: Ranking,
+                       ranking_pgym: Ranking,
+                       active: List[AutoEvalReport],
+                       development_mode: bool):
     # determine active ranking based on framework
     all_categories = sorted(list(ranking_pbc.ranking_categories.union(ranking_pgym.ranking_categories)))
-    st.session_state.state.maybe_init_lb_weights(all_categories)
+    state.maybe_init_lb_weights(all_categories)
 
     _build_title()
-    fw = _build_framework_selector()
+    fw = _build_framework_selector(state)
     ranking = ranking_pbc if fw == "PBC" else ranking_pgym
 
     # Sync weight keys with current ranking
-    st.session_state.state.sync_lb_weights(ranking.ranking_categories)
+    state.sync_lb_weights(ranking.ranking_categories)
 
     # Apply weights to current ranking object
-    weighted_ranking = ranking.update_weights(st.session_state.state.get_lb_weights())
+    weighted_ranking = ranking.update_weights(state.get_lb_weights())
 
-    selected_ranking_category = _build_ranking_category_selection(weighted_ranking)
+    selected_ranking_category = _build_ranking_category_selection(state, weighted_ranking)
 
     leaderboard = weighted_ranking.get_leaderboard_ranking()
 
@@ -198,7 +199,7 @@ def render_leaderboard(ranking_pbc: Ranking, ranking_pgym: Ranking, active: List
         with cols[0]:
             _build_information(weighted_ranking)
         with cols[1]:
-            _build_weights_selection(weighted_ranking)
+            _build_weights_selection(state, weighted_ranking)
     else:
         _build_information(weighted_ranking)
 
@@ -211,20 +212,22 @@ def render_leaderboard(ranking_pbc: Ranking, ranking_pgym: Ranking, active: List
     try:
         if fw == "PBC":
             dfs = [
-                report.supervised_results[fw].to_df(framework=fw).assign(Model=report.embedder_name)
+                report.supervised_results[fw].to_df(framework=fw, development_mode=development_mode).assign(
+                    Model=report.embedder_name)
                 for report in active
                 if fw in report.supervised_results and report.embedder_name.lower() in best_n_models
             ]
             dfs = sorted(dfs, key=lambda df: best_n_models.index(df["Model"].str.lower().iloc[0]), reverse=True)
-            df_plot = aggregate_dfs(dfs)
+            df_plot = _aggregate_dfs(dfs)
         else:
             dfs = [
-                    report.zeroshot_results[fw].to_df(framework=fw).assign(Model=report.embedder_name)
-                    for report in active
-                    if fw in report.zeroshot_results and report.embedder_name.lower() in best_n_models
-                ]
+                report.zeroshot_results[fw].to_df(framework=fw, development_mode=development_mode).assign(
+                    Model=report.embedder_name)
+                for report in active
+                if fw in report.zeroshot_results and report.embedder_name.lower() in best_n_models
+            ]
             dfs = sorted(dfs, key=lambda df: best_n_models.index(df["Model"].str.lower().iloc[0]), reverse=True)
-            df_plot = aggregate_dfs(dfs)
+            df_plot = _aggregate_dfs(dfs)
 
         if df_plot is None or df_plot.empty:
             st.caption("No overlapping tasks available for a comparison plot.")

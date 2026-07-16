@@ -1,6 +1,6 @@
 import unittest
 
-from biotrainer.embedders import OneHotEncodingEmbedder
+from biotrainer.embedding import OneHotEncodingEmbedder
 
 
 class EmbeddersTests(unittest.TestCase):

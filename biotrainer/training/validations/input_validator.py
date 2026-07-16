@@ -1,0 +1,116 @@
+import re
+
+from pathlib import Path
+from typing import Union, List
+from biotrainer_core.input_files import read_FASTA
+from biotrainer_core.data_classes import Protocol, SequenceData
+from biotrainer_core.utils.constants import RESIDUE_TO_VALUE_TARGET_DELIMITER
+
+
+class InputValidator:
+    EXCLUDED_SEQS = ["", None]
+
+    def __init__(self, protocol: Protocol):
+        self.protocol = protocol
+
+    def validate(self, input_data: Union[str, Path, List[SequenceData]]) -> List[SequenceData]:
+        if isinstance(input_data, str) or isinstance(input_data, Path):
+            input_data = read_FASTA(input_data)
+
+        if len(input_data) == 0:
+            raise ValueError("The input to validate is empty!")
+
+        if not isinstance(input_data[0], SequenceData):
+            raise ValueError(f"Expected BiotrainerSequenceRecord, got {type(input_data[0])}!")
+
+        for error in (self._validate_unique_ids(input_data),
+                      self._validate_unique_sequences(input_data),
+                      self._validate_sequences(input_data),
+                      self._validate_targets(input_data),
+                      self._validate_embeddings(input_data)):
+            if error != "":
+                raise ValueError(error)
+
+        return input_data
+
+    @staticmethod
+    def _validate_unique_ids(input_data: List[SequenceData]) -> str:
+        len_data = len(input_data)
+        ids = {seq_record.get_id_for_id2emb() for seq_record in input_data}
+        len_unique = len(ids)
+        if len_data != len_unique:
+            affected_input = [seq_record.seq_id for seq_record in input_data]
+            return (f"There are {len_data - len_unique} duplicated sequences in the input file!\n"
+                    f"Affected sequences: {affected_input}")
+        return ""
+
+    @staticmethod
+    def _validate_unique_sequences(input_data: List[SequenceData]) -> str:
+        filtered_input_data = [seq_record for seq_record in input_data
+                               if seq_record.seq not in InputValidator.EXCLUDED_SEQS]
+        len_data = len(filtered_input_data)
+        unique_sequence_data = {seq_record.seq: seq_record for seq_record in filtered_input_data}
+        len_unique = len(unique_sequence_data)
+        if len_data != len_unique:
+            affected_seqs = [seq_record.seq for seq_record in input_data
+                             if seq_record not in unique_sequence_data.values()]
+            return (f"There are {len_data - len_unique} duplicated sequences in the input file!\n"
+                    f"Affected sequences: {affected_seqs}")
+        return ""
+
+    @staticmethod
+    def _validate_sequences(input_data: List[SequenceData]) -> str:
+        # Regular expression pattern that matches any character that is not a letter
+        invalid_char_pattern = re.compile(r'[^a-zA-Z]')
+
+        for seq_record in input_data:
+            if seq_record.seq in InputValidator.EXCLUDED_SEQS:
+                continue
+            # Check if there are any invalid characters in the sequence
+            invalid_match = invalid_char_pattern.search(seq_record.seq)
+            if invalid_match:
+                return f"Invalid character '{invalid_match.group()}' found in sequence {seq_record.seq_id}!"
+
+        return ""
+
+    def _validate_targets(self, input_data: List[SequenceData]) -> str:
+        # Expect float or int for regression
+        for seq_record in input_data:
+            target = seq_record.get_target()
+            is_pred_set = seq_record.get_set().lower() == "pred"
+            if target is None and not is_pred_set:
+                return f"No target found for sequence {seq_record.seq_id}!"
+            if is_pred_set:
+                continue
+
+            if self.protocol in Protocol.regression_protocols():
+                try:
+                    targets = [target]
+
+                    # r2v
+                    if RESIDUE_TO_VALUE_TARGET_DELIMITER in str(target):
+                        if self.protocol != Protocol.residue_to_value:
+                            return (f"Found {RESIDUE_TO_VALUE_TARGET_DELIMITER} in {target} for "
+                                    f"sequence {seq_record.seq_id} - "
+                                    f"but protocol is not {Protocol.residue_to_value.name}!")
+                        targets = target.split(RESIDUE_TO_VALUE_TARGET_DELIMITER)
+
+                    for target in targets:
+                        float(target)
+
+                except ValueError:
+                    return f"Invalid regression target {target} for sequence {seq_record.seq_id}!"
+
+        return ""
+
+    @staticmethod
+    def _validate_embeddings(input_data: List[SequenceData]) -> str:
+        """ If any embeddings are already present, all records must have embeddings """
+        any_embeddings = any([record.embedding is not None for record in input_data])
+        if any_embeddings:
+            for seq_record in input_data:
+                if seq_record.embedding is None:
+                    return (f"No embedding found for sequence {seq_record.seq_id} - "
+                            f"but embeddings are present for other sequences! "
+                            f"Please provide embeddings for all or none of the input data.")
+        return ""

@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-from typing import List, Tuple
-
 import pandas as pd
+import streamlit as st
 
-try:
-    import streamlit as st
-except Exception:  # pragma: no cover - runtime import guard
-    raise
+from typing import List, Tuple, Optional
+from biotrainer_core.data_classes import BiotrainerModelResult
+from biotrainer_core.data_classes.autoeval import AutoEvalReport, SupervisedFrameworkReport, ZeroShotFrameworkReport
 
-from ...pipelines.autoeval_report import AutoEvalReport, SupervisedFrameworkReport, ZeroShotFrameworkReport
+from ..state import AutoevalSessionState
 from ..utils import utils as frontend_utils
-
 
 _BIN_METRICS_01 = {"accuracy", "acc", "f1", "f1_score", "auc", "auroc", "mcc"}
 
@@ -22,7 +19,7 @@ def _scale_supervised_metric_df(df_task: pd.DataFrame) -> pd.DataFrame:
     df = df_task.copy()
     # Normalize Spearman (absolute values, 0..1)
     mask_scc = df["evaluation_metric"].str.lower().str.contains("spearman") | (
-        df["evaluation_metric"].str.lower() == "scc"
+            df["evaluation_metric"].str.lower() == "scc"
     ) | df["evaluation_metric"].str.lower().str.contains("spearmans-corr-coeff")
     for col in ["mean", "lower", "upper"]:
         df.loc[mask_scc, col] = df.loc[mask_scc, col].abs()
@@ -36,8 +33,9 @@ def _metric_domain(metric_name: str) -> Tuple[float, float] | None:
     return None
 
 
-def render_detailed(active: list[AutoEvalReport]):
+def render_detailed(state: AutoevalSessionState, active: list[AutoEvalReport]):
     st.subheader("Detailed Report View")
+
     if not active:
         st.info("Load reports to inspect details.")
         return
@@ -78,8 +76,68 @@ def render_detailed(active: list[AutoEvalReport]):
                 if not tasks:
                     st.info("No tasks available.")
                     continue
+                embedding_stats = srep.accumulated_embedding_stats()
+                if embedding_stats:
+                    st.markdown("#### Embedding Statistics")
+                    stats_cols = st.columns(4)
+                    with stats_cols[0]:
+                        st.metric("Dimensions", embedding_stats.dims)
+                    with stats_cols[1]:
+                        st.metric("Residues Tracked", f"{embedding_stats.n_tracked:,}")
+                    with stats_cols[2]:
+                        st.metric("Min Value", f"{embedding_stats.min:.2f}")
+                    with stats_cols[3]:
+                        st.metric("Max Value", f"{embedding_stats.max:.2f}")
+
+                    # Range plot visualization
+                    try:
+                        import altair as alt
+                        # Create a dataframe with a single row representing the range
+                        range_df = pd.DataFrame({
+                            'dummy': [1],
+                            'min': [embedding_stats.min],
+                            'max': [embedding_stats.max]
+                        })
+
+                        # Create a range plot using a rule mark
+                        range_chart = alt.Chart(range_df).mark_rule(size=8).encode(
+                            x=alt.X('min:Q',
+                                    scale=alt.Scale(domain=[embedding_stats.min - abs(embedding_stats.min) * 0.1,
+                                                            embedding_stats.max + abs(embedding_stats.max) * 0.1]),
+                                    title='Embedding Value Range'),
+                            x2='max:Q',
+                            tooltip=[
+                                alt.Tooltip('min:Q', title='Min', format='.4f'),
+                                alt.Tooltip('max:Q', title='Max', format='.4f')
+                            ]
+                        ).properties(height=80)
+
+                        # Add tick marks at min and max
+                        ticks = alt.Chart(range_df).transform_fold(
+                            ['min', 'max'],
+                            as_=['position_type', 'value']
+                        ).mark_tick(size=20, thickness=3).encode(
+                            x=alt.X('value:Q', title='Embedding Value Range'),
+                            color=alt.Color('position_type:N',
+                                            scale=alt.Scale(domain=['min', 'max'], range=['blue', 'red']),
+                                            legend=alt.Legend(title='Position')),
+                            tooltip=[
+                                alt.Tooltip('position_type:N', title='Position'),
+                                alt.Tooltip('value:Q', title='Value', format='.4f')
+                            ]
+                        )
+
+                        # Combine range line and ticks
+                        combined_chart = range_chart + ticks
+                        st.altair_chart(combined_chart, use_container_width=True)
+                    except Exception:
+                        pass
+
+                    st.divider()
+
                 task = st.selectbox("Task", options=tasks)
-                df_task = frontend_utils.supervised_task_metrics_dataframe(srep, task)
+                dev_mode = state.get_development_mode()
+                df_task = frontend_utils.supervised_task_metrics_dataframe(srep, task, development_mode=dev_mode)
                 df_task = _scale_supervised_metric_df(df_task)
                 st.dataframe(df_task, use_container_width=True, hide_index=True)
 
@@ -126,8 +184,11 @@ def render_detailed(active: list[AutoEvalReport]):
                         pass
 
                 # Loss curves if present
-                result_dict = srep.results.get(task)
-                tr, va, epochs, best_epoch = frontend_utils.get_training_validation_curves(result_dict)
+                model_result: Optional[BiotrainerModelResult] = srep.results.get(task)
+                if not model_result:
+                    st.warning("No model result available for this task!")
+                    continue
+                tr, va, epochs, best_epoch = frontend_utils.get_training_validation_curves(model_result)
                 if tr or va:
                     st.markdown("#### Training / Validation Loss")
                     plot_df = pd.DataFrame({"epoch": epochs})
@@ -183,5 +244,8 @@ def render_detailed(active: list[AutoEvalReport]):
                     st.info("No tasks available.")
                     continue
                 task = st.selectbox("Task", options=tasks)
+                dev_mode = state.get_development_mode()
+                # Zero-shot doesn't support development mode yet, but we pass it anyway for consistency
+                # though zeroshot_task_metrics_dataframe doesn't accept it yet.
                 df_task = frontend_utils.zeroshot_task_metrics_dataframe(zrep, task)
                 st.dataframe(df_task, use_container_width=True, hide_index=True)

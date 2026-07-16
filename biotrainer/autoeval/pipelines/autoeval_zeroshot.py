@@ -1,23 +1,23 @@
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Optional, List, Tuple, Dict, Any
+from biotrainer_core.data_classes import ZeroShotMethod
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress, \
+    ZeroShotFrameworkReport, ZeroShotCachedResults
 
-from .autoeval_setup import setup_pipeline
-from .autoeval_report import ZeroShotCachedResults, ZeroShotFrameworkReport, AutoEvalReport
-from .autoeval_progress import AutoEvalProgress
-from ..core import AutoEvalFramework, AutoEvalTask
+from ..core import AutoEvalFramework
 
-from ...utilities import get_device
-from ...bioengineer import BioEngineer, ZeroShotMethod
+from ...shared import get_device
+from ...bioengineer import BioEngineer
 
 
-def _run_tasks(framework: AutoEvalFramework,
-               embedder_name: str,
-               zero_shot_method: ZeroShotMethod,
-               autoeval_report: AutoEvalReport,
-               output_dir: Path,
-               autoeval_tasks: List[AutoEvalTask],
-               bioengineer: Optional[BioEngineer] = None,
-               device=None):
+def autoeval_zeroshot_pipeline(framework: AutoEvalFramework,
+                               embedder_name: str,
+                               zero_shot_method: ZeroShotMethod,
+                               output_dir: Path,
+                               autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
+                               bioengineer: Optional[BioEngineer] = None,
+                               development_mode: bool = True,
+                               device=None):
     if not bioengineer:
         bioengineer = BioEngineer.from_name(name=embedder_name, device=get_device(device))
 
@@ -26,7 +26,9 @@ def _run_tasks(framework: AutoEvalFramework,
                                                            method=zero_shot_method,
                                                            output_dir=output_dir)
     # Execute bioengineer
-    zero_shot_framework_report = ZeroShotFrameworkReport.empty(method=zero_shot_method)
+    zero_shot_framework_report = ZeroShotFrameworkReport.empty(method=zero_shot_method,
+                                                               development_mode=development_mode)
+    autoeval_tasks = [task for task, _ in autoeval_tasks]  # Ignore config for zero shot
     task_names = [task.combined_name() for task in autoeval_tasks]
     print(f"The following tasks will be executed in order: {task_names} (total {len(task_names)})")
     completed_tasks = 0
@@ -52,8 +54,8 @@ def _run_tasks(framework: AutoEvalFramework,
 
             # Cached result does not exist, run bioengineer
             _, ranking_result = bioengineer.rank_pgym_dataset(dataset_file_path=file_path,
-                                                           method=zero_shot_method,
-                                                           single_mutations_only=False)
+                                                              method=zero_shot_method,
+                                                              single_mutations_only=False)
             cached_results.update_and_sync(dataset_name=file_name, result=ranking_result, output_dir=output_dir)
             individual_results[file_name] = ranking_result
 
@@ -62,36 +64,9 @@ def _run_tasks(framework: AutoEvalFramework,
         completed_tasks += 1
         print(f"Finished task {current_task_name}!")
 
-    autoeval_report.add_zeroshot_result(framework_name=framework.get_name(), report=zero_shot_framework_report)
-    autoeval_report.write(output_dir=output_dir.parent)
-
-    print(f"Autoeval pipeline on framework {framework.get_name()} for {embedder_name} finished successfully!")
+    print(f"Autoeval zeroshot pipeline on framework {framework.get_name()} "
+          f"for {embedder_name} finished successfully!")
     yield AutoEvalProgress(completed_tasks=total_tasks, total_tasks=total_tasks,
                            current_task_name=current_task_name,
                            current_framework_name=framework.get_name(),
-                           final_report=autoeval_report)
-
-
-def autoeval_zeroshot_pipeline(embedder_name: str,
-                               framework: AutoEvalFramework,
-                               method: ZeroShotMethod,
-                               autoeval_report: AutoEvalReport,
-                               output_dir: Optional[Union[Path, str]] = "autoeval_output",
-                               force_download: Optional[bool] = False,
-                               custom_storage_path: Optional[Union[Path, str]] = None,
-                               custom_bioengineer: Optional[BioEngineer] = None,
-                               device=None,
-                               ):
-    # Setup
-    autoeval_tasks = setup_pipeline(data_handler=framework.get_data_handler(),
-                                    custom_storage_path=custom_storage_path,
-                                    force_download=force_download)
-    # Pipeline
-    yield from _run_tasks(framework=framework,
-                          embedder_name=embedder_name,
-                          zero_shot_method=method,
-                          autoeval_report=autoeval_report,
-                          output_dir=output_dir,
-                          autoeval_tasks=autoeval_tasks,
-                          bioengineer=custom_bioengineer,
-                          device=device)
+                           final_report=zero_shot_framework_report)

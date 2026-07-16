@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+import streamlit as st
 
-import pandas as pd
-
-try:
-    import streamlit as st
-except Exception:  # pragma: no cover - runtime import guard
-    raise
+from ..state import AutoevalSessionState
 
 
-def render_info_view():
+def render_info_view(state: AutoevalSessionState):
     st.subheader("About Autoeval")
     st.write(
         "The `autoeval` module facilitates the automatic evaluation of protein language models "

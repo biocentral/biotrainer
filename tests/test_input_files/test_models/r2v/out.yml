@@ -1,195 +1,266 @@
 config:
-  auto_resume: false
-  batch_size: 128
+  device: cpu
+  seed: 42
+  save_split_ids: false
+  sanity_check: true
+  ignore_file_inconsistencies: false
+  external_writer: tensorboard
+  output_dir: /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_value/output
   bootstrapping_iterations: 30
+  validate_input: true
+  input_file: /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_value/input.fasta
+  model_choice: CNN
+  optimizer_choice: adam
+  learning_rate: 0.001
+  dropout_rate: 0.25
+  epsilon: 0.001
+  loss_choice: mean_squared_error
+  disable_pytorch_compile: true
+  num_epochs: 200
+  batch_size: 128
+  patience: 10
+  shuffle: true
+  use_class_weights: false
+  auto_resume: false
+  limited_sample_size: -1
+  embedder_name: one_hot_encoding
+  use_half_precision: false
   cross_validation_config:
     method: hold_out
     choose_by: loss
-  device: cpu
-  disable_pytorch_compile: true
-  dropout_rate: 0.25
-  embedder_name: one_hot_encoding
-  epsilon: 0.001
-  external_writer: tensorboard
-  ignore_file_inconsistencies: false
-  input_file: /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_value/input.fasta
-  learning_rate: 0.001
-  limited_sample_size: -1
+  protocol: residue_to_value
   log_dir: 
     /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_value/output/CNN/one_hot_encoding
-  loss_choice: mean_squared_error
-  model_choice: CNN
-  num_epochs: 200
-  optimizer_choice: adam
-  output_dir: /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_value/output
-  patience: 10
-  protocol: residue_to_value
-  sanity_check: true
-  save_split_ids: false
-  seed: 42
-  shuffle: true
-  use_class_weights: false
-  use_half_precision: false
-  validate_input: true
-database_type: Protein
 derived_values:
-  biotrainer_version: 1.0.0
+  biotrainer_version: 2.0.0+beta
+  embedding_stats:
+    embedder_name: one_hot_encoding
+    dims: 21
+    n_tracked: 39
+    min: 0.0
+    max: 1.0
   embeddings_file: 
     /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_value/output/residue_to_value/one_hot_encoding/embeddings_file_one_hot_encoding.h5
-  model_hash: 435e366af29955d9
+  model_hash: a6e153d0b9dd445d
   n_classes: 1
   n_features: 21
   n_testing_ids: 1
-  pipeline_elapsed_time: 0.5263211030001003
-  pipeline_end_time: '2025-09-25T13:52:13.325902'
-  pipeline_start_time: '2025-09-25T13:52:12.799581'
-  training_elapsed_time: 0.3241864380001971
+  pipeline_elapsed_time: 0.633054705999939
+  pipeline_end_time: '2026-06-02T18:42:19.316554'
+  pipeline_start_time: '2026-06-02T18:42:18.683499'
+  training_elapsed_time: 0.5258995149999919
 training_results:
   hold_out:
     n_training_ids: 2
     n_validation_ids: 1
     split_hyper_params: {}
     n_free_parameters: 4961
-    start_time: '2025-09-25T13:52:12.964875'
-    end_time: '2025-09-25T13:52:13.287173'
-    elapsed_time: 0.32229121700038377
-    best_training_epoch_metrics:
+    start_time: '2026-06-02T18:42:18.698095'
+    end_time: '2026-06-02T18:42:19.219686'
+    elapsed_time: 0.5215824560000328
+    training_losses:
+    - 8.235576629638672
+    - 8.156451225280762
+    - 8.196824073791504
+    - 8.156243324279785
+    - 8.070172309875488
+    - 8.033284187316895
+    - 8.014756202697754
+    - 7.9912004470825195
+    - 7.964459419250488
+    - 7.950981616973877
+    - 7.908353805541992
+    - 7.791588306427002
+    - 7.780524253845215
+    - 7.785792827606201
+    - 7.778969764709473
+    - 7.681215763092041
+    - 7.674264907836914
+    - 7.582510948181152
+    - 7.561742782592773
+    - 7.600934982299805
+    - 7.502234935760498
+    - 7.484198093414307
+    - 7.426928520202637
+    - 7.420086860656738
+    - 7.495506763458252
+    - 7.365360736846924
+    - 7.357093334197998
+    - 7.239332675933838
+    - 7.156883239746094
+    - 7.149973392486572
+    - 6.972127914428711
+    - 7.057533264160156
+    - 6.986298084259033
+    - 6.908013343811035
+    - 6.927217483520508
+    - 6.904321670532227
+    - 6.867381572723389
+    - 6.9166579246521
+    - 6.615576267242432
+    validation_losses:
+    - 5.046279430389404
+    - 4.846151351928711
+    - 4.9838457107543945
+    - 4.912739276885986
+    - 4.9806647300720215
+    - 4.980396270751953
+    - 4.903074741363525
+    - 4.820661544799805
+    - 4.791538715362549
+    - 4.719290733337402
+    - 4.903171062469482
+    - 4.872300624847412
+    - 4.761145114898682
+    - 4.82460880279541
+    - 4.692201614379883
+    - 4.602173805236816
+    - 4.754931449890137
+    - 4.623859882354736
+    - 4.631072044372559
+    - 4.612245559692383
+    - 4.732701778411865
+    - 4.784875869750977
+    - 4.672332763671875
+    - 4.607680320739746
+    - 4.571524620056152
+    - 4.70927619934082
+    - 4.4511518478393555
+    - 4.363104343414307
+    - 4.585803031921387
+    - 4.4455060958862305
+    - 4.489368438720703
+    - 4.453592300415039
+    - 4.470640659332275
+    - 4.560334205627441
+    - 4.6515398025512695
+    - 4.557222366333008
+    - 4.611268043518066
+    - 4.564687252044678
+    - 4.5941853523254395
+    best_epoch_metrics:
       epoch: 27
       training:
-        loss: 7.239004135131836
-        mse: 635.6469116210938
-        rmse: 25.212039947509766
-        spearmans-corr-coeff: 0.3365868628025055
+        loss: 7.239332675933838
+        mse: 7.239332675933838
+        rmse: 2.690600872039795
+        spearmans-corr-coeff: 0.34636932611465454
       validation:
-        loss: 4.36286735534668
-        mse: 6692.32470703125
-        rmse: 81.80663299560547
-        spearmans-corr-coeff: 0.8451538681983948
-    training_loss:
-      '0': 8.235576629638672
-      '1': 8.156450271606445
-      '2': 8.196822166442871
-      '3': 8.15623950958252
-      '4': 8.070161819458008
-      '5': 8.033266067504883
-      '6': 8.014735221862793
-      '7': 7.99117374420166
-      '8': 7.964426517486572
-      '9': 7.950943470001221
-      '10': 7.908307075500488
-      '11': 7.7915167808532715
-      '12': 7.780445575714111
-      '13': 7.785711765289307
-      '14': 7.7788825035095215
-      '15': 7.681103229522705
-      '16': 7.67413854598999
-      '17': 7.582361698150635
-      '18': 7.561578273773193
-      '19': 7.600778102874756
-      '20': 7.502040386199951
-      '21': 7.4839935302734375
-      '22': 7.426702976226807
-      '23': 7.419852256774902
-      '24': 7.495290756225586
-      '25': 7.3650898933410645
-      '26': 7.356808662414551
-      '27': 7.239004135131836
-      '28': 7.156508922576904
-      '29': 7.149596214294434
-      '30': 6.9716644287109375
-      '31': 7.057095050811768
-      '32': 6.9858293533325195
-      '33': 6.90749979019165
-      '34': 6.9267096519470215
-      '35': 6.90377950668335
-      '36': 6.866816520690918
-      '37': 6.916093349456787
-      '38': 6.614891052246094
-    validation_loss:
-      '0': 5.046279430389404
-      '1': 4.846147060394287
-      '2': 4.983841896057129
-      '3': 4.912730693817139
-      '4': 4.980658054351807
-      '5': 4.98038911819458
-      '6': 4.903058052062988
-      '7': 4.820632457733154
-      '8': 4.791500568389893
-      '9': 4.719236850738525
-      '10': 4.903148651123047
-      '11': 4.8722686767578125
-      '12': 4.761092185974121
-      '13': 4.8245673179626465
-      '14': 4.69212532043457
-      '15': 4.602075576782227
-      '16': 4.754866123199463
-      '17': 4.623759746551514
-      '18': 4.630956649780273
-      '19': 4.61213493347168
-      '20': 4.732630729675293
-      '21': 4.784822463989258
-      '22': 4.672237873077393
-      '23': 4.6075544357299805
-      '24': 4.571389675140381
-      '25': 4.709205150604248
-      '26': 4.450942039489746
-      '27': 4.36286735534668
-      '28': 4.585663318634033
-      '29': 4.445333003997803
-      '30': 4.489208221435547
-      '31': 4.453405380249023
-      '32': 4.470468044281006
-      '33': 4.560215950012207
-      '34': 4.651459693908691
-      '35': 4.5571088790893555
-      '36': 4.6111955642700195
-      '37': 4.564578056335449
-      '38': 4.594081401824951
+        loss: 4.363104343414307
+        mse: 4.363104343414307
+        rmse: 2.0888044834136963
+        spearmans-corr-coeff: 0.9999959468841553
 test_results:
   test:
-    metrics:
-      loss: 102.24359893798828
-      mse: 8640.302734375
-      rmse: 92.95323181152344
-      spearmans-corr-coeff: -0.27407190203666687
-    bootstrapping:
-      results:
-        mse:
-          mean: 8640.0
-          lower: 8640.0
-          upper: 8640.0
-        rmse:
-          mean: 92.9375
-          lower: 92.9375
-          upper: 92.9375
-        spearmans-corr-coeff:
-          mean: -0.274169921875
-          lower: -0.274169921875
-          upper: -0.274169921875
+    inference_result:
+      predictions: []
+      metrics:
+        loss: 102.24462890625
+        mse: 102.24462890625
+        rmse: 10.111608505249023
+        spearmans-corr-coeff: -0.9999959468841553
+    bootstrapped_metrics:
+    - name: mse
+      mean: 102.25
+      lower: 102.25
+      upper: 102.25
       iterations: 30
       sample_size: 1
       confidence_level: 0.05
-    test_baselines:
+    - name: rmse
+      mean: 10.109375
+      lower: 10.109375
+      upper: 10.109375
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: spearmans-corr-coeff
+      mean: -1.0
+      lower: -1.0
+      upper: -1.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    baselines:
       random_model:
-        results:
-          mse:
-            mean: 8584.0
-            lower: 8584.0
-            upper: 8584.0
-          rmse:
-            mean: 92.6875
-            lower: 92.6875
-            upper: 92.6875
-          spearmans-corr-coeff:
-            mean: -0.34619140625
-            lower: -0.34619140625
-            upper: -0.34619140625
+      - name: mse
+        mean: 106.0
+        lower: 106.0
+        upper: 106.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: rmse
+        mean: 10.296875
+        lower: 10.296875
+        upper: 10.296875
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: spearmans-corr-coeff
+        mean: 1.0
+        lower: 1.0
+        upper: 1.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      random_sampling:
+      - name: mse
+        mean: 82.25
+        lower: 82.25
+        upper: 82.25
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: rmse
+        mean: 9.0703125
+        lower: 9.0703125
+        upper: 9.0703125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: spearmans-corr-coeff
+        mean: -1.0
+        lower: -1.0
+        upper: -1.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      mean_only:
+      - name: mse
+        mean: 92.375
+        lower: 92.375
+        upper: 92.375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: rmse
+        mean: 9.609375
+        lower: 9.609375
+        upper: 9.609375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: spearmans-corr-coeff
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
         iterations: 30
         sample_size: 1
         confidence_level: 0.05
     sanity_check_warnings:
-    - Model is only predicting [0.21646501123905182, 0.23254749178886414, 0.2656013071537018,
-      0.31830814480781555, 0.39252766966819763, 0.3847768008708954, 0.5155722498893738,
-      0.16153240203857422, 0.3148084282875061, 0.3414735198020935, 0.3551951050758362,
-      0.4262685775756836, 0.18534570932388306, 0.18217316269874573] for all test samples!
-predictions: {}
+    - Model is only predicting [0.2164188176393509, 0.23249731957912445, 0.2655518352985382,
+      0.31825265288352966, 0.39242950081825256, 0.3846625089645386, 0.515407383441925,
+      0.1614954173564911, 0.3147277235984802, 0.341373473405838, 0.35507673025131226,
+      0.42610788345336914, 0.1852906495332718, 0.1821138858795166] for all test samples!
+predictions:
+- seq_id: Seq5
+  prediction:
+  - 0.23289479315280914
+  - 0.16186551749706268
+  - 0.17613324522972107
+  is_aggregated: false
+  raw_prediction:
+  - 0.23289479315280914
+  - 0.16186551749706268
+  - 0.17613324522972107

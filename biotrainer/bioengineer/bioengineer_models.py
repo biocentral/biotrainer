@@ -6,8 +6,8 @@ from transformers import EsmForMaskedLM, EsmTokenizer, BertTokenizer, BertForMas
 
 from .bioengineer_interfaces import BertLikeEngineer, GPTLikeEngineer
 
-from ..embedders.huggingface.ESM2 import _esm2_family_dict
-from ..embedders.interfaces import preprocess_sequences_with_whitespaces, preprocess_sequences_without_whitespaces
+from ..embedding.huggingface.ESM2 import _esm2_family_dict
+from ..embedding.interfaces import preprocess_sequences_with_whitespaces, preprocess_sequences_without_whitespaces
 
 
 class ESM2Engineer(BertLikeEngineer):

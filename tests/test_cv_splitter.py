@@ -1,6 +1,6 @@
 import unittest
 
-from biotrainer.trainers.cv_splitter import CrossValidationSplitter
+from biotrainer.training.trainers.cv_splitter import CrossValidationSplitter
 
 
 class CrossValidationSplitterTests(unittest.TestCase):

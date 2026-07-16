@@ -2,8 +2,8 @@
 
 from copy import deepcopy
 from itertools import product
-from biotrainer.protocols import Protocol
-from biotrainer.models import get_available_models_dict, get_available_models_set
+from biotrainer_core.data_classes import Protocol
+from biotrainer.training.models import get_available_models_dict, get_available_models_set
 
 protocols = set([protocol.name for protocol in Protocol.all()])
 models = get_available_models_set()

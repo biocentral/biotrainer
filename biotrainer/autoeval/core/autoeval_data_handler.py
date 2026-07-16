@@ -9,10 +9,8 @@ from pathlib import Path
 from appdirs import user_cache_dir
 from abc import ABC, abstractmethod
 from typing import List, Optional, Union
-
-from .autoeval_task import AutoEvalTask
-
-from ...input_files import filter_FASTA
+from biotrainer_core.input_files import filter_FASTA
+from biotrainer_core.data_classes.autoeval import AutoEvalTask
 
 
 class AutoEvalDataHandler(ABC):
@@ -105,9 +103,9 @@ class AutoEvalDataHandler(ABC):
     def get_framework_name():
         raise NotImplementedError
 
-    @staticmethod
-    def clear_autoeval_cache():
-        shutil.rmtree(Path(user_cache_dir('biotrainer')) / "autoeval", ignore_errors=True)
+    def clear_autoeval_cache(self):
+        framework_path = self.get_framework_base_path()  # custom_storage_path is excluded for force download / clearing
+        shutil.rmtree(framework_path, ignore_errors=True)
 
     def get_framework_base_path(self, custom_storage_path: Optional[Union[str, Path]] = None) -> Path:
         if custom_storage_path:
@@ -147,7 +145,8 @@ class AutoEvalDataHandler(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> List[AutoEvalTask]:
+    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int],
+                  development_mode: bool) -> List[AutoEvalTask]:
         """
         Get tasks to execute in the autoeval pipeline via biotrainer.
 

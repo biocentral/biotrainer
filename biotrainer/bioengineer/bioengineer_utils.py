@@ -2,9 +2,8 @@ import math
 import torch
 import numpy as np
 
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
-from ..utilities import STANDARD_AAS
 # ============================================================================
 # Scoring Window Calculation and Constants (from ProteinGym) - WT-Marginals
 # Adapted from ProteinGym Source: https://github.com/OATML-Markslab/ProteinGym/blob/37ea726885452197125f841a33320341d665bc3f/proteingym/baselines/esm/compute_fitness.py#L433
