@@ -6,6 +6,8 @@ from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress
 
 from biotrainer_core.input_files import read_FASTA, load_contact_map
 
+from .autoeval_pipeline_utils import subsample_seq_records_for_contact_development_mode
+
 from ..core import AutoEvalFramework
 
 from ...bioengineer import BioEngineer
@@ -18,6 +20,7 @@ def autoeval_zeroshot_contact_pipeline(framework: AutoEvalFramework,
                                        output_dir: Path,
                                        autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
                                        bioengineer: Optional[BioEngineer],
+                                       development_mode: bool,
                                        device=None,
                                        ):
     assert bioengineer is not None, f"BioEngineer could not be initialized for embedder {embedder_name}!"
@@ -27,8 +30,9 @@ def autoeval_zeroshot_contact_pipeline(framework: AutoEvalFramework,
                                                                                     method=zero_shot_method,
                                                                                     output_dir=output_dir)
     # Execute bioengineer
-    zero_shot_contact_framework_report = ContactFrameworkReport.empty(method=zero_shot_method)
-    autoeval_tasks = [task for task, _ in autoeval_tasks]  # Ignore config for supervised contact
+    zero_shot_contact_framework_report = ContactFrameworkReport.empty(method=zero_shot_method,
+                                                                      development_mode=development_mode)
+    autoeval_tasks = [task for task, _ in autoeval_tasks]  # Ignore config for zeroshot contact
     task_names = [task.combined_name() for task in autoeval_tasks]
     print(f"The following tasks will be executed in order: {task_names} (total {len(task_names)})")
     completed_tasks = 0
@@ -53,6 +57,9 @@ def autoeval_zeroshot_contact_pipeline(framework: AutoEvalFramework,
         seq_records = read_FASTA(fasta_file_path)
         if len(seq_records) == 0:
             raise ValueError(f"Fasta file {fasta_file_path} is empty!")
+
+        if development_mode:
+            seq_records = subsample_seq_records_for_contact_development_mode(seq_records)
 
         # Check for cached results
         cached_results: Dict[str, ContactSingleProteinResult] = {}

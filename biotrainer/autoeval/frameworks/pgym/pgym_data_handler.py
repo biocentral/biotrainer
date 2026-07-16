@@ -1,4 +1,5 @@
 import os
+import random
 import pandas as pd
 
 from pathlib import Path
@@ -10,6 +11,7 @@ from ...core import AutoEvalDataHandler
 
 class PGYMDataHandler(AutoEvalDataHandler):
     """Handles PGYM dataset related operations"""
+    DEVELOPMENT_MODE_SUBSAMPLE_RATIO = 0.4
 
     @staticmethod
     def get_framework_name() -> str:
@@ -38,8 +40,13 @@ class PGYMDataHandler(AutoEvalDataHandler):
     def preprocess(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> None:
         print("PGYM data preprocessing completed (nothing to do)!")
 
-    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> List[
-        AutoEvalTask]:
+    def _subsample_for_development_mode(self, file_paths: List[Path]) -> List[Path]:
+        rng = random.Random(12)
+        file_paths_sample = rng.sample(file_paths, int(len(file_paths) * self.DEVELOPMENT_MODE_SUBSAMPLE_RATIO))
+        return file_paths_sample
+
+    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int],
+                  development_mode: bool) -> List[AutoEvalTask]:
         """Build tasks for all PGYM datasets"""
         substitutions_path = base_path / "DMS_ProteinGym_substitutions"
         reference_df = pd.read_csv(self.get_reference_file_path(base_path))
@@ -49,6 +56,10 @@ class PGYMDataHandler(AutoEvalDataHandler):
         non_virus_taxon_files = [substitutions_path / file for file, taxon in file2taxon.items()
                                  if taxon.lower() != "virus"]
         assert len(virus_taxon_files) + len(non_virus_taxon_files) == len(file2taxon)
+
+        if development_mode:
+            virus_taxon_files = self._subsample_for_development_mode(virus_taxon_files)
+            non_virus_taxon_files = self._subsample_for_development_mode(non_virus_taxon_files)
 
         for dataset in self._get_all_files(base_path):
             dataset_dir = base_path / dataset

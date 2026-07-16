@@ -56,9 +56,10 @@ class ZeroShotContactDataHandler(ContactDataHandler):
     def get_framework_name() -> str:
         return "PBC_ZEROSHOT_CONTACT"
 
-    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> List[
-        AutoEvalTask]:
+    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int],
+                  development_mode: bool) -> List[AutoEvalTask]:
         """Build tasks for all contact datasets"""
+        # Development mode is handled in the pipeline itself
         base_path = self._get_zero_shot_base_path(base_path)
         if not base_path.is_dir():
             raise FileNotFoundError(f"Missing zeroshot contact datasets at {base_path}")
@@ -77,9 +78,10 @@ class SupervisedContactDataHandler(ContactDataHandler):
     def get_framework_name() -> str:
         return "PBC_SUPERVISED_CONTACT"
 
-    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> List[
-        AutoEvalTask]:
+    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int],
+                  development_mode: bool) -> List[AutoEvalTask]:
         """Build tasks for all contact datasets"""
+        # Development mode is handled in the pipeline itself
         base_path = self._get_supervised_base_path(base_path)
         if not base_path.is_dir():
             raise FileNotFoundError(f"Missing supervised contact datasets at {base_path}")

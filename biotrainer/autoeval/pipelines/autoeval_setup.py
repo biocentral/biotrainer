@@ -61,7 +61,8 @@ def get_unique_framework_sequences(framework: Union[str, AvailableFramework, Aut
                                    min_seq_length: int,
                                    max_seq_length: int,
                                    custom_storage_path: Optional[Union[Path, str]] = None,
-                                   force_download: Optional[bool] = False
+                                   force_download: Optional[bool] = False,
+                                   development_mode: bool = True,
                                    ) -> Tuple[
     List[Tuple[AutoEvalTask, Dict[str, Any]]], Dict[str, SequenceData],
     Dict[str, SequenceData]]:
@@ -78,7 +79,8 @@ def get_unique_framework_sequences(framework: Union[str, AvailableFramework, Aut
                                      min_seq_length=min_seq_length,
                                      max_seq_length=max_seq_length,
                                      custom_storage_path=custom_storage_path,
-                                     force_download=force_download)
+                                     force_download=force_download,
+                                     development_mode=development_mode,)
     task_config_tuples = []
     for task in auto_eval_tasks:
         config = config_bank.get_task_config(task=task)
@@ -113,6 +115,7 @@ def setup_pipeline(data_handler: AutoEvalDataHandler,
                    max_seq_length: Optional[int] = None,
                    custom_storage_path: Optional[Union[Path, str]] = None,
                    force_download: Optional[bool] = False,
+                   development_mode: bool = True,
                    ) -> List[AutoEvalTask]:
     framework_base_path = data_handler.get_framework_base_path(
         custom_storage_path=custom_storage_path)
@@ -130,6 +133,7 @@ def setup_pipeline(data_handler: AutoEvalDataHandler,
                             max_seq_length=max_seq_length)
     auto_eval_tasks = data_handler.get_tasks(base_path=framework_base_path,
                                              min_seq_length=min_seq_length,
-                                             max_seq_length=max_seq_length)
+                                             max_seq_length=max_seq_length,
+                                             development_mode=development_mode)
 
     return auto_eval_tasks

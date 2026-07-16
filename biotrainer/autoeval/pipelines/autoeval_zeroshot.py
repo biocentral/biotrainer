@@ -11,12 +11,13 @@ from ...bioengineer import BioEngineer
 
 
 def autoeval_zeroshot_pipeline(framework: AutoEvalFramework,
-               embedder_name: str,
-               zero_shot_method: ZeroShotMethod,
-               output_dir: Path,
-               autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
-               bioengineer: Optional[BioEngineer] = None,
-               device=None):
+                               embedder_name: str,
+                               zero_shot_method: ZeroShotMethod,
+                               output_dir: Path,
+                               autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
+                               bioengineer: Optional[BioEngineer] = None,
+                               development_mode: bool = True,
+                               device=None):
     if not bioengineer:
         bioengineer = BioEngineer.from_name(name=embedder_name, device=get_device(device))
 
@@ -25,7 +26,8 @@ def autoeval_zeroshot_pipeline(framework: AutoEvalFramework,
                                                            method=zero_shot_method,
                                                            output_dir=output_dir)
     # Execute bioengineer
-    zero_shot_framework_report = ZeroShotFrameworkReport.empty(method=zero_shot_method)
+    zero_shot_framework_report = ZeroShotFrameworkReport.empty(method=zero_shot_method,
+                                                               development_mode=development_mode)
     autoeval_tasks = [task for task, _ in autoeval_tasks]  # Ignore config for zero shot
     task_names = [task.combined_name() for task in autoeval_tasks]
     print(f"The following tasks will be executed in order: {task_names} (total {len(task_names)})")
@@ -68,4 +70,3 @@ def autoeval_zeroshot_pipeline(framework: AutoEvalFramework,
                            current_task_name=current_task_name,
                            current_framework_name=framework.get_name(),
                            final_report=zero_shot_framework_report)
-

@@ -50,7 +50,8 @@ class PBCDataHandler(AutoEvalDataHandler):
 
         print("PBC data preprocessing completed!")
 
-    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> List[AutoEvalTask]:
+    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int],
+                  development_mode: bool) -> List[AutoEvalTask]:
         """Build tasks for all PBC datasets"""
         tasks = []
 

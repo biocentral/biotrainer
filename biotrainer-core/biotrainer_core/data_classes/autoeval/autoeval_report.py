@@ -63,6 +63,10 @@ class FrameworkReport(ABC, BaseModel):
         """ Convert to pandas dataframe. Optional framework parameter can be used to filter by framework."""
         raise NotImplementedError
 
+    def used_development_mode(self) -> bool:
+        """ Whether development mode was used in the autoeval pipeline"""
+        return False
+
 
 class SupervisedFrameworkReport(FrameworkReport):
     min_seq_len: Optional[int] = Field(default=None, description="Minimum sequence length used during evaluation")
@@ -219,6 +223,8 @@ class ZeroShotFrameworkReport(FrameworkReport):
                                                                      "(combined_task_name -> RankingResult)")
     individual_results: Dict[str, RankingResult] = Field(description="Individual autoeval task results "
                                                                      "(dataset_name -> RankingResult)")
+    development_mode: bool = Field(default=True, description="Whether development mode "
+                                                             "was used in the autoeval pipeline")
 
     @model_validator(mode='after')
     def check_method(self):
@@ -227,8 +233,8 @@ class ZeroShotFrameworkReport(FrameworkReport):
         return self
 
     @classmethod
-    def empty(cls, method: ZeroShotMethod) -> ZeroShotFrameworkReport:
-        return cls(method=method, aggregated_results={}, individual_results={})
+    def empty(cls, method: ZeroShotMethod, development_mode: bool = True) -> ZeroShotFrameworkReport:
+        return cls(method=method, aggregated_results={}, individual_results={}, development_mode=development_mode)
 
     def aggregate(self, task_name: str, individual_results: Dict[str, RankingResult]):
         self.individual_results.update(individual_results)
@@ -272,6 +278,9 @@ class ZeroShotFrameworkReport(FrameworkReport):
 
     def get_task_names(self) -> List[str]:
         return list(self.aggregated_results.keys())
+
+    def used_development_mode(self) -> bool:
+        return self.development_mode
 
 
 class ZeroShotCachedResults(BaseModel):
@@ -327,6 +336,8 @@ class ContactFrameworkReport(FrameworkReport):
                                              description="Contact method used. "
                                                          "Only applicable for zero-shot contact prediction")
     task_results: Dict[str, ContactDatasetResult] = Field(description="Results per tasks, i.e. per dataset")
+    development_mode: bool = Field(default=True, description="Whether development mode "
+                                                             "was used in the autoeval pipeline")
 
     @model_validator(mode='after')
     def check_method(self):
@@ -337,8 +348,8 @@ class ContactFrameworkReport(FrameworkReport):
         return self
 
     @classmethod
-    def empty(cls, method: Optional[ZeroShotMethod] = None) -> ContactFrameworkReport:
-        return cls(method=method, task_results={})
+    def empty(cls, method: Optional[ZeroShotMethod] = None, development_mode: bool = True) -> ContactFrameworkReport:
+        return cls(method=method, task_results={}, development_mode=development_mode)
 
     def update_result(self, task_name: str, dataset_result: ContactDatasetResult):
         self.task_results[task_name] = dataset_result
@@ -383,6 +394,8 @@ class ContactFrameworkReport(FrameworkReport):
     def get_task_names(self) -> List[str]:
         return list(self.task_results.keys())
 
+    def used_development_mode(self) -> bool:
+        return self.development_mode
 
 class ZeroShotContactCachedResults(BaseModel):
     """ Utility class for storing cached results for zero-shot contact evaluation """

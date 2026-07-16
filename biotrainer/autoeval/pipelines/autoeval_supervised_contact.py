@@ -18,6 +18,8 @@ from biotrainer_core.data_classes.autoeval import AutoEvalTask, AutoEvalProgress
 
 from biotrainer_core.input_files import load_contact_map, read_FASTA
 
+from .autoeval_pipeline_utils import subsample_seq_records_for_contact_development_mode
+
 from ..core import AutoEvalFramework
 
 from ...shared import get_device
@@ -111,7 +113,8 @@ def _generate_per_protein_dataset_input(seq_data: List[SequenceData],
     return protein_inputs
 
 
-def _load_data_and_generate_attention_maps(dataset_map: dict, embedding_service) -> _InputDataset:
+def _load_data_and_generate_attention_maps(dataset_map: dict, embedding_service,
+                                           development_mode: bool) -> _InputDataset:
     # Train
     dataset_dir_path = dataset_map["train"]
     fasta_file_path = dataset_dir_path / "extracted_sequences.fasta"
@@ -134,6 +137,9 @@ def _load_data_and_generate_attention_maps(dataset_map: dict, embedding_service)
         test_name = test_path.stem
         test_fasta_file_path = test_path / "extracted_sequences.fasta"
         test_seqs = read_FASTA(test_fasta_file_path)
+        if development_mode:
+            test_seqs = subsample_seq_records_for_contact_development_mode(test_seqs)
+
         contacts_dir_path = test_path / "contacts"
         # Lazy compute attention maps later
         test_datasets[test_name] = _generate_per_protein_dataset_input(test_seqs, contacts_dir_path,
@@ -207,6 +213,7 @@ def autoeval_supervised_contact_pipeline(framework: AutoEvalFramework,
                                          embedder_name: str,
                                          output_dir: Path,
                                          autoeval_tasks: List[Tuple[AutoEvalTask, Dict[str, Any]]],
+                                         development_mode: bool,
                                          device=None):
     embedding_service = get_embedding_service(embedder_name=embedder_name, device=get_device(device),
                                               custom_tokenizer_config=None)
@@ -214,7 +221,7 @@ def autoeval_supervised_contact_pipeline(framework: AutoEvalFramework,
         raise ValueError(f"Only HuggingfaceTransformers are supported for supervised contact tasks, "
                          f"but got {embedding_service._embedder}!")
 
-    supervised_contact_framework_report = ContactFrameworkReport.empty()
+    supervised_contact_framework_report = ContactFrameworkReport.empty(development_mode=development_mode)
     autoeval_tasks = [task for task, _ in autoeval_tasks]  # Ignore config for supervised contact
     task_names = [task.combined_name() for task in autoeval_tasks]
     print(f"The following tasks will be executed in order: {task_names} (total {len(task_names)})")
@@ -249,7 +256,8 @@ def autoeval_supervised_contact_pipeline(framework: AutoEvalFramework,
 
         # (2) Data Collection
         input_dataset = _load_data_and_generate_attention_maps(dataset_map=dataset_map,
-                                                               embedding_service=embedding_service)
+                                                               embedding_service=embedding_service,
+                                                               development_mode=development_mode)
 
         # (3) Training
         print(f"{current_task_name}: Training classifiers..")
