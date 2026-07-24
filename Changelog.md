@@ -2,10 +2,20 @@
 
 ## Version 2.0.0
 
-### Breaking
-
-* embedding_service.generate_embeddings now yields sequence_data unified with the embedding
-* Removed custom_pipeline parameter from AutoEval
+- **Version Update**: Upgraded to version 2.0.0 for Biotrainer and Python versions to 3.12/3.13.
+- **Bug Fixes**: Addressed various issues related to contact datasets, bootstrapping, dataset caching, memory handling,
+  and embedding functionality.
+- **New Features**:
+    - ESMC model integration.
+    - Major Autoeval Rework: Improved API, added new tasks to PBC-Supervised, added Contact Frameworks (thanks to Aleena
+      Siji!).
+    - Enhanced autoeval dashboard reports with improved delta plots (thanks to Peyman Vahidi!), embedding stats, and
+      improved contact visualizations.
+- **Refactors**: Significant re-organization and optimization of core components and pipeline structure, including the
+  adoption of a separate `biotrainer-core` module. The core module is designed to be used outside of biotrainer as well
+  for fast interaction with protein data.
+- **Dependencies**: Updated dependencies and removed obsolete or redundant components for improved maintainability and
+  efficiency.
 
 ## 31.03.2026 - Version 1.4.0
 
