@@ -1,11 +1,11 @@
 [project]
 name = "biotrainer-core"
-version = "0.1.0"
+version = "2.0.0"
 description = "Core data classes and I/O utilities for biotrainer."
 authors = [
     { name = "Sebastian Franz", email = "sebastian.franz@tum.de" },
 ]
-license = { text = "AFL v3.0" }
+license = { text = "MIT" }
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "pandas>=2.3.3",
@@ -22,3 +22,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["biotrainer_core"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "biotrainer_core/",
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+]
