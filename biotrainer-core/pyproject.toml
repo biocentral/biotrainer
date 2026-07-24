@@ -6,6 +6,7 @@ authors = [
     { name = "Sebastian Franz", email = "sebastian.franz@tum.de" },
 ]
 license = { text = "MIT" }
+readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "pandas>=2.3.3",
