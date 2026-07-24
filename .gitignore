@@ -41,6 +41,8 @@ junit.xml
 coverage.xml
 
 # Build and docs folder/files
+biotrainer-core/build/*
+biotrainer-core/dist/*
 build/*
 dist/*
 sdist/*
