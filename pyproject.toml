@@ -88,6 +88,15 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["biotrainer"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "biotrainer/",
+    "pyproject.toml",
+    "README.md",
+    "Changelog.md",
+    "LICENSE",
+]
+
 [tool.hatch.envs.default]
 dependencies = [
     "pytest>=8.3.4",
