@@ -1,9 +1,9 @@
 import torch
 
 from abc import ABC, abstractmethod
+from biotrainer_core.data_classes import ZeroShotMethod
 from typing import List, Optional, Dict, Iterable, Tuple
 
-from .bioengineer_data_classes import ZeroShotMethod
 from .bioengineer_interfaces import BertLikeEngineer, GPTLikeEngineer
 
 
@@ -52,6 +52,30 @@ class CustomBioEngineerModel(ABC):
         """ Return a dictionary mapping amino acids to their indices """
         raise NotImplementedError
 
+    def run_model_batched(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+        """
+        Run the model on a batch of sequences.
+
+        The default implementation loops over each sequence in the batch and calls run_model, 
+        then stacks the results. This is for backward compatibility with older versions of bioengineer.
+        Override this method for a more efficient native batched forward pass.
+
+        Args:
+            input_ids: Token IDs of shape [batch_size, seq_len]
+            attention_mask: Optional mask of shape [batch_size, seq_len]
+
+        Returns:
+            torch.Tensor of shape [batch_size, seq_len, vocab_size]
+        """
+        batch_size = input_ids.size(0)
+        results = []
+        for i in range(batch_size):
+            single_ids = input_ids[i].unsqueeze(0)  # [1, seq_len]
+            single_mask = attention_mask[i].unsqueeze(0) if attention_mask is not None else None
+            logits = self.run_model(single_ids, single_mask)  # [seq_len, vocab_size]
+            results.append(logits)
+        return torch.stack(results, dim=0)  # [batch_size, seq_len, vocab_size]
+
 
 class CustomBioEngineerModelWrapper(BertLikeEngineer, GPTLikeEngineer):
 
@@ -65,6 +89,11 @@ class CustomBioEngineerModelWrapper(BertLikeEngineer, GPTLikeEngineer):
 
     def _model_forward_fn(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         return self._custom_bioengineer.run_model(input_ids, attention_mask)
+
+    def _model_batched_forward_fn(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+        return self._custom_bioengineer.run_model_batched(input_ids, attention_mask)
+        # NOTE: for backward compatibility, run_model expected to return single sequence results; for batched results, run_model_batched to be used or re-implemented!
+        # TODO: cleanest fix for future is to have only run_model & _model_forward_fn, both handling batches by default, and a wrapper on top to extract logit/loss for index [0] as required!
 
     def _strip_special_tokens(self, tensor: torch.Tensor) -> torch.Tensor:
         return self._custom_bioengineer.strip_special_tokens(tensor)

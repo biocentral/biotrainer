@@ -1,21 +1,40 @@
 from enum import Enum
 from typing import Optional, Union
 
-from .pbc import PBCFramework
-from .flip import FLIPFramework
-from .pgym import PGYMFramework
 from .core import AutoEvalFramework
+from .frameworks import PBCSupervisedFramework, FLIPFramework, PGYMFramework, PBCZeroShotContactFramework, \
+    PBCSupervisedContactFramework
 
 
 class AvailableFramework(Enum):
     FLIP = "FLIP"
-    PBC = "PBC"
+    PBC_SUPERVISED = "PBC_SUPERVISED"
     PGYM = "PGYM"
+    PBC_ZEROSHOT_CONTACT = "PBC_ZEROSHOT_CONTACT"
+    PBC_SUPERVISED_CONTACT = "PBC_SUPERVISED_CONTACT"
+
+    @staticmethod
+    def all():
+        return [AvailableFramework.PBC_SUPERVISED,
+                AvailableFramework.PGYM,
+                AvailableFramework.PBC_ZEROSHOT_CONTACT,
+                AvailableFramework.PBC_SUPERVISED_CONTACT,
+                AvailableFramework.FLIP]
+
+    @staticmethod
+    def dashboard_frameworks():
+        return [AvailableFramework.PBC_SUPERVISED,
+                AvailableFramework.PGYM,
+                AvailableFramework.PBC_ZEROSHOT_CONTACT,
+                AvailableFramework.PBC_SUPERVISED_CONTACT,
+                ]
 
 
 available_frameworks = {AvailableFramework.FLIP: FLIPFramework(),
-                        AvailableFramework.PBC: PBCFramework(),
-                        AvailableFramework.PGYM: PGYMFramework()
+                        AvailableFramework.PBC_SUPERVISED: PBCSupervisedFramework(),
+                        AvailableFramework.PGYM: PGYMFramework(),
+                        AvailableFramework.PBC_ZEROSHOT_CONTACT: PBCZeroShotContactFramework(),
+                        AvailableFramework.PBC_SUPERVISED_CONTACT: PBCSupervisedContactFramework(),
                         }
 
 

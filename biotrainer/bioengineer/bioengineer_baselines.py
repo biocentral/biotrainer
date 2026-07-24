@@ -3,11 +3,10 @@ import numpy as np
 
 from enum import Enum
 from typing import List, Dict, Optional
+from biotrainer_core.data_classes import ZeroShotMethod
+from biotrainer_core.utils.constants import STANDARD_AAS
 
-from .bioengineer_data_classes import ZeroShotMethod
 from .bioengineer_interfaces import BioEngineerModelWrapper
-
-from ..utilities import STANDARD_AAS
 
 
 class BioEngineerBaseline(Enum):
@@ -34,6 +33,9 @@ class ConstantEngineerBaseline(BioEngineerModelWrapper):
     def _model_forward_fn(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         raise NotImplementedError  # Not necessary for baseline
 
+    def _model_batched_forward_fn(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+        raise NotImplementedError  # Not necessary for baseline
+
     def _get_log_probabilities(self, sequence: str) -> torch.Tensor:
         return torch.full((len(sequence), 20), fill_value=self._log_prob, device=torch.device("cpu"))
 
@@ -49,6 +51,9 @@ class ConstantEngineerBaseline(BioEngineerModelWrapper):
 
     def _compute_perplexity(self, sequence: str) -> float:
         return self._compute_pseudoperplexity(sequence)  # No difference here
+
+    def _compute_categorical_jacobian(self, sequence: str, batch_size: int = 32) -> torch.Tensor:
+        raise NotImplementedError("Categorical Jacobian is not defined for constant baseline")
 
 
 class RandomEngineerBaseline(BioEngineerModelWrapper):
@@ -78,9 +83,12 @@ class RandomEngineerBaseline(BioEngineerModelWrapper):
 
     def supported_methods(self) -> List[ZeroShotMethod]:
         return [ZeroShotMethod.WT_MARGINALS, ZeroShotMethod.MASKED_MARGINALS,
-                ZeroShotMethod.PSEUDOPERPLEXITY, ZeroShotMethod.PERPLEXITY]
+                ZeroShotMethod.PSEUDOPERPLEXITY, ZeroShotMethod.PERPLEXITY, ZeroShotMethod.JACOBIAN_CONTACT]
 
     def _model_forward_fn(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+        raise NotImplementedError  # Not necessary for baseline
+
+    def _model_batched_forward_fn(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         raise NotImplementedError  # Not necessary for baseline
 
     def _get_log_probabilities(self, sequence: str) -> torch.Tensor:
@@ -126,3 +134,23 @@ class RandomEngineerBaseline(BioEngineerModelWrapper):
 
     def _compute_perplexity(self, sequence: str) -> float:
         return self._compute_pseudoperplexity(sequence)  # No difference here
+
+    def _compute_categorical_jacobian(self, sequence: str, batch_size: int = 32) -> torch.Tensor:
+        """
+        Return random Jacobian sampled from N(0, 1).
+
+        Note: We seed based on the sequence to ensure determinism.
+        """
+        seq_seed = hash(sequence) % (2 ** 32)
+        local_rng = np.random.RandomState(self._seed ^ seq_seed)
+
+        L = len(sequence)
+        # only ranking matters for P@L evals, so scale ignored
+        # TODO: review if standard normal distribution is appropriate
+        jac = local_rng.standard_normal(size=(L, 20, L, 20)).astype(np.float32)
+        return torch.from_numpy(jac)
+
+
+class LocalContactBaseline(BioEngineerModelWrapper):
+    # TODO: baseline for contact prediction based on local context; add to available_basleines in bioengineer.py
+    pass

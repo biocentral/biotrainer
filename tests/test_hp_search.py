@@ -2,7 +2,7 @@ import unittest
 
 from functools import reduce
 from itertools import combinations
-from biotrainer.trainers import hp_manager
+from biotrainer.training.trainers import hp_manager
 
 
 class HyperParameterSearchTests(unittest.TestCase):

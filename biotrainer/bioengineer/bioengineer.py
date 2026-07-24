@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import torch
+import numpy as np
 import pandas as pd
 
 from pathlib import Path
 from typing import List, Optional, Dict, Union, Tuple
+from biotrainer_core.data_classes import Variant, VariantScore, RankingResult, ZeroShotMethod
 
 from .bioengineer_interfaces import BioEngineerModelWrapper
 from .bioengineer_models import ESM2Engineer, ProtBertEngineer, ProtGPT2Engineer
 from .bioengineer_custom_model import CustomBioEngineerModel, CustomBioEngineerModelWrapper
 from .bioengineer_baselines import BioEngineerBaseline, ConstantEngineerBaseline, RandomEngineerBaseline
-from .bioengineer_data_classes import VariantScore, ZeroShotMethod, Variant, RankingResult
 
-from ..utilities import get_device
-from ..inference import Inferencer
-from ..solvers.metrics_calculator import SequenceRegressionMetricsCalculator
+from ..shared import get_device, Bootstrapper
+from ..shared.metrics.metrics_calculator import SequenceRegressionMetricsCalculator
 
 
 class BioEngineer:
@@ -221,19 +221,41 @@ class BioEngineer:
                 raise ValueError(f"Variant {variant} not found in actual scores!")
 
         # Convert dictionaries to tensors
-        common_variants = set(variant_dict.keys()) & set(actual_scores.keys())
-
         v_d = {m: torch.tensor(v) for m, v in variant_dict.items()}
         a_s = {m: torch.tensor(v) for m, v in actual_scores.items()}
 
-        bt_res = Inferencer._do_bootstrapping(iterations=30, sample_size=len(common_variants), confidence_level=0.05,
-                                              seq_ids=list(common_variants), all_predictions_dict=v_d,
-                                              all_targets_dict=a_s,
-                                              metrics_calculator=SequenceRegressionMetricsCalculator(device="cpu",
-                                                                                                     n_classes=1)
-                                              )
+        # Using a dictionary here to avoid python hash indeterminism
+        common_variants = list({k: None for k in (list(v_d.keys()) + list(a_s.keys()))}.keys())
+
+        iterations = 100  # Small N because of large amount of variants for most assays
+        bt_res = Bootstrapper._do_bootstrapping(iterations=iterations,
+                                                sample_size=len(common_variants),
+                                                confidence_level=0.05,
+                                                seq_ids=common_variants,
+                                                all_predictions_dict=v_d,
+                                                all_targets_dict=a_s,
+                                                metrics_calculator=SequenceRegressionMetricsCalculator(device="cpu",
+                                                                                                       n_classes=1)
+                                                )
         scc = [res for res in bt_res if res.name == "spearmans-corr-coeff"][0]
         ndcg = [res for res in bt_res if res.name == "ndcg"][0]
         assert scc is not None and ndcg is not None, "Bootstrapping failed!"
 
         return RankingResult(scc=scc, ndcg=ndcg)
+
+    # ============================================================================
+    # Zero-shot contact task entry point
+    # ============================================================================
+
+    def zero_shot_contact_map(self, method: ZeroShotMethod, sequence: str, batch_size: int = 32) -> np.ndarray:
+        """
+        Derive contact map (currently only supported: from categorical Jacobian).
+
+        Returns:
+            np.ndarray: [L, L] (L = sequence length)
+        """
+        if method not in self.model_wrapper.supported_methods():
+            raise ValueError(f"Method {method} not supported by this model!")
+        if method != ZeroShotMethod.JACOBIAN_CONTACT:
+            raise ValueError(f"Method {method} not supported for contact map computation!")
+        return self.model_wrapper.zero_shot_contact_map_jacobian(sequence, batch_size)

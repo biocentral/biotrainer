@@ -5,8 +5,9 @@ from ruamel import yaml
 from pathlib import Path
 from typing import Any, Dict
 
-from biotrainer.utilities.cli import train
-from biotrainer.config import ConfigurationException
+from biotrainer.training import BiotrainerModel
+from biotrainer.training.config import ConfigurationException
+from biotrainer_core.data_classes import SequenceData
 
 protocol_to_input = {
     'residue_to_class': {'input_file': "test_input_files/r2c/input.fasta",
@@ -30,8 +31,13 @@ protocol_to_input = {
     'sequence_to_class-interactionconcat': {'input_file': "test_input_files/ppi/interactions.fasta",
                                             'interaction': "concat"},
     'sequence_to_value': {'input_file': "test_input_files/s2v/sequences.fasta", },
-
 }
+
+predict_input = [
+    SequenceData(seq_id="Test1", seq="MMAAAG"),
+    SequenceData(seq_id="Test2", seq="MMAAGX"),
+    SequenceData(seq_id="Test3", seq="M")
+]
 
 
 def setup_config(protocol: str, model_choice: str, embedder_name: str, tmp_config_dir: str) -> Dict[str, Any]:
@@ -54,15 +60,23 @@ def setup_config(protocol: str, model_choice: str, embedder_name: str, tmp_confi
 def test_protocol_config(protocol: str, model: str, embedder_name: str, should_fail: bool):
     print("TESTING CONFIG: " + protocol + " - " + model +
           " - " + embedder_name + " - Passed when failed: " + str(should_fail))
-    with tempfile.TemporaryDirectory() as tmp_dir_name:
+    with (tempfile.TemporaryDirectory() as tmp_dir_name):
         config = setup_config(protocol=protocol,
                               model_choice=model,
                               embedder_name=embedder_name,
                               tmp_config_dir=tmp_dir_name)
         try:
-            result = train(config=config)
-            assert "test_results" in result, "Result does not contain test set metrics!"
-            assert os.path.exists(f"{tmp_dir_name}/out.yml"), "No output file generated, run failed!"
+            biotrainer_model = BiotrainerModel()
+            training_result = biotrainer_model.train(config=config)
+            assert len(training_result.test_results) > 0, "Result does not contain test set metrics!"
+            assert os.path.exists(f"{training_result.config['log_dir']}/out.yml"), "No output file generated, run failed!"
+            inference_result = biotrainer_model.predict(model_input=predict_input,
+                                                        save_embeddings=False,
+                                                        scale_embeddings=True
+                                                        )
+            assert len(inference_result.predictions) == len(predict_input), "Prediction length does not match input length!"
+        except NotImplementedError as e:
+            assert "GP" in str(e), f"GP failed for another reason but inference not implemented yet: {e}!"
         except ConfigurationException:
             assert should_fail, "A ConfigurationException was thrown although it shouldn't have."
         except Exception:

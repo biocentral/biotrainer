@@ -1,39 +1,38 @@
 config:
-  auto_resume: false
-  batch_size: 128
+  device: cpu
+  seed: 42
+  save_split_ids: false
+  sanity_check: true
+  ignore_file_inconsistencies: false
+  external_writer: tensorboard
+  output_dir: /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_class/output
   bootstrapping_iterations: 30
+  validate_input: true
+  input_file: /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_class/input.fasta
+  model_choice: CNN
+  optimizer_choice: adam
+  learning_rate: 0.001
+  dropout_rate: 0.25
+  epsilon: 0.001
+  loss_choice: cross_entropy_loss
+  disable_pytorch_compile: true
+  num_epochs: 200
+  batch_size: 128
+  patience: 10
+  shuffle: true
+  use_class_weights: true
+  auto_resume: false
+  limited_sample_size: -1
+  embedder_name: one_hot_encoding
+  use_half_precision: false
   cross_validation_config:
     method: hold_out
     choose_by: loss
-  device: cpu
-  disable_pytorch_compile: true
-  dropout_rate: 0.25
-  embedder_name: one_hot_encoding
-  epsilon: 0.001
-  external_writer: tensorboard
-  ignore_file_inconsistencies: false
-  input_file: /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_class/input.fasta
-  learning_rate: 0.001
-  limited_sample_size: -1
+  protocol: residue_to_class
   log_dir: 
     /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_class/output/CNN/one_hot_encoding
-  loss_choice: cross_entropy_loss
-  model_choice: CNN
-  num_epochs: 200
-  optimizer_choice: adam
-  output_dir: /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_class/output
-  patience: 10
-  protocol: residue_to_class
-  sanity_check: true
-  save_split_ids: false
-  seed: 42
-  shuffle: true
-  use_class_weights: true
-  use_half_precision: false
-  validate_input: true
-database_type: Protein
 derived_values:
-  biotrainer_version: 1.0.0
+  biotrainer_version: 2.0.0+beta
   class_int2str:
     0: C
     1: D
@@ -52,28 +51,240 @@ derived_values:
     2: 1.0
     3: 1.0
     4: 0.8888888955116272
-  model_hash: c172f3bc0f91f6bf
+  embedding_stats:
+    embedder_name: one_hot_encoding
+    dims: 21
+    n_tracked: 34
+    min: 0.0
+    max: 1.0
+  embeddings_file: 
+    /home/sebie/PycharmProjects/biotrainerFork/examples/residue_to_class/output/residue_to_class/one_hot_encoding/embeddings_file_one_hot_encoding.h5
+  model_hash: d0df28d28b9a85cf
   n_classes: 5
   n_features: 21
   n_testing_ids: 1
-  pipeline_elapsed_time: 3.3591139079981076
-  pipeline_end_time: '2025-06-26T12:21:38.733890'
-  pipeline_start_time: '2025-06-26T12:21:35.374776'
-  training_elapsed_time: 2.555912886000442
+  pipeline_elapsed_time: 4.047870068999941
+  pipeline_end_time: '2026-06-02T18:41:19.236560'
+  pipeline_start_time: '2026-06-02T18:41:15.188689'
+  training_elapsed_time: 3.68107269799998
 training_results:
   hold_out:
     n_training_ids: 1
     n_validation_ids: 1
     split_hyper_params: {}
     n_free_parameters: 5861
-    start_time: '2025-06-26T12:21:35.383560'
-    end_time: '2025-06-26T12:21:37.935195'
-    elapsed_time: 2.551625447002152
-    best_training_epoch_metrics:
-      epoch: 84
+    start_time: '2026-06-02T18:41:15.202104'
+    end_time: '2026-06-02T18:41:18.877871'
+    elapsed_time: 3.6757596659999763
+    training_losses:
+    - 1.6445155143737793
+    - 1.6384246349334717
+    - 1.6169291734695435
+    - 1.6138641834259033
+    - 1.6021803617477417
+    - 1.5862704515457153
+    - 1.5477981567382812
+    - 1.5596171617507935
+    - 1.53842294216156
+    - 1.5385335683822632
+    - 1.5181571245193481
+    - 1.4539188146591187
+    - 1.479897379875183
+    - 1.4439364671707153
+    - 1.4414725303649902
+    - 1.4396631717681885
+    - 1.3977397680282593
+    - 1.3839304447174072
+    - 1.3791991472244263
+    - 1.33395516872406
+    - 1.3065727949142456
+    - 1.3467521667480469
+    - 1.2998238801956177
+    - 1.2978837490081787
+    - 1.2442039251327515
+    - 1.2331353425979614
+    - 1.1751575469970703
+    - 1.1396005153656006
+    - 1.1621558666229248
+    - 1.1047109365463257
+    - 1.078641414642334
+    - 1.0596752166748047
+    - 0.9796254634857178
+    - 1.0374860763549805
+    - 0.9988194108009338
+    - 0.918913722038269
+    - 0.9031093120574951
+    - 0.9031776785850525
+    - 0.8814225196838379
+    - 0.8691176772117615
+    - 0.8423122763633728
+    - 0.841077983379364
+    - 0.8312318325042725
+    - 0.746705949306488
+    - 0.6130711436271667
+    - 0.6422513127326965
+    - 0.7319515347480774
+    - 0.5243470072746277
+    - 0.6562514305114746
+    - 0.6648354530334473
+    - 0.50290846824646
+    - 0.5546377897262573
+    - 0.5681604743003845
+    - 0.5104499459266663
+    - 0.5144625306129456
+    - 0.4522131681442261
+    - 0.3953239321708679
+    - 0.43634554743766785
+    - 0.3673609793186188
+    - 0.39293235540390015
+    - 0.3917602300643921
+    - 0.39432191848754883
+    - 0.3320160210132599
+    - 0.2839029133319855
+    - 0.2941897213459015
+    - 0.33019107580184937
+    - 0.3687671720981598
+    - 0.28870558738708496
+    - 0.2612896263599396
+    - 0.2663617432117462
+    - 0.25315913558006287
+    - 0.21978460252285004
+    - 0.16250304877758026
+    - 0.18981678783893585
+    - 0.2123187929391861
+    - 0.2628229558467865
+    - 0.20084579288959503
+    - 0.15181134641170502
+    - 0.16772966086864471
+    - 0.21428491175174713
+    - 0.16628925502300262
+    - 0.15124225616455078
+    - 0.13496287167072296
+    - 0.19574126601219177
+    - 0.15340282022953033
+    - 0.11091553419828415
+    - 0.12541034817695618
+    - 0.09952258318662643
+    - 0.20046576857566833
+    - 0.0889727994799614
+    - 0.11337575316429138
+    - 0.10575834661722183
+    - 0.12171098589897156
+    - 0.17988935112953186
+    - 0.06071976199746132
+    - 0.10058233141899109
+    - 0.11458490043878555
+    - 0.0676351934671402
+    validation_losses:
+    - 1.6175549030303955
+    - 1.6224822998046875
+    - 1.5947558879852295
+    - 1.5762014389038086
+    - 1.579859733581543
+    - 1.5961848497390747
+    - 1.5959405899047852
+    - 1.5719740390777588
+    - 1.568189263343811
+    - 1.5797940492630005
+    - 1.5704684257507324
+    - 1.5622961521148682
+    - 1.5543184280395508
+    - 1.5574450492858887
+    - 1.543264389038086
+    - 1.5343981981277466
+    - 1.533908724784851
+    - 1.5353976488113403
+    - 1.5173677206039429
+    - 1.5248210430145264
+    - 1.524547815322876
+    - 1.523777961730957
+    - 1.4831533432006836
+    - 1.5068058967590332
+    - 1.4788882732391357
+    - 1.4880292415618896
+    - 1.4659857749938965
+    - 1.482513189315796
+    - 1.470910668373108
+    - 1.4573882818222046
+    - 1.4603798389434814
+    - 1.465099573135376
+    - 1.4446943998336792
+    - 1.4441314935684204
+    - 1.4336354732513428
+    - 1.4360933303833008
+    - 1.4061615467071533
+    - 1.397442102432251
+    - 1.4141149520874023
+    - 1.3795971870422363
+    - 1.390364170074463
+    - 1.40433931350708
+    - 1.3779617547988892
+    - 1.3808305263519287
+    - 1.3512510061264038
+    - 1.3527711629867554
+    - 1.3876982927322388
+    - 1.3484477996826172
+    - 1.3471400737762451
+    - 1.3198341131210327
+    - 1.307919979095459
+    - 1.2847144603729248
+    - 1.2868287563323975
+    - 1.2611775398254395
+    - 1.2767986059188843
+    - 1.2806642055511475
+    - 1.2510651350021362
+    - 1.2398384809494019
+    - 1.3042272329330444
+    - 1.2560101747512817
+    - 1.2579904794692993
+    - 1.2401925325393677
+    - 1.2791774272918701
+    - 1.2699106931686401
+    - 1.1894400119781494
+    - 1.2038620710372925
+    - 1.2778346538543701
+    - 1.1848517656326294
+    - 1.1974403858184814
+    - 1.22572660446167
+    - 1.1850128173828125
+    - 1.177022099494934
+    - 1.1705598831176758
+    - 1.1590213775634766
+    - 1.2393062114715576
+    - 1.229160189628601
+    - 1.1868772506713867
+    - 1.1890251636505127
+    - 1.151116132736206
+    - 1.1635146141052246
+    - 1.1305267810821533
+    - 1.1402487754821777
+    - 1.1914429664611816
+    - 1.1664592027664185
+    - 1.115510106086731
+    - 1.1450400352478027
+    - 1.0515851974487305
+    - 1.1613812446594238
+    - 1.0872578620910645
+    - 1.1448266506195068
+    - 1.1292566061019897
+    - 1.0521986484527588
+    - 1.1352840662002563
+    - 1.1373518705368042
+    - 1.0821638107299805
+    - 1.1370850801467896
+    - 1.0815958976745605
+    - 1.0950524806976318
+    best_epoch_metrics:
+      epoch: 86
       training:
-        loss: 0.18558017909526825
+        loss: 0.12541034817695618
         accuracy: 1.0
+        balanced-accuracy: 1.0
+        '- accuracy class 0': 1.0
+        '- accuracy class 1': 1.0
+        '- accuracy class 2': 0.0
+        '- accuracy class 3': 0.0
+        '- accuracy class 4': 1.0
         macro-precision: 1.0
         micro-precision: 1.0
         '- precision class 0': 1.0
@@ -98,8 +309,14 @@ training_results:
         spearmans-corr-coeff: 0.9999998807907104
         matthews-corr-coeff: 1.0
       validation:
-        loss: 1.059759497642517
+        loss: 1.0515851974487305
         accuracy: 0.3333333432674408
+        balanced-accuracy: 0.1666666716337204
+        '- accuracy class 0': 0.0
+        '- accuracy class 1': 0.3333333432674408
+        '- accuracy class 2': 0.0
+        '- accuracy class 3': 0.0
+        '- accuracy class 4': 0.0
         macro-precision: 0.5
         micro-precision: 0.3333333432674408
         '- precision class 0': 0.0
@@ -123,384 +340,711 @@ training_results:
         '- f1_score class 4': 0.0
         spearmans-corr-coeff: 0.0
         matthews-corr-coeff: 0.0
-    training_loss:
-      '0': 1.6693501472473145
-      '1': 1.650396704673767
-      '2': 1.6439720392227173
-      '3': 1.5845987796783447
-      '4': 1.5926543474197388
-      '5': 1.5735441446304321
-      '6': 1.5431081056594849
-      '7': 1.5657017230987549
-      '8': 1.537536382675171
-      '9': 1.5151127576828003
-      '10': 1.4826921224594116
-      '11': 1.524902105331421
-      '12': 1.4650108814239502
-      '13': 1.4216569662094116
-      '14': 1.4484068155288696
-      '15': 1.3995811939239502
-      '16': 1.3952255249023438
-      '17': 1.402337670326233
-      '18': 1.363242745399475
-      '19': 1.3474977016448975
-      '20': 1.3229080438613892
-      '21': 1.3543510437011719
-      '22': 1.2499884366989136
-      '23': 1.299497365951538
-      '24': 1.235678791999817
-      '25': 1.189746618270874
-      '26': 1.1449822187423706
-      '27': 1.209301471710205
-      '28': 1.0873569250106812
-      '29': 1.1066477298736572
-      '30': 1.1253336668014526
-      '31': 1.0693844556808472
-      '32': 1.0117636919021606
-      '33': 1.016241192817688
-      '34': 0.9633303284645081
-      '35': 0.8928214907646179
-      '36': 0.9949941039085388
-      '37': 0.8624929189682007
-      '38': 0.833806037902832
-      '39': 0.7941717505455017
-      '40': 0.8239498138427734
-      '41': 0.731784462928772
-      '42': 0.7660256624221802
-      '43': 0.7775270938873291
-      '44': 0.6642673015594482
-      '45': 0.6488196849822998
-      '46': 0.6682573556900024
-      '47': 0.6395348906517029
-      '48': 0.5803272724151611
-      '49': 0.5311182737350464
-      '50': 0.5909075736999512
-      '51': 0.4823937714099884
-      '52': 0.5183343887329102
-      '53': 0.43519356846809387
-      '54': 0.5401352047920227
-      '55': 0.38984861969947815
-      '56': 0.42106735706329346
-      '57': 0.3849603831768036
-      '58': 0.44139909744262695
-      '59': 0.3804428279399872
-      '60': 0.36735889315605164
-      '61': 0.3926309645175934
-      '62': 0.33363428711891174
-      '63': 0.27550655603408813
-      '64': 0.3485362231731415
-      '65': 0.27082571387290955
-      '66': 0.2948378920555115
-      '67': 0.3061317503452301
-      '68': 0.2999364137649536
-      '69': 0.1958903670310974
-      '70': 0.2762104272842407
-      '71': 0.22198596596717834
-      '72': 0.22140036523342133
-      '73': 0.16156935691833496
-      '74': 0.2510189116001129
-      '75': 0.15530437231063843
-      '76': 0.14412017166614532
-      '77': 0.21183860301971436
-      '78': 0.1617695838212967
-      '79': 0.14513325691223145
-      '80': 0.1526758223772049
-      '81': 0.19291622936725616
-      '82': 0.23429380357265472
-      '83': 0.12133131176233292
-      '84': 0.18558017909526825
-      '85': 0.09706676751375198
-      '86': 0.11855829507112503
-      '87': 0.13424800336360931
-      '88': 0.16095156967639923
-      '89': 0.10670148581266403
-      '90': 0.13632585108280182
-      '91': 0.12989023327827454
-      '92': 0.09974504262208939
-      '93': 0.1315639168024063
-      '94': 0.10551842302083969
-      '95': 0.1226000040769577
-    validation_loss:
-      '0': 1.6013376712799072
-      '1': 1.6259313821792603
-      '2': 1.6083498001098633
-      '3': 1.5959787368774414
-      '4': 1.5883972644805908
-      '5': 1.587745189666748
-      '6': 1.5761582851409912
-      '7': 1.5840256214141846
-      '8': 1.5632050037384033
-      '9': 1.5548462867736816
-      '10': 1.555487871170044
-      '11': 1.5400253534317017
-      '12': 1.552158236503601
-      '13': 1.5589957237243652
-      '14': 1.5407721996307373
-      '15': 1.5377745628356934
-      '16': 1.5525861978530884
-      '17': 1.5224069356918335
-      '18': 1.501172661781311
-      '19': 1.5285627841949463
-      '20': 1.5158569812774658
-      '21': 1.5050067901611328
-      '22': 1.4823403358459473
-      '23': 1.489363431930542
-      '24': 1.4963030815124512
-      '25': 1.5002435445785522
-      '26': 1.4716360569000244
-      '27': 1.4973392486572266
-      '28': 1.4595575332641602
-      '29': 1.4505701065063477
-      '30': 1.4745312929153442
-      '31': 1.4495570659637451
-      '32': 1.4446054697036743
-      '33': 1.4561277627944946
-      '34': 1.4043304920196533
-      '35': 1.4164438247680664
-      '36': 1.3962253332138062
-      '37': 1.4259321689605713
-      '38': 1.4299383163452148
-      '39': 1.4108226299285889
-      '40': 1.419845461845398
-      '41': 1.3815196752548218
-      '42': 1.3816274404525757
-      '43': 1.3906874656677246
-      '44': 1.3624167442321777
-      '45': 1.3656678199768066
-      '46': 1.3297688961029053
-      '47': 1.3250700235366821
-      '48': 1.3335046768188477
-      '49': 1.317781686782837
-      '50': 1.2906312942504883
-      '51': 1.335958480834961
-      '52': 1.327301263809204
-      '53': 1.298471450805664
-      '54': 1.284450650215149
-      '55': 1.2931017875671387
-      '56': 1.3088006973266602
-      '57': 1.2819569110870361
-      '58': 1.3014512062072754
-      '59': 1.2627160549163818
-      '60': 1.2174839973449707
-      '61': 1.254464030265808
-      '62': 1.2556817531585693
-      '63': 1.2567213773727417
-      '64': 1.2594795227050781
-      '65': 1.2623223066329956
-      '66': 1.2239420413970947
-      '67': 1.225056767463684
-      '68': 1.2547518014907837
-      '69': 1.206876277923584
-      '70': 1.1946872472763062
-      '71': 1.2053698301315308
-      '72': 1.1900074481964111
-      '73': 1.1856491565704346
-      '74': 1.2130520343780518
-      '75': 1.1312309503555298
-      '76': 1.1651967763900757
-      '77': 1.1703054904937744
-      '78': 1.1659815311431885
-      '79': 1.1681933403015137
-      '80': 1.1850793361663818
-      '81': 1.152148962020874
-      '82': 1.1481257677078247
-      '83': 1.1660486459732056
-      '84': 1.059759497642517
-      '85': 1.1119242906570435
-      '86': 1.1623666286468506
-      '87': 1.0985835790634155
-      '88': 1.1577194929122925
-      '89': 1.1490339040756226
-      '90': 1.1463046073913574
-      '91': 1.1419925689697266
-      '92': 1.1560472249984741
-      '93': 1.1198757886886597
-      '94': 1.1211011409759521
-      '95': 1.161659598350525
 test_results:
   test:
-    metrics:
-      loss: 2.628438949584961
-      accuracy: 0.2857142984867096
-      macro-precision: 0.11428572237491608
-      micro-precision: 0.2857142984867096
-      '- precision class 0': 0.0
-      '- precision class 1': 0.5714285969734192
-      '- precision class 2': 0.0
-      '- precision class 3': 0.0
-      '- precision class 4': 0.0
-      macro-recall: 0.08888889104127884
-      micro-recall: 0.2857142984867096
-      '- recall class 0': 0.0
-      '- recall class 1': 0.4444444477558136
-      '- recall class 2': 0.0
-      '- recall class 3': 0.0
-      '- recall class 4': 0.0
-      macro-f1_score: 0.10000000149011612
-      micro-f1_score: 0.2857142984867096
-      '- f1_score class 0': 0.0
-      '- f1_score class 1': 0.5
-      '- f1_score class 2': 0.0
-      '- f1_score class 3': 0.0
-      '- f1_score class 4': 0.0
-      spearmans-corr-coeff: -0.054820869117975235
-      matthews-corr-coeff: -0.06608480960130692
-    bootstrapping:
-      results:
-        accuracy:
-          mean: 0.28564453125
-          error: 0.0
-        macro-precision:
-          mean: 0.1142578125
-          error: 0.0
-        micro-precision:
-          mean: 0.28564453125
-          error: 0.0
-        '- precision class 0':
-          mean: 0.0
-          error: 0.0
-        '- precision class 1':
-          mean: 0.5712890625
-          error: 0.0
-        '- precision class 2':
-          mean: 0.0
-          error: 0.0
-        '- precision class 3':
-          mean: 0.0
-          error: 0.0
-        '- precision class 4':
-          mean: 0.0
-          error: 0.0
-        macro-recall:
-          mean: 0.0888671875
-          error: 0.0
-        micro-recall:
-          mean: 0.28564453125
-          error: 0.0
-        '- recall class 0':
-          mean: 0.0
-          error: 0.0
-        '- recall class 1':
-          mean: 0.4443359375
-          error: 0.0
-        '- recall class 2':
-          mean: 0.0
-          error: 0.0
-        '- recall class 3':
-          mean: 0.0
-          error: 0.0
-        '- recall class 4':
-          mean: 0.0
-          error: 0.0
-        macro-f1_score:
-          mean: 0.0999755859375
-          error: 0.0
-        micro-f1_score:
-          mean: 0.28564453125
-          error: 0.0
-        '- f1_score class 0':
-          mean: 0.0
-          error: 0.0
-        '- f1_score class 1':
-          mean: 0.5
-          error: 0.0
-        '- f1_score class 2':
-          mean: 0.0
-          error: 0.0
-        '- f1_score class 3':
-          mean: 0.0
-          error: 0.0
-        '- f1_score class 4':
-          mean: 0.0
-          error: 0.0
-        spearmans-corr-coeff:
-          mean: -0.0548095703125
-          error: 0.0
-        matthews-corr-coeff:
-          mean: -0.06610107421875
-          error: 0.0
+    inference_result:
+      predictions: []
+      metrics:
+        loss: 2.6787006855010986
+        accuracy: 0.2857142984867096
+        balanced-accuracy: 0.08888889104127884
+        '- accuracy class 0': 0.0
+        '- accuracy class 1': 0.4444444477558136
+        '- accuracy class 2': 0.0
+        '- accuracy class 3': 0.0
+        '- accuracy class 4': 0.0
+        macro-precision: 0.11428572237491608
+        micro-precision: 0.2857142984867096
+        '- precision class 0': 0.0
+        '- precision class 1': 0.5714285969734192
+        '- precision class 2': 0.0
+        '- precision class 3': 0.0
+        '- precision class 4': 0.0
+        macro-recall: 0.08888889104127884
+        micro-recall: 0.2857142984867096
+        '- recall class 0': 0.0
+        '- recall class 1': 0.4444444477558136
+        '- recall class 2': 0.0
+        '- recall class 3': 0.0
+        '- recall class 4': 0.0
+        macro-f1_score: 0.10000000149011612
+        micro-f1_score: 0.2857142984867096
+        '- f1_score class 0': 0.0
+        '- f1_score class 1': 0.5
+        '- f1_score class 2': 0.0
+        '- f1_score class 3': 0.0
+        '- f1_score class 4': 0.0
+        spearmans-corr-coeff: -0.054820869117975235
+        matthews-corr-coeff: -0.06608480960130692
+    bootstrapped_metrics:
+    - name: accuracy
+      mean: 0.28564453125
+      lower: 0.28564453125
+      upper: 0.28564453125
       iterations: 30
       sample_size: 1
       confidence_level: 0.05
-    test_baselines:
+    - name: balanced-accuracy
+      mean: 0.0888671875
+      lower: 0.0888671875
+      upper: 0.0888671875
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- accuracy class 0'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- accuracy class 1'
+      mean: 0.4443359375
+      lower: 0.4443359375
+      upper: 0.4443359375
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- accuracy class 2'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- accuracy class 3'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- accuracy class 4'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: macro-precision
+      mean: 0.1142578125
+      lower: 0.1142578125
+      upper: 0.1142578125
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: micro-precision
+      mean: 0.28564453125
+      lower: 0.28564453125
+      upper: 0.28564453125
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- precision class 0'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- precision class 1'
+      mean: 0.5712890625
+      lower: 0.5712890625
+      upper: 0.5712890625
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- precision class 2'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- precision class 3'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- precision class 4'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: macro-recall
+      mean: 0.0888671875
+      lower: 0.0888671875
+      upper: 0.0888671875
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: micro-recall
+      mean: 0.28564453125
+      lower: 0.28564453125
+      upper: 0.28564453125
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- recall class 0'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- recall class 1'
+      mean: 0.4443359375
+      lower: 0.4443359375
+      upper: 0.4443359375
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- recall class 2'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- recall class 3'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- recall class 4'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: macro-f1_score
+      mean: 0.0999755859375
+      lower: 0.0999755859375
+      upper: 0.0999755859375
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: micro-f1_score
+      mean: 0.28564453125
+      lower: 0.28564453125
+      upper: 0.28564453125
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- f1_score class 0'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- f1_score class 1'
+      mean: 0.5
+      lower: 0.5
+      upper: 0.5
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- f1_score class 2'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- f1_score class 3'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: '- f1_score class 4'
+      mean: 0.0
+      lower: 0.0
+      upper: 0.0
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: spearmans-corr-coeff
+      mean: -0.0548095703125
+      lower: -0.0548095703125
+      upper: -0.0548095703125
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    - name: matthews-corr-coeff
+      mean: -0.06610107421875
+      lower: -0.06610107421875
+      upper: -0.06610107421875
+      iterations: 30
+      sample_size: 1
+      confidence_level: 0.05
+    baselines:
       random_model:
-        results:
-          accuracy:
-            mean: 0.28564453125
-            error: 0.0
-          macro-precision:
-            mean: 0.1600341796875
-            error: 0.0
-          micro-precision:
-            mean: 0.28564453125
-            error: 0.0
-          '- precision class 0':
-            mean: 0.0
-            error: 0.0
-          '- precision class 1':
-            mean: 0.0
-            error: 0.0
-          '- precision class 2':
-            mean: 0.300048828125
-            error: 0.0
-          '- precision class 3':
-            mean: 0.5
-            error: 0.0
-          '- precision class 4':
-            mean: 0.0
-            error: 0.0
-          macro-recall:
-            mean: 0.300048828125
-            error: 0.0
-          micro-recall:
-            mean: 0.28564453125
-            error: 0.0
-          '- recall class 0':
-            mean: 0.0
-            error: 0.0
-          '- recall class 1':
-            mean: 0.0
-            error: 0.0
-          '- recall class 2':
-            mean: 1.0
-            error: 0.0
-          '- recall class 3':
-            mean: 0.5
-            error: 0.0
-          '- recall class 4':
-            mean: 0.0
-            error: 0.0
-          macro-f1_score:
-            mean: 0.1922607421875
-            error: 0.0
-          micro-f1_score:
-            mean: 0.28564453125
-            error: 0.0
-          '- f1_score class 0':
-            mean: 0.0
-            error: 0.0
-          '- f1_score class 1':
-            mean: 0.0
-            error: 0.0
-          '- f1_score class 2':
-            mean: 0.46142578125
-            error: 0.0
-          '- f1_score class 3':
-            mean: 0.5
-            error: 0.0
-          '- f1_score class 4':
-            mean: 0.0
-            error: 0.0
-          spearmans-corr-coeff:
-            mean: 0.1036376953125
-            error: 0.0
-          matthews-corr-coeff:
-            mean: 0.2296142578125
-            error: 0.0
+      - name: accuracy
+        mean: 0.2142333984375
+        lower: 0.2142333984375
+        upper: 0.2142333984375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: balanced-accuracy
+        mean: 0.111083984375
+        lower: 0.111083984375
+        upper: 0.111083984375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- accuracy class 0'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- accuracy class 1'
+        mean: 0.22216796875
+        lower: 0.22216796875
+        upper: 0.22216796875
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- accuracy class 2'
+        mean: 0.333251953125
+        lower: 0.333251953125
+        upper: 0.333251953125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- accuracy class 3'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- accuracy class 4'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: macro-precision
+        mean: 0.199951171875
+        lower: 0.199951171875
+        upper: 0.199951171875
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: micro-precision
+        mean: 0.2142333984375
+        lower: 0.2142333984375
+        upper: 0.2142333984375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- precision class 0'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- precision class 1'
+        mean: 0.5
+        lower: 0.5
+        upper: 0.5
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- precision class 2'
+        mean: 0.5
+        lower: 0.5
+        upper: 0.5
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- precision class 3'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- precision class 4'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: macro-recall
+        mean: 0.111083984375
+        lower: 0.111083984375
+        upper: 0.111083984375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: micro-recall
+        mean: 0.2142333984375
+        lower: 0.2142333984375
+        upper: 0.2142333984375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- recall class 0'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- recall class 1'
+        mean: 0.22216796875
+        lower: 0.22216796875
+        upper: 0.22216796875
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- recall class 2'
+        mean: 0.333251953125
+        lower: 0.333251953125
+        upper: 0.333251953125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- recall class 3'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- recall class 4'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: macro-f1_score
+        mean: 0.1414794921875
+        lower: 0.1414794921875
+        upper: 0.1414794921875
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: micro-f1_score
+        mean: 0.2142333984375
+        lower: 0.2142333984375
+        upper: 0.2142333984375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- f1_score class 0'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- f1_score class 1'
+        mean: 0.3076171875
+        lower: 0.3076171875
+        upper: 0.3076171875
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- f1_score class 2'
+        mean: 0.39990234375
+        lower: 0.39990234375
+        upper: 0.39990234375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- f1_score class 3'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- f1_score class 4'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: spearmans-corr-coeff
+        mean: 0.2626953125
+        lower: 0.2626953125
+        upper: 0.2626953125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: matthews-corr-coeff
+        mean: -0.01617431640625
+        lower: -0.01617431640625
+        upper: -0.01617431640625
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      random_sampling:
+      - name: accuracy
+        mean: 0.28564453125
+        lower: 0.28564453125
+        upper: 0.28564453125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: balanced-accuracy
+        mean: 0.0888671875
+        lower: 0.0888671875
+        upper: 0.0888671875
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- accuracy class 0'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- accuracy class 1'
+        mean: 0.4443359375
+        lower: 0.4443359375
+        upper: 0.4443359375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- accuracy class 2'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- accuracy class 3'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- accuracy class 4'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: macro-precision
+        mean: 0.13330078125
+        lower: 0.13330078125
+        upper: 0.13330078125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: micro-precision
+        mean: 0.28564453125
+        lower: 0.28564453125
+        upper: 0.28564453125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- precision class 0'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- precision class 1'
+        mean: 0.66650390625
+        lower: 0.66650390625
+        upper: 0.66650390625
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- precision class 2'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- precision class 3'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- precision class 4'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: macro-recall
+        mean: 0.0888671875
+        lower: 0.0888671875
+        upper: 0.0888671875
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: micro-recall
+        mean: 0.28564453125
+        lower: 0.28564453125
+        upper: 0.28564453125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- recall class 0'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- recall class 1'
+        mean: 0.4443359375
+        lower: 0.4443359375
+        upper: 0.4443359375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- recall class 2'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- recall class 3'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- recall class 4'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: macro-f1_score
+        mean: 0.106689453125
+        lower: 0.106689453125
+        upper: 0.106689453125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: micro-f1_score
+        mean: 0.28564453125
+        lower: 0.28564453125
+        upper: 0.28564453125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- f1_score class 0'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- f1_score class 1'
+        mean: 0.533203125
+        lower: 0.533203125
+        upper: 0.533203125
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- f1_score class 2'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- f1_score class 3'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: '- f1_score class 4'
+        mean: 0.0
+        lower: 0.0
+        upper: 0.0
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: spearmans-corr-coeff
+        mean: 0.06927490234375
+        lower: 0.06927490234375
+        upper: 0.06927490234375
+        iterations: 30
+        sample_size: 1
+        confidence_level: 0.05
+      - name: matthews-corr-coeff
+        mean: 0.0188751220703125
+        lower: 0.0188751220703125
+        upper: 0.0188751220703125
         iterations: 30
         sample_size: 1
         confidence_level: 0.05
     sanity_check_warnings:
     - Model is only predicting [1, 4, 0, 1, 4, 4, 1, 1, 4, 1, 4, 1, 1, 4] for all
       test samples!
-predictions: {}
+predictions:
+- seq_id: Seq4
+  prediction: DVCDVC
+  is_aggregated: true
+  raw_prediction:
+  - - 0.17794926464557648
+    - 0.1722257435321808
+    - 0.3588341474533081
+    - 0.0914243757724762
+    - 0.1063571572303772
+    - 0.3419027328491211
+  - - 0.3995223343372345
+    - 0.18657326698303223
+    - 0.2640751898288727
+    - 0.6058510541915894
+    - 0.2673783004283905
+    - 0.25992316007614136
+  - - 0.0855676531791687
+    - 0.058846548199653625
+    - 0.044960781931877136
+    - 0.03837103769183159
+    - 0.0450456328690052
+    - 0.057443201541900635
+  - - 0.09835248440504074
+    - 0.070479616522789
+    - 0.04925119876861572
+    - 0.033018164336681366
+    - 0.037093259394168854
+    - 0.06309401988983154
+  - - 0.23860834538936615
+    - 0.5118748545646667
+    - 0.28287866711616516
+    - 0.23133538663387299
+    - 0.5441256761550903
+    - 0.2776367962360382

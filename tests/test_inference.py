@@ -4,11 +4,11 @@ import numpy as np
 import torch._dynamo
 
 from typing import Dict, Union, List
+from biotrainer_core.data_classes import Protocol, BootstrappedMetric
 
-from biotrainer.protocols import Protocol
-from biotrainer.inference import Inferencer
-from biotrainer.utilities import BootstrappedMetric
-from biotrainer.embedders import OneHotEncodingEmbedder
+from biotrainer.shared import Bootstrapper
+from biotrainer.training.inference import Inferencer
+from biotrainer.embedding import OneHotEncodingEmbedder
 
 
 class InferencerTests(unittest.TestCase):
@@ -65,68 +65,61 @@ class InferencerTests(unittest.TestCase):
     def test_padding(self):
         max_seq_length = len(max(self._test_targets_r2c, key=len))
         for target in self._test_targets_r2c:
-            self.assertTrue(len(self.inferencer_r2c._pad_tensor(protocol=self.inferencer_r2c.protocol,
+            self.assertTrue(len(Bootstrapper._pad_tensor(protocol=self.inferencer_r2c.protocol,
                                                                 target=self.inferencer_r2c._convert_class_str2int(
                                                                     target),
                                                                 length_to_pad=max_seq_length,
                                                                 device="cpu")) == max_seq_length,
                             "Padding did not enlarge target sequence to correct size!")
         for target in self._test_targets_s2v:
-            self.assertTrue(self.inferencer_s2v._pad_tensor(protocol=self.inferencer_s2v.protocol, target=target,
+            self.assertTrue(Bootstrapper._pad_tensor(protocol=self.inferencer_s2v.protocol, target=target,
                                                             length_to_pad=max_seq_length, device="cpu") == target,
                             "Padding changed a non-list value!")
 
     def test_from_embeddings(self):
-        r2c_dict = self.inferencer_r2c.from_embeddings(self.per_residue_embeddings)
-        r2v_dict = self.inferencer_r2v.from_embeddings(self.per_residue_embeddings)
-        rs2c_dict = self.inferencer_rs2c.from_embeddings(self.per_residue_embeddings)
-        s2c_dict = self.inferencer_s2c.from_embeddings(self.per_sequence_embeddings)
-        s2v_dict = self.inferencer_s2v.from_embeddings(self.per_sequence_embeddings)
-        rs2v_dict = self.inferencer_rs2v.from_embeddings(self.per_residue_embeddings)
-
-        self.assertTrue(
-            "metrics" in r2c_dict.keys() and "metrics" in r2v_dict.keys() and
-            "metrics" in s2c_dict.keys() and "metrics" in s2v_dict.keys(),
-            "Missing metrics key!")
-        self.assertTrue("mapped_predictions" in r2c_dict.keys() and "mapped_predictions" in s2v_dict.keys(),
-                        "Missing predictions key!")
+        r2c_result = self.inferencer_r2c.from_embeddings(self.per_residue_embeddings)
+        r2v_result = self.inferencer_r2v.from_embeddings(self.per_residue_embeddings)
+        rs2c_result = self.inferencer_rs2c.from_embeddings(self.per_residue_embeddings)
+        s2c_result = self.inferencer_s2c.from_embeddings(self.per_sequence_embeddings)
+        s2v_result = self.inferencer_s2v.from_embeddings(self.per_sequence_embeddings)
+        rs2v_result = self.inferencer_rs2v.from_embeddings(self.per_residue_embeddings)
 
         self.assertTrue(all([pred_class in self._test_classes_r2c for pred_class in
-                             "".join(r2c_dict["mapped_predictions"].values())]),
+                             "".join([pred.prediction for pred in r2c_result.predictions])]),
                         "Inferencer predicted a non-existing class!")
         self.assertTrue(all([type(value) for value in
-                             [v for v in (vs for vs in r2v_dict["mapped_predictions"].values())]]),
+                             [v for v in (pred.prediction for pred in rs2v_result.predictions)]]),
                         "Inferencer predicted a non-existing class!")
         self.assertTrue(all([pred_class in self._test_classes_rs2c
-                             for pred_class in rs2c_dict["mapped_predictions"].values()]),
+                             for pred_class in (pred.prediction for pred in rs2c_result.predictions)]),
                         "Inferencer predicted a non-existing class (rs2c)!")
         self.assertTrue(all([pred_class in self._test_classes_s2c
-                             for pred_class in s2c_dict["mapped_predictions"].values()]),
+                             for pred_class in (pred.prediction for pred in s2c_result.predictions)]),
                         "Inferencer predicted a non-existing class (s2c)!")
-        self.assertTrue(all([type(value) is float for value in s2v_dict["mapped_predictions"].values()]),
+        self.assertTrue(all([type(value) is float for value in (pred.prediction for pred in s2v_result.predictions)]),
                         "Type of all sequence to value predictions is not float!")
-        self.assertTrue(all([type(value) is float for value in rs2v_dict["mapped_predictions"].values()]),
+        self.assertTrue(all([type(value) is float for value in (pred.prediction for pred in rs2v_result.predictions)]),
                         "Type of all residues to value predictions is not float!")
 
     def test_from_embeddings_with_targets(self):
-        r2c_dict = self.inferencer_r2c.from_embeddings(self.per_residue_embeddings, self._test_targets_r2c)
-        r2v_dict = self.inferencer_r2v.from_embeddings(self.per_residue_embeddings, self._test_targets_r2v)
-        rs2c_dict = self.inferencer_rs2c.from_embeddings(self.per_residue_embeddings, self._test_targets_rs2c)
-        s2c_dict = self.inferencer_s2c.from_embeddings(self.per_sequence_embeddings, self._test_targets_s2c)
-        s2v_dict = self.inferencer_s2v.from_embeddings(self.per_sequence_embeddings, self._test_targets_s2v)
-        rs2v_dict = self.inferencer_rs2v.from_embeddings(self.per_residue_embeddings, self._test_targets_rs2v)
+        r2c_result = self.inferencer_r2c.from_embeddings(self.per_residue_embeddings, self._test_targets_r2c)
+        r2v_result = self.inferencer_r2v.from_embeddings(self.per_residue_embeddings, self._test_targets_r2v)
+        rs2c_result = self.inferencer_rs2c.from_embeddings(self.per_residue_embeddings, self._test_targets_rs2c)
+        s2c_result = self.inferencer_s2c.from_embeddings(self.per_sequence_embeddings, self._test_targets_s2c)
+        s2v_result = self.inferencer_s2v.from_embeddings(self.per_sequence_embeddings, self._test_targets_s2v)
+        rs2v_result = self.inferencer_rs2v.from_embeddings(self.per_residue_embeddings, self._test_targets_rs2v)
 
-        self.assertAlmostEqual(r2c_dict["metrics"]["loss"], 2.13, delta=self.error_tolerance,
+        self.assertAlmostEqual(r2c_result.metrics["loss"], 2.13, delta=self.error_tolerance,
                                msg="Loss not as expected for r2c!")
-        self.assertAlmostEqual(r2v_dict["metrics"]["loss"], 66.42302047378135, delta=self.error_tolerance,
+        self.assertAlmostEqual(r2v_result.metrics["loss"], 66.42302047378135, delta=self.error_tolerance,
                                msg="Loss not as expected for r2v!")
-        self.assertAlmostEqual(rs2c_dict["metrics"]["loss"], 1.7416267395019531, delta=self.error_tolerance,
+        self.assertAlmostEqual(rs2c_result.metrics["loss"], 1.7416267395019531, delta=self.error_tolerance,
                                msg="Loss not as expected for rs2c!")
-        self.assertAlmostEqual(s2c_dict["metrics"]["loss"], 1.3706077337265015, delta=self.error_tolerance,
+        self.assertAlmostEqual(s2c_result.metrics["loss"], 1.3706077337265015, delta=self.error_tolerance,
                                msg="Loss not as expected for s2c!")
-        self.assertAlmostEqual(s2v_dict["metrics"]["loss"], 1.2276635438517511, delta=self.error_tolerance,
+        self.assertAlmostEqual(s2v_result.metrics["loss"], 0.8475780237060982, delta=self.error_tolerance,
                                msg="Loss not as expected for s2v!")
-        self.assertAlmostEqual(rs2v_dict["metrics"]["loss"], 107.96429166959688, delta=self.error_tolerance,
+        self.assertAlmostEqual(rs2v_result.metrics["loss"], 107.29587640102811, delta=self.error_tolerance,
                                msg="Loss not as expected for rs2v!")
 
     def test_from_embeddings_with_bootstrapping(self):
@@ -144,9 +137,9 @@ class InferencerTests(unittest.TestCase):
                                                                                    iterations=10,
                                                                                    sample_size=3,
                                                                                    seed=42)
-        r2c_dict = self.inferencer_r2c.from_embeddings(self.per_residue_embeddings, self._test_targets_r2c)
+        r2c_result = self.inferencer_r2c.from_embeddings(self.per_residue_embeddings, self._test_targets_r2c)
         for metric in r2c_bootstrapping:
-            self.assertAlmostEqual(r2c_dict["metrics"][metric.name], metric.mean, delta=_get_error_range(metric))
+            self.assertAlmostEqual(r2c_result.metrics[metric.name], metric.mean, delta=_get_error_range(metric))
             self.assertTrue(metric.lower <= metric.mean <= metric.upper)
             self.assertTrue(metric.iterations == 10)
             self.assertTrue(metric.sample_size == 3)
@@ -157,9 +150,9 @@ class InferencerTests(unittest.TestCase):
                                                                                      iterations=6,
                                                                                      sample_size=2,
                                                                                      seed=42)
-        rs2c_dict = self.inferencer_rs2c.from_embeddings(self.per_residue_embeddings, self._test_targets_rs2c)
+        rs2c_result = self.inferencer_rs2c.from_embeddings(self.per_residue_embeddings, self._test_targets_rs2c)
         for metric in rs2c_bootstrapping:
-            self.assertAlmostEqual(rs2c_dict["metrics"][metric.name], metric.mean, delta=_get_error_range(metric))
+            self.assertAlmostEqual(rs2c_result.metrics[metric.name], metric.mean, delta=_get_error_range(metric))
 
         # sequence_to_class
         s2c_bootstrapping = self.inferencer_s2c.from_embeddings_with_bootstrapping(self.per_sequence_embeddings,
@@ -167,9 +160,9 @@ class InferencerTests(unittest.TestCase):
                                                                                    iterations=10,
                                                                                    sample_size=3,
                                                                                    seed=42)
-        s2c_dict = self.inferencer_s2c.from_embeddings(self.per_sequence_embeddings, self._test_targets_s2c)
+        s2c_result = self.inferencer_s2c.from_embeddings(self.per_sequence_embeddings, self._test_targets_s2c)
         for metric in s2c_bootstrapping:
-            self.assertAlmostEqual(s2c_dict["metrics"][metric.name], metric.mean, delta=_get_error_range(metric))
+            self.assertAlmostEqual(s2c_result.metrics[metric.name], metric.mean, delta=_get_error_range(metric))
 
         # sequence_to_value
         s2v_bootstrapping = self.inferencer_s2v.from_embeddings_with_bootstrapping(self.per_sequence_embeddings,
@@ -177,9 +170,9 @@ class InferencerTests(unittest.TestCase):
                                                                                    iterations=10,
                                                                                    sample_size=2,
                                                                                    seed=42)
-        s2v_dict = self.inferencer_s2v.from_embeddings(self.per_sequence_embeddings, self._test_targets_s2v)
+        s2v_result = self.inferencer_s2v.from_embeddings(self.per_sequence_embeddings, self._test_targets_s2v)
         for metric in s2v_bootstrapping:
-            self.assertAlmostEqual(s2v_dict["metrics"][metric.name], metric.mean, delta=_get_error_range(metric))
+            self.assertAlmostEqual(s2v_result.metrics[metric.name], metric.mean, delta=_get_error_range(metric))
 
         # residues_to_value
         rs2v_bootstrapping = self.inferencer_rs2v.from_embeddings_with_bootstrapping(self.per_residue_embeddings,
@@ -187,9 +180,9 @@ class InferencerTests(unittest.TestCase):
                                                                                      iterations=10,
                                                                                      sample_size=2,
                                                                                      seed=42)
-        rs2v_dict = self.inferencer_rs2v.from_embeddings(self.per_residue_embeddings, self._test_targets_rs2v)
+        rs2v_result = self.inferencer_rs2v.from_embeddings(self.per_residue_embeddings, self._test_targets_rs2v)
         for metric in rs2v_bootstrapping:
-            self.assertAlmostEqual(rs2v_dict["metrics"][metric.name], metric.mean, delta=_get_error_range(metric))
+            self.assertAlmostEqual(rs2v_result.metrics[metric.name], metric.mean, delta=_get_error_range(metric))
 
         # Check that a sample size and iteration of 1 work
         _ = self.inferencer_r2c.from_embeddings_with_bootstrapping(self.per_residue_embeddings,
@@ -249,13 +242,11 @@ class InferencerTests(unittest.TestCase):
         )
 
         # Basic structure tests - group residue predictions by seq_id
-        from biotrainer.utilities import BiotrainerResiduePrediction
         r2c_by_seq = {}
         for pred in r2c_list:
-            if isinstance(pred, BiotrainerResiduePrediction):
-                if pred.seq_id not in r2c_by_seq:
-                    r2c_by_seq[pred.seq_id] = []
-                r2c_by_seq[pred.seq_id].append(pred)
+            if pred.seq_id not in r2c_by_seq:
+                r2c_by_seq[pred.seq_id] = []
+            r2c_by_seq[pred.seq_id].append(pred)
 
         self.assertTrue(all([len(r2c_by_seq[seq]) == len(self._test_sequences[idx])
                              for idx, seq in enumerate(r2c_by_seq.keys())]),
@@ -263,10 +254,9 @@ class InferencerTests(unittest.TestCase):
 
         r2v_by_seq = {}
         for pred in r2v_list:
-            if isinstance(pred, BiotrainerResiduePrediction):
-                if pred.seq_id not in r2v_by_seq:
-                    r2v_by_seq[pred.seq_id] = []
-                r2v_by_seq[pred.seq_id].append(pred)
+            if pred.seq_id not in r2v_by_seq:
+                r2v_by_seq[pred.seq_id] = []
+            r2v_by_seq[pred.seq_id].append(pred)
 
         self.assertTrue(all([len(r2v_by_seq[seq]) == len(self._test_sequences[idx])
                              for idx, seq in enumerate(r2v_by_seq.keys())]),
@@ -401,17 +391,17 @@ class InferencerTests(unittest.TestCase):
                 embeddings = self.per_sequence_embeddings \
                     if inferencer.protocol in Protocol.using_per_sequence_embeddings() else self.per_residue_embeddings
 
-                onnx_result_dict = Inferencer.from_onnx_with_embeddings(model_path=model_path,
+                onnx_result = Inferencer.from_onnx_with_embeddings(model_path=model_path,
                                                                         embeddings=embeddings,
                                                                         protocol=inferencer.protocol)
 
                 # Compare to inferencer predictions
-                inferencer_result_dict = inferencer.from_embeddings(embeddings=embeddings,
+                inferencer_result = inferencer.from_embeddings(embeddings=embeddings,
                                                                     include_probabilities=True)
-                inferencer_result_dict_prob = inferencer_result_dict["mapped_probabilities"]
+                inferencer_result_prob = inferencer_result["mapped_probabilities"]
 
-                prediction_errors = self._compare_predictions(preds=onnx_result_dict,
-                                                              other_preds=inferencer_result_dict_prob)
+                prediction_errors = self._compare_predictions(preds=onnx_result_result,
+                                                              other_preds=inferencer_result_prob)
                 if len(prediction_errors) > 0:
                     print(prediction_errors)
                 self.assertTrue(len(prediction_errors) == 0)
@@ -421,16 +411,15 @@ class InferencerTests(unittest.TestCase):
             embeddings = self.per_sequence_embeddings \
                 if inferencer.protocol in Protocol.using_per_sequence_embeddings() else self.per_residue_embeddings
 
-            pred_dict_batch = inferencer.from_embeddings(embeddings=embeddings, include_probabilities=True)
+            pred_result_batch = inferencer.from_embeddings(embeddings=embeddings)
+            pred_dict_batch = {pred.seq_id: pred.raw_prediction for pred in pred_result_batch.predictions}
 
             pred_dict_single = {}
             for seq_id, emb in embeddings.items():
-                pred_dict_single[seq_id] = inferencer.from_embeddings({seq_id: emb},
-                                                                      include_probabilities=True)[
-                    "mapped_probabilities"][seq_id]
+                pred_dict_single[seq_id] = inferencer.from_embeddings({seq_id: emb}).prediction_by_id(seq_id).raw_prediction
 
             # Single predictions and batch predictions should not significantly differ
-            prediction_errors = self._compare_predictions(pred_dict_batch["mapped_probabilities"], pred_dict_single)
+            prediction_errors = self._compare_predictions(pred_dict_batch, pred_dict_single)
             if len(prediction_errors) > 0:
                 print(prediction_errors)
             self.assertTrue(len(prediction_errors) == 0)

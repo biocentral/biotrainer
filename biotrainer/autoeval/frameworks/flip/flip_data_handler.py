@@ -1,0 +1,68 @@
+from tqdm import tqdm
+from typing import List, Optional
+from pathlib import Path
+from biotrainer_core.data_classes.autoeval import AutoEvalTask, all_flip_datasets
+
+from ...core import AutoEvalDataHandler
+
+
+class FLIPDataHandler(AutoEvalDataHandler):
+    """Handles FLIP dataset related operations"""
+
+    IGNORE_SPLITS = ["mixed_vs_human_2"]
+
+    @staticmethod
+    def get_framework_name() -> str:
+        return "FLIP"
+
+    @staticmethod
+    def get_download_urls():
+        return ["https://nextcloud.cit.tum.de/index.php/s/fqFEeCSpwTHkt8X/download"]
+
+    def preprocess(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int]) -> None:
+        """ Filters all dataset splits for sequences that fulfill the length requirements """
+        for dataset, dataset_info in tqdm(all_flip_datasets().items(), desc="Preprocessing datasets"):
+            dataset_dir = base_path / dataset
+
+            # Process all splits
+            for split in dataset_info.splits or []:
+                if split in self.IGNORE_SPLITS:
+                    continue
+
+                self._ensure_preprocessed_file(dataset_dir=dataset_dir,
+                                               name=split,
+                                               min_seq_length=min_seq_length,
+                                               max_seq_length=max_seq_length)
+
+        print("FLIP data preprocessing completed!")
+
+    def get_tasks(self, base_path: Path, min_seq_length: Optional[int], max_seq_length: Optional[int],
+                  development_mode: bool) -> List[AutoEvalTask]:
+        """Build tasks for all FLIP datasets"""
+        print("WARNING: FLIP dataset support is currently deprecated in biotrainer - please refer to the PBC datasets "
+              "instead!")
+
+        tasks = []
+
+        for dataset, dataset_info in all_flip_datasets().items():
+            dataset_dir = base_path / dataset
+            for split_name in dataset_info.splits or []:
+                if split_name in self.IGNORE_SPLITS:
+                    continue
+
+                input_file = self._get_input_file_path(dataset_dir=dataset_dir,
+                                                       name=split_name,
+                                                       min_seq_length=min_seq_length,
+                                                       max_seq_length=max_seq_length)
+                if not input_file.exists():
+                    raise FileNotFoundError(f"Missing sequence file for {dataset}/{split_name}!")
+
+                tasks.append(
+                    AutoEvalTask(framework_name=self.get_framework_name(),
+                                 dataset_name=dataset,
+                                 split_name=split_name,
+                                 input_files=[input_file],
+                                 type="Protein",
+                                 ))
+
+        return tasks
