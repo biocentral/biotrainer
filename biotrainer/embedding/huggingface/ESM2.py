@@ -105,6 +105,8 @@ class ESMC(ESM2):
     @classmethod
     def detect(cls, embedder_name: str, use_half_precision: bool, dtype: torch.dtype, device: torch.device):
         if embedder_name in cls.SUPPORTED_MODELS:
+            if embedder_name == "biohub/ESMC-6B":
+                dtype = torch.float16  # Enforce smaller fp precision for largest model
             # Load the tokenizer
             tokenizer = AutoTokenizer.from_pretrained(embedder_name, dtype=dtype)
             # Load the model
