@@ -151,6 +151,7 @@ class EmbedderWithFallback(EmbedderInterface, abc.ABC):
 
         Returns unprocessed embeddings
         """
+        original_device = self._device
         # No point in having a fallback model when the normal model is CPU already
         if self._device.type == "cpu":
             yield from self._embed_batch_implementation(batch, self._model)
@@ -165,6 +166,7 @@ class EmbedderWithFallback(EmbedderInterface, abc.ABC):
                     f"The error most likely means that you don't have enough "
                     f"GPU RAM to embed a protein this long on the GPU. Full error: {e}"
                 )
+                self._device = torch.device("cpu")
                 yield from self._embed_batch_implementation(batch, self._get_fallback_model())
             else:
                 logger.warning(
@@ -181,4 +183,8 @@ class EmbedderWithFallback(EmbedderInterface, abc.ABC):
                             f"The error most likely means that you don't have enough "
                             f"GPU RAM to embed a protein this long on the GPU. Full error: {e}"
                         )
+                        self._device = torch.device("cpu")
                         yield from self._embed_batch_implementation([sequence], self._get_fallback_model())
+        finally:
+            self._device = original_device
+            self._model.to(original_device)
